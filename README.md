@@ -2,6 +2,7 @@
 
 R-Journal is a modern journaling and quick notes application built with Jetpack Compose, Room Database, and Material 3. It provides a simple, elegant interface to record daily thoughts, manage quick notes, and explore insights with a dashboard.
 
+
 **✨ Features**
 
 📝 Journal Archive – Maintain daily journal entries with easy editing.
@@ -22,6 +23,7 @@ R-Journal is a modern journaling and quick notes application built with Jetpack 
 
 💾 Local Storage – Data stored securely using Room Database.
 
+
 **📱 Screens**
 
 Journal Archive – List of all journal entries.
@@ -36,6 +38,7 @@ Dashboard – Visualize statistics of your writing.
 
 Export/Import – Backup and restore your data.
 
+
 **🛠️ Tech Stack**
 
 Language: Kotlin
@@ -49,6 +52,7 @@ Database: Room (SQLite)
 Architecture: MVVM (ViewModel + Repository)
 
 Coroutines: For async tasks
+
 
 **🚀 Getting Started**
 Prerequisites
@@ -96,10 +100,12 @@ app/
  
  │
  └─ AndroidManifest.xml
+ 
 
 **📸 Screenshots**
 
 Will update soon...
+
 
 **🔮 Roadmap**
 
