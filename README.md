@@ -1,124 +1,316 @@
-**📓 R-Journal**
+**R-Journal** — Your Personal Daily Journal (Android, Jetpack Compose)
 
-R-Journal is a modern journaling and quick notes application built with Jetpack Compose, Room Database, and Material 3. It provides a simple, elegant interface to record daily thoughts, manage quick notes, and explore insights with a dashboard.
+R-Journal is a modern journaling app built entirely with Jetpack Compose, designed for fast writing, clean UI, local privacy, and native Android features.
 
+It includes a WhatsApp-style chat interface, mood tracking, reply system, image attachments, and complete offline storage using Room Database.
 
-**✨ Features**
+🚀 Features
+📝 Chat-Style Journal Entries
 
-📝 Journal Archive – Maintain daily journal entries with easy editing.
+Each day is a self-contained chat thread.
+Write entries like conversations — simpler, faster, more natural.
 
-⚡ Quick Notes – Create and manage small notes instantly.
+📎 Send Messages with:
 
-🔍 Search – Search across your journals and notes.
+Text
 
-📊 Dashboard – Visual overview of your writing habits.
+Images (Camera / Gallery)
 
-⬆️ Export – Export your journal and notes data.
+Mixed content
 
-⬇️ Import – Import existing data into the app.
+Automatic compression & private storage
 
-🖼️ Image Viewer – View attached images in fullscreen mode.
+💬 Swipe-to-Reply (WhatsApp style)
 
-🎨 Modern UI – Built using Material 3, Jetpack Compose, and Navigation.
+Swipe any message right to reply
 
-💾 Local Storage – Data stored securely using Room Database.
+Shows reply preview above the input box
 
+Reply metadata is saved in Room
 
-**📱 Screens**
+Replies remain after restarting the app
 
-Journal Archive – List of all journal entries.
+🔗 Tap Reply → Scroll to Original
 
-Chat Input Screen – Add/edit journal entries in a chat-like interface.
+Tap on reply preview inside a bubble
 
-Quick Notes – Manage lightweight notes.
+Auto-scrolls to the original message
 
-Search – Search journals and notes.
+Message briefly highlights with a border
 
-Dashboard – Visualize statistics of your writing.
+Smooth animations with Compose
 
-Export/Import – Backup and restore your data.
+😊 Mood Picker
 
+Select up to 3 moods for the day
 
-**🛠️ Tech Stack**
+Emoji-based UI
 
-Language: Kotlin
+Animated scale bounce effect
 
-UI: Jetpack Compose, Material 3
+Mood syncs with entry tags
 
-Navigation: Navigation-Compose
+🖼️ Full Image Viewer
 
-Database: Room (SQLite)
+Tap on any image
 
-Architecture: MVVM (ViewModel + Repository)
+Opens full-screen image viewer
 
-Coroutines: For async tasks
+Local-only (no internet required)
 
+🔒 Secure Local Storage
 
-**🚀 Getting Started**
-Prerequisites
+All data saved in Room DB
 
-Android Studio Ladybug (or newer)
+Custom JSON Converters preserve reply metadata
 
-JDK 17+
+Private image storage under Android/data/.../files/Pictures
 
-Gradle 8+
+🌙 Smart Day Detection
 
-Setup
+Messages added after midnight are marked “Added later”
 
-Clone this repo:
+You can navigate to past entries without breaking rules
 
-git clone https://github.com/your-username/r_journal.git
+Editing & deleting allowed only for today’s messages
 
-
-Open in Android Studio.
-
-Sync Gradle & run the app on an emulator or device.
-
-📂 Project Structure
+🧱 Architecture
 app/
+│
+├── data/
+│   ├── local/
+│   │   ├── entity/
+│   │   │   ├── ChatMessage.kt
+│   │   │   └── JournalEntry.kt
+│   │   ├── converters/Converters.kt
+│   │   └── JournalDatabase.kt
+│   └── repository/JournalRepository.kt
+│
+├── ui/
+│   ├── screens/ChatInputScreen.kt
+│   ├── screens/ImageViewerScreen.kt
+│   ├── components/ChatBubble.kt
+│   └── components/CompactMoodPicker.kt
+│
+└── viewmodel/JournalViewModel.kt
 
- ├─ src/main/java/com/baverika/r_journal/
- 
- │   ├─ data/local/database/      # Room database
- 
- │   ├─ repository/               # Repositories (Journal, QuickNotes)
- 
- │   ├─ ui/screens/               # All UI Screens
- 
- │   ├─ ui/viewmodel/             # ViewModels + Factories
- 
- │   └─ MainActivity.kt           # App entry point
- 
- │
- ├─ res/
- 
- │   ├─ drawable/                 # Images & icons
- 
- │   ├─ mipmap/                   # App launcher icons
- 
- │   └─ values/                   # Themes, colors, strings
- 
- │
- └─ AndroidManifest.xml
- 
+Core Technologies
 
-**📸 Screenshots**
+Kotlin
 
-Will update soon...
+Jetpack Compose (Material3)
+
+Room Database
+
+Compose Navigation
+
+Coil (Image loading)
+
+SwipeToDismiss (Material 1 inside M3 UI)
+
+Coroutines + StateFlow
+
+FileProvider for image access
+
+🏛️ Data Model
+ChatMessage.kt
+data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val role: String = "user",
+    val content: String = "",
+    val timestamp: Long = System.currentTimeMillis(),
+    val imageUri: String? = null,
+    val replyToMessageId: String? = null,
+    val replyPreview: String? = null
+)
+
+JournalEntry.kt
+
+One entry per day.
+
+Stores a list of messages + mood tags.
+
+💾 Room Storage
+✔️ Custom JSON Converters
+
+Your updated Converters.kt preserves all ChatMessage fields, including:
+
+replyToMessageId
+
+replyPreview
+
+imageUri
+
+This ensures reply chains survive app restarts.
+
+🧠 ViewModel Logic (JournalViewModel)
+
+Main responsibilities:
+
+Load today’s entry
+
+Load past entries
+
+Add messages with/without images
+
+Swipe-to-reply integration
+
+Highlight target message on quote tap
+
+Edit & delete rules only for today
+
+Mood picker logic
+
+Auto-sorting messages before saving
+
+It exposes UI-ready state via:
+
+currentEntry
+
+isLoading: StateFlow<Boolean>
+
+isMessageAddedLater(message)
+
+isCurrentEntryToday
+
+canEditMood
+
+🖌️ UI Design
+✔️ Modern Material 3
+
+Rounded bubbles
+
+Soft shadows
+
+Smooth animations
+
+✔️ WhatsApp-like Interaction Model
+
+Swipe to reply
+
+Tap reply preview → auto-scroll
+
+Animated highlight
+
+Long-press → Edit/Delete
+
+Fade-in message animations
+
+✔️ Optimized Layout
+
+LazyColumn with stable keys
+
+Auto-scroll to bottom on new message
+
+Handles image height, full-width text wrapping
+
+📸 Images & Media
+
+Images are:
+
+Compressed on save (max dimension = 1024px)
+
+Stored privately
+
+Previewed inline
+
+Openable in full screen
+
+🔁 Reply System (How It Works)
+When swiping a message:
+replyToMessage = message
+
+When sending a message:
+viewModel.addMessageWithImage(
+    text,
+    imageUri?.toString(),
+    replyTo = replyToMessage
+)
+
+ViewModel stores:
+
+replyToMessageId
+
+replyPreview
+
+UI displays:
+
+A preview bubble above input box
+
+A quoted bubble inside messages
+
+Scroll-to-original on tap
+
+👇 Highlight Logic
+
+When a reply quote is tapped:
+
+highlightedMessageId = originalMessage.id
+delay(1500)
+highlightedMessageId = null
 
 
-**🔮 Roadmap**
+Then:
 
- Dark mode support
-
- Cloud backup & sync
-
- Widgets for quick journaling
-
- Rich text formatting
+isHighlighted = (message.id == highlightedMessageId)
 
 
-📜 License
+In ChatBubble, border changes automatically.
 
-This project is licensed under the MIT License – see the LICENSE
- file for details.
+📦 Build & Run
+1. Clone repo
+git clone https://github.com/yourname/r_journal.git
+
+2. Open in Android Studio Flamingo+/Koala+
+3. Build + Run on device/emulator
+
+Minimum SDK recommended: 26+
+
+🧪 Testing Checklist
+
+Text message sending
+
+Attach from gallery
+
+Take photo
+
+Swipe-to-reply
+
+Reply preview
+
+Scroll to original
+
+Highlight disappears after timeout
+
+Past entries lock editing
+
+Mood picker selection limit (3)
+
+Saved entry persists after relaunch
+
+Image viewer opens correctly
+
+🌐 Optional: Server Sync (If enabled)
+
+Auto-merge today's entry from your local Flask server
+
+Sends updated messages on save
+
+Handles offline mode gracefully
+
+📌 Next Planned Features
+
+Dark Mode (Nothing Phone 2 optimized)
+
+Export entry as PDF
+
+Daily reminders
+
+Emoji reactions
+
+Cloud sync (optional toggle)
+
+❤️ Credits
+
+Developed by Ram Thatikonda
+Built for fast, secure, personal journaling — powered by Kotlin + Compose.
