@@ -76,23 +76,41 @@ Editing & deleting allowed only for today’s messages
 
 🧱 Architecture
 app/
+
 │
+
 ├── data/
+
 │   ├── local/
+
 │   │   ├── entity/
+
 │   │   │   ├── ChatMessage.kt
+
 │   │   │   └── JournalEntry.kt
+
 │   │   ├── converters/Converters.kt
+
 │   │   └── JournalDatabase.kt
+
 │   └── repository/JournalRepository.kt
-│
+
+|
+
 ├── ui/
+
 │   ├── screens/ChatInputScreen.kt
+
 │   ├── screens/ImageViewerScreen.kt
+
 │   ├── components/ChatBubble.kt
+
 │   └── components/CompactMoodPicker.kt
+
 │
+
 └── viewmodel/JournalViewModel.kt
+
 
 Core Technologies
 
@@ -114,6 +132,7 @@ FileProvider for image access
 
 🏛️ Data Model
 ChatMessage.kt
+```kotlin
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val role: String = "user",
@@ -122,8 +141,8 @@ data class ChatMessage(
     val imageUri: String? = null,
     val replyToMessageId: String? = null,
     val replyPreview: String? = null
-)
-
+)```    
+```
 JournalEntry.kt
 
 One entry per day.
@@ -165,15 +184,15 @@ Auto-sorting messages before saving
 
 It exposes UI-ready state via:
 
-currentEntry
+- currentEntry
 
-isLoading: StateFlow<Boolean>
+- isLoading: StateFlow<Boolean>
 
-isMessageAddedLater(message)
+- isMessageAddedLater(message)
 
-isCurrentEntryToday
+- isCurrentEntryToday
 
-canEditMood
+- canEditMood
 
 🖌️ UI Design
 ✔️ Modern Material 3
@@ -218,20 +237,22 @@ Openable in full screen
 
 🔁 Reply System (How It Works)
 When swiping a message:
+```kotlin
 replyToMessage = message
-
+```
 When sending a message:
+```kotlin
 viewModel.addMessageWithImage(
     text,
     imageUri?.toString(),
     replyTo = replyToMessage
 )
-
+```
 ViewModel stores:
 
-replyToMessageId
+- replyToMessageId
 
-replyPreview
+- replyPreview
 
 UI displays:
 
@@ -244,16 +265,16 @@ Scroll-to-original on tap
 👇 Highlight Logic
 
 When a reply quote is tapped:
-
+```kotlin
 highlightedMessageId = originalMessage.id
 delay(1500)
 highlightedMessageId = null
-
+```
 
 Then:
-
+```kotlin
 isHighlighted = (message.id == highlightedMessageId)
-
+```
 
 In ChatBubble, border changes automatically.
 
