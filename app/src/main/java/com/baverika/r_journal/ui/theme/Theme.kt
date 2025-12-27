@@ -1,5 +1,3 @@
-// app/src/main/java/com/baverika/r_journal/ui/theme/Theme.kt
-
 package com.baverika.r_journal.ui.theme
 
 import android.os.Build
@@ -40,14 +38,12 @@ private val CustomDarkColorScheme = darkColorScheme(
     tertiaryContainer = Color(0xFF633B48),
     onTertiaryContainer = Color(0xFFFFD8E4),
 
-    // Background: A very dark, slightly colored background to reduce eye strain.
-    // Slightly warmer than pure black (deep blue-grey)
-    background = Color(0xFF1B1C1A),
+    // Background: Pitch black as requested
+    background = Color.Black,
     onBackground = Color(0xFFE6E1D8), // High contrast text
 
     // Surface: Elements that sit on top of the background (cards, sheets).
-    // Uses tonal elevation for subtle depth.
-    surface = Color(0xFF2B2930),
+    surface = Color.Black,
     onSurface = Color(0xFFCAC4D0), // Slightly lower contrast than background text
     surfaceVariant = Color(0xFF49454F),
     onSurfaceVariant = Color(0xFFCAC4D0),
@@ -104,7 +100,7 @@ fun RJournalTheme(
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (darkTheme) dynamicDarkColorScheme(context).copy(background = Color.Black, surface = Color.Black) else dynamicLightColorScheme(context)
         }
 
         darkTheme -> CustomDarkColorScheme

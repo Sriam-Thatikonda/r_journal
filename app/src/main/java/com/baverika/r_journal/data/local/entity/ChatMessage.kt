@@ -7,7 +7,9 @@ data class ChatMessage(
     val role: String = "user",
     val content: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    val imageUri: String? = null // Nullable string for image path/URI
+    val imageUri: String? = null, // Nullable string for image path/URI,
+    val replyToMessageId: String? = null, // Nullable string for reply to message ID
+    val replyPreview: String? = null // Nullable string for reply preview text
 ) {
     // ✅ No-arg constructor that calls primary with DEFAULTS
     constructor() : this(
@@ -15,7 +17,9 @@ data class ChatMessage(
         role = "user",
         content = "",
         timestamp = System.currentTimeMillis(),
-        imageUri = null
+        imageUri = null,
+        replyToMessageId = null,
+        replyPreview = null
 
     )
 }

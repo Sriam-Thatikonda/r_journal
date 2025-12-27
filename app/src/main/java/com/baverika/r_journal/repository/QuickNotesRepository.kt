@@ -10,6 +10,8 @@ class QuickNoteRepository(private val dao: QuickNoteDao) {
 
     val allNotes: Flow<List<QuickNote>> = dao.getAllNotes()
 
+    fun searchNotes(query: String): Flow<List<QuickNote>> = dao.searchNotes(query)
+
     suspend fun insertNote(note: QuickNote) = dao.insertNote(note)
 
     suspend fun updateNote(note: QuickNote) = dao.updateNote(note)

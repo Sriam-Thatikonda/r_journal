@@ -10,12 +10,14 @@ data class QuickNote(
     @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
     val title: String,
     val content: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val color: Long = 0xFF000000 // Default black background
 ) {
     constructor() : this(
         id = java.util.UUID.randomUUID().toString(),
         title = "",
         content = "",
-        timestamp = System.currentTimeMillis()
+        timestamp = System.currentTimeMillis(),
+        color = 0xFF000000
     )
 }

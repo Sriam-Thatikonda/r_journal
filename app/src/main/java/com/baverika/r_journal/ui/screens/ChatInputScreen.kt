@@ -1,571 +1,1056 @@
-// app/src/main/java/com/baverika/r_journal/ui/screens/ChatInputScreen.kt
-
 package com.baverika.r_journal.ui.screens
 
+// Kotlin / stdlib / coroutines
+import kotlinx.coroutines.launch
+import java.io.File
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.*
+
+// Android / Core / Navigation
 import android.Manifest
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Environment
-import android.provider.MediaStore
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.navigation.NavController
+
+// Compose runtime & foundation
+import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+
+// Compose UI / graphics / resources
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
+
+// Coil
+import coil.compose.AsyncImage
+
+// Activity result APIs (missing earlier)
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+
+// Material1 small imports REMOVED
+
+// Material3 (primary UI) - alias Text/Icon to avoid ambiguity
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.Icon as M3Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Divider
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.Card
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.CircularProgressIndicator
+
+// Experimental annotation import
+import androidx.compose.material3.ExperimentalMaterial3Api
+
+// App classes
+import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.entity.ChatMessage
 import com.baverika.r_journal.ui.viewmodel.JournalViewModel
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.navigation.NavController // ✅ Add this import
-import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage // ✅ Add this import
-import com.baverika.r_journal.R // ✅ Import your app's R class
 
-// --- Composable Functions: MoodPicker, MoodButton, ChatBubble ---
+// Icons (shared) - using material icons
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.ui.draw.alpha
 
+import com.baverika.r_journal.data.local.entity.Event
+import com.baverika.r_journal.data.local.entity.EventType
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun MoodPicker(selectedMood: String?, onMoodSelected: (String) -> Unit) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        MoodButton(emoji = "😊", isSelected = selectedMood == "happy") {
-            onMoodSelected("happy")
-        }
-        MoodButton(emoji = "😌", isSelected = selectedMood == "calm") {
-            onMoodSelected("calm")
-        }
-        MoodButton(emoji = "😰", isSelected = selectedMood == "anxious") {
-            onMoodSelected("anxious")
-        }
-        MoodButton(emoji = "😢", isSelected = selectedMood == "sad") {
-            onMoodSelected("sad")
-        }
-        MoodButton(emoji = "😴", isSelected = selectedMood == "tired") {
-            onMoodSelected("tired")
-        }
-    }
-}
+fun CompactMoodPicker(
+    selectedMoods: Set<String>,
+    onMoodToggle: (String) -> Unit,
+    canEdit: Boolean,
+    modifier: Modifier = Modifier
+) {
+    // Only show if we can edit OR if there are selected moods
+    if (canEdit || selectedMoods.isNotEmpty()) {
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                M3Text(
+                    text = "Mood:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
 
-@Composable
-fun MoodButton(emoji: String, isSelected: Boolean, onClick: () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(44.dp)
-            .background(
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(50) // Circle shape
+                val AVAILABLE_MOODS = listOf(
+                    "happy" to "\uD83D\uDE0A",
+                    "calm" to "\uD83D\uDE0C",
+                    "anxious" to "\uD83D\uDE30",
+                    "sad" to "\uD83D\uDE22",
+                    "tired" to "\uD83D\uDE34"
+                )
+
+                // If editing, show all options. If not, show only selected.
+                val moodsDisplay = if (canEdit) AVAILABLE_MOODS else AVAILABLE_MOODS.filter { it.first in selectedMoods }
+
+                moodsDisplay.forEach { (mood, emoji) ->
+                    val isSelected = mood in selectedMoods
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.2f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "scale"
+                    )
+
+                    androidx.compose.foundation.layout.Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .scale(scale)
+                            .background(
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .clickable(enabled = canEdit) { onMoodToggle(mood) }
+                    ) {
+                        M3Text(text = emoji, fontSize = 22.sp)
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                if (selectedMoods.isNotEmpty() && canEdit) {
+                    M3Text(
+                        text = "${selectedMoods.size}/3",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+
+                if (!canEdit) {
+                    M3Text(
+                        text = "Past entry",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    } else {
+        // Just show a small label if it's a past entry with no mood
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            M3Text(
+                text = "Past Entry • No Mood Selected",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
-            .clickable { onClick() }
-    ) {
-        Text(text = emoji, fontSize = 18.sp)
+        }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatBubble(
     message: ChatMessage,
-    isCurrentEntryToday: Boolean, // ✅ Receive as parameter
-    navController: NavController, // ✅ Receive NavController
-    onLongClick: (() -> Unit)? = null
+    isCurrentEntryToday: Boolean,
+    isAddedLater: Boolean,
+    navController: NavController,
+    onLongClick: (() -> Unit)? = null,
+    repliedMessage: ChatMessage? = null,
+    onQuoteClick: (() -> Unit)? = null,
+    isHighlighted: Boolean = false
+
 ) {
     val isUser = message.role == "user"
     val timestamp = LocalDateTime
         .ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("h:mm a"))
 
-    Row(
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            // --- Add combinedClickable for long press ---
-            .combinedClickable(
-                onClick = { /* Handle normal click if needed */ },
-                onLongClick = onLongClick // Assign the passed lambda
-            )
-        // --- End addition ---
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 4 })
     ) {
-        Column(
-            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-        ) {
-            // --- ✅ ADD IMAGE DISPLAY HERE ---
-            message.imageUri?.let { imagePath ->
-                val imageUri = Uri.fromFile(File(imagePath))
-
-                AsyncImage(
-                    model = imageUri,
-                    contentDescription = "Attached Image",
-                    modifier = Modifier
-                        .size(200.dp) // Adjust size as needed
-                        .padding(horizontal = 8.dp)
-                        .clip(RoundedCornerShape(8.dp)) // Optional: rounded corners
-                        .clickable { // ✅ Add clickable to open full-size view
-                            // Navigate to ImageViewerScreen
-                            navController.navigate("image_viewer/${imagePath}") // Pass the image path
-                        },
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(R.drawable.ic_launcher_foreground), // Optional: placeholder
-                    error = painterResource(R.drawable.ic_launcher_foreground) // Optional: error state
+        Row(
+            horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(if (isHighlighted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else Color.Transparent)
+                .padding(vertical = 6.dp)
+                .then(
+                    if (onLongClick != null) {
+                        Modifier.combinedClickable(
+                            onClick = {},
+                            onLongClick = onLongClick
+                        )
+                    } else Modifier
                 )
-            }
-            // --- ✅ END IMAGE DISPLAY ---
-
-            // Display text content
-            if (message.content.isNotBlank()) {
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp) // Horizontal padding for bubble
-                ) {
-                    Text(
-                        text = message.content,
-                        color = if (isUser) Color.White else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(12.dp), // Standard bubble padding
-                        style = MaterialTheme.typography.bodyMedium
+        ) {
+            Column(
+                horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
+            ) {
+                if (isAddedLater) {
+                    M3Text(
+                        text = "Added ${LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
                     )
                 }
-            }
 
-            // Display timestamp
-            Text(
-                text = timestamp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(top = 2.dp, start = if (isUser) 0.dp else 12.dp, end = if (isUser) 12.dp else 0.dp) // Align timestamp with bubble start
-            )
+                // quoted reply (if any)
+                repliedMessage?.let { original ->
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .fillMaxWidth(0.82f)
+                            .clickable { onQuoteClick?.invoke() }
+                    ) {
+                        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .height(40.dp)
+                                    .background(
+                                        if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                        shape = RoundedCornerShape(2.dp)
+                                    )
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                M3Text(
+                                    text = if (original.role == "user") "You" else original.role.replaceFirstChar { it.uppercaseChar() },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                                M3Text(
+                                    text = original.content.ifBlank { "[Image]" },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 2
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // image
+                message.imageUri?.let { imagePath ->
+                    Card(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .size(200.dp)
+                            .clickable {
+                                val encodedPath = URLEncoder.encode(
+                                    imagePath,
+                                    StandardCharsets.UTF_8.toString()
+                                )
+                                navController.navigate("image_viewer/$encodedPath")
+                            },
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        AsyncImage(
+                            model = Uri.fromFile(File(imagePath)),
+                            contentDescription = "Attached Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(R.drawable.ic_launcher_foreground),
+                            error = painterResource(R.drawable.ic_launcher_foreground)
+                        )
+                    }
+                }
+
+                // text
+                if (message.content.isNotBlank()) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        M3Text(
+                            text = message.content,
+                            color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // timestamp
+                M3Text(
+                    text = timestamp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(
+                        top = 2.dp,
+                        start = if (isUser) 0.dp else 12.dp,
+                        end = if (isUser) 12.dp else 0.dp
+                    )
+                )
+            }
         }
     }
 }
-
-// --- Main ChatInputScreen Composable ---
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatInputScreen(
     viewModel: JournalViewModel,
-    navController: NavController // ✅ Add NavController parameter
+    navController: NavController
 ) {
     val entry = viewModel.currentEntry
+    val isLoading by viewModel.isLoading.collectAsState()
+    val selectedMoods = viewModel.getSelectedMoods()
+    val canEditMood = viewModel.canEditMood
+    val isCurrentEntryToday = viewModel.isCurrentEntryToday
+    val todaysEvents by viewModel.todaysEvents.collectAsState()
+
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
-
-    // Remember the LazyListState to control scrolling
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
-    // --- State for Long Press Handling ---
+    val hasUnsavedText = textFieldValue.text.trim().isNotEmpty() || selectedImageUris.isNotEmpty()
+
+    var showExitConfirmation by remember { mutableStateOf(false) }
     var messageActionMenuForId by remember { mutableStateOf<String?>(null) }
     var editTextValue by remember { mutableStateOf("") }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    // --- End Long Press State ---
+    var showOptionsDialog by remember { mutableStateOf(false) }
 
-    // --- State for Media Picker ---
     var showMediaPicker by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    var tempImageFile by remember { mutableStateOf<File?>(null) } // To hold the temporary image file for camera
-    var imageUri by remember { mutableStateOf<Uri?>(null) } // To hold the selected image URI
-    // --- End Media Picker State ---
+    var tempImageFile by remember { mutableStateOf<File?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Mood Picker Row
-        MoodPicker(
-            selectedMood = entry.mood,
-            onMoodSelected = { viewModel.updateMood(it) }
-        )
+    // reply state & coroutine scope
+    var replyToMessage by remember { mutableStateOf<ChatMessage?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
-        // Journal Header
-        Text(
-            text = "Journal • ${entry.localDate}",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+    // inside ChatInputScreen near other remembers
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
-        // Messages List - Takes available space
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f) // Takes remaining vertical space
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            reverseLayout = false // Keeps newest at the bottom
-        ) {
-            items(entry.messages) { message ->
-                ChatBubble(
-                    message = message,
-                    isCurrentEntryToday = viewModel.isCurrentEntryToday, // Pass the flag
-                    navController = navController, // ✅ Pass NavController
-                    onLongClick = {
-                        messageActionMenuForId = message.id
-                        editTextValue = message.content
-                    }
-                )
-            }
-        }
+    var highlightedMessageId by remember { mutableStateOf<String?>(null) }
 
-        // Automatically scroll to the bottom when messages change
-        LaunchedEffect(entry.messages) {
-            if (entry.messages.isNotEmpty()) {
-                val lastIndex = entry.messages.lastIndex
-                val isNearBottom = listState.firstVisibleItemIndex >= lastIndex - 3 // Adjust threshold
-                if (isNearBottom) {
-                    listState.animateScrollToItem(lastIndex)
-                }
-            }
-        }
 
-        // Improved Input Area - Fixed at the bottom
-        Surface(
-            tonalElevation = 3.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.Bottom
-            ) {
-                OutlinedTextField(
-                    value = textFieldValue,
-                    onValueChange = { textFieldValue = it },
-                    textStyle = TextStyle(fontSize = 16.sp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                        .heightIn(min = 56.dp, max = 120.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    placeholder = { Text("Type a message...") },
-                    maxLines = 5,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent
-                    )
-                )
 
-                IconButton(
-                    onClick = {
-                        val text = textFieldValue.text.trim()
-                        if (text.isNotBlank() || imageUri != null) {
-                            viewModel.addMessageWithImage(text, imageUri?.toString())
-                            textFieldValue = TextFieldValue("")
-                            imageUri = null
-                            tempImageFile = null
-                        }
-                    },
-                    enabled = textFieldValue.text.isNotBlank() || imageUri != null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = if (textFieldValue.text.isNotBlank() || imageUri != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(50)
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (textFieldValue.text.isNotBlank() || imageUri != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Media Attachment Button
-                IconButton(
-                    onClick = { showMediaPicker = true }, // Show the media picker dialog
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(50)
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Image, // You can also use Icons.Default.AttachFile for a more generic icon
-                        contentDescription = "Attach Image",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-    }
-
-    // --- Edit Dialog ---
-    if (showEditDialog) {
-        val messageToEdit = entry.messages.find { it.id == messageActionMenuForId }
-        messageToEdit?.let { msg ->
-            AlertDialog(
-                onDismissRequest = { showEditDialog = false },
-                title = { Text("Edit Message") },
-                text = {
-                    OutlinedTextField(
-                        value = editTextValue,
-                        onValueChange = { editTextValue = it },
-                        label = { Text("Content") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            // Trim the edited text before saving
-                            val trimmedContent = editTextValue.trim()
-                            if (trimmedContent.isNotBlank()) {
-                                viewModel.editMessage(msg.id, trimmedContent)
-                            } else {
-                                // If content is blank, treat as delete
-                                viewModel.deleteMessage(msg.id)
-                            }
-                            showEditDialog = false
-                            messageActionMenuForId = null
-                        }
-                    ) {
-                        Text("Save")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showEditDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-    }
-    // --- End Edit Dialog ---
-
-    // --- Delete Confirmation Dialog ---
-    if (showDeleteDialog) {
-        val messageToDelete = entry.messages.find { it.id == messageActionMenuForId }
-        messageToDelete?.let { msg ->
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Message") },
-                text = { Text("Are you sure you want to delete this message?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.deleteMessage(msg.id)
-                            showDeleteDialog = false
-                            messageActionMenuForId = null
-                        }
-                    ) {
-                        Text("Delete")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-    }
-    // --- End Delete Confirmation Dialog ---
-
-    // --- Activity Result Launchers ---
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            imageUri = it
-        }
-    }
-
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success: Boolean ->
+    // launchers
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && tempImageFile != null) {
             val photoURI: Uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 tempImageFile!!
             )
-            imageUri = photoURI
+            selectedImageUris = selectedImageUris + photoURI
         } else {
             tempImageFile = null
         }
     }
-// --- End Launchers ---
 
-    // --- Action Menu (Bottom Sheet) ---
-    messageActionMenuForId?.let { messageId ->
-        val messageToActOn = entry.messages.find { it.id == messageId }
-        messageToActOn?.let { msg ->
-            ModalBottomSheet(
-                onDismissRequest = { messageActionMenuForId = null },
-                sheetState = rememberModalBottomSheetState()
-            ) {
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            tempImageFile = createTempImageFile(context)
+            tempImageFile?.let { file ->
+                val photoURI: Uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                takePictureLauncher.launch(photoURI)
+            }
+        }
+    }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            selectedImageUris = selectedImageUris + uris
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            androidx.compose.material3.SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
+
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                if (hasUnsavedText) {
+                    showExitConfirmation = true
+                } else {
+                    navController.popBackStack()
+                }
+            }) {
+                M3Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                M3Text(
+                    text = if (isCurrentEntryToday) "Today's Journal" else "Journal Entry",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                M3Text(
+                    text = entry.localDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            M3Text(
+                text = "${entry.messages.size}",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        // Event Banner (Option 1)
+        if (todaysEvents.isNotEmpty()) {
+            todaysEvents.forEach { event ->
+                EventBanner(event = event)
+            }
+        }
+
+        CompactMoodPicker(
+            selectedMoods = selectedMoods,
+            onMoodToggle = { mood -> viewModel.toggleMood(mood) },
+            canEdit = canEditMood
+        )
+
+        HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
+
+        // Messages list
+        Box(modifier = Modifier.weight(1f)) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (entry.messages.isEmpty()) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    ListItem(
-                        headlineContent = { Text("Edit") },
-                        leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                // Pre-fill the edit dialog text field
-                                editTextValue = msg.content
-                                showEditDialog = true
-                                messageActionMenuForId = null // Close the sheet
+                    M3Icon(imageVector = Icons.Default.Create, contentDescription = null, modifier = Modifier.size(80.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    M3Text(
+                        text = if (isCurrentEntryToday) "Start writing..." else "No entries yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    M3Text(
+                        text = if (isCurrentEntryToday) "What's on your mind?" else "Add a reflection",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    itemsIndexed(entry.messages, key = { _, it -> it.id }) { index, message ->
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { newValue ->
+                                newValue == SwipeToDismissBoxValue.StartToEnd
                             }
                         )
-                    )
-                    Divider()
-                    ListItem(
-                        headlineContent = { Text("Delete") },
-                        leadingContent = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                showDeleteDialog = true
-                                messageActionMenuForId = null // Close the sheet
+
+                        LaunchedEffect(dismissState.currentValue) {
+                            if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd) {
+                                replyToMessage = message
+
+                                // haptic + snackbar feedback
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Replying to message")
+                                }
+
+                                dismissState.reset()
+                            }
+                        }
+
+                        val replied = entry.messages.find { it.id == message.replyToMessageId }
+
+
+
+    // ... (inside LazyColumn items)
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = { Box(modifier = Modifier.fillMaxSize()) },
+                            enableDismissFromStartToEnd = true,
+                            enableDismissFromEndToStart = false,
+                            content = {
+                                ChatBubble(
+                                    message = message,
+                                    isCurrentEntryToday = isCurrentEntryToday,
+                                    isAddedLater = viewModel.isMessageAddedLater(message),
+                                    navController = navController,
+                                    onLongClick = {
+                                        messageActionMenuForId = message.id
+                                        editTextValue = message.content
+                                        showOptionsDialog = true
+                                    },
+                                    repliedMessage = replied,
+                                    isHighlighted = (message.id == highlightedMessageId),
+                                    onQuoteClick = {
+                                        val targetIndex = entry.messages.indexOfFirst { it.id == message.replyToMessageId }
+                                        if (targetIndex >= 0) {
+                                            coroutineScope.launch {
+                                                listState.animateScrollToItem(targetIndex)
+                                                highlightedMessageId = entry.messages[targetIndex].id
+                                                kotlinx.coroutines.delay(1500)
+                                                highlightedMessageId = null
+                                            }
+                                        }
+                                    }
+                                )
                             }
                         )
+                    }
+                }
+            }
+        }
+
+        // Auto-scroll to bottom when new messages added
+        LaunchedEffect(entry.messages.size) {
+            if (entry.messages.isNotEmpty()) {
+                listState.animateScrollToItem(entry.messages.lastIndex)
+            }
+        }
+
+        // Input area
+        Surface(
+            tonalElevation = 3.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column {
+                // Reply preview
+                replyToMessage?.let { replying ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .height(36.dp)
+                                    .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(2.dp))
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                M3Text(text = "Replying", style = MaterialTheme.typography.labelSmall)
+                                M3Text(text = replying.content.ifBlank { "[Image]" }, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                            }
+                            IconButton(onClick = { replyToMessage = null }) {
+                                M3Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel reply")
+                            }
+                        }
+                    }
+                }
+
+                // Image preview (Horizontal List)
+                if (selectedImageUris.isNotEmpty()) {
+                    androidx.compose.foundation.lazy.LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        itemsIndexed(selectedImageUris) { index, uri ->
+                            Card(
+                                modifier = Modifier.size(100.dp)
+                            ) {
+                                Box {
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = "Selected image",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            selectedImageUris = selectedImageUris.toMutableList().apply { removeAt(index) }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(2.dp)
+                                            .size(24.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                CircleShape
+                                            )
+                                    ) {
+                                        M3Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    OutlinedTextField(
+                        value = textFieldValue,
+                        onValueChange = { textFieldValue = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        placeholder = {
+                            M3Text(
+                                if (isCurrentEntryToday) "Type a message..."
+                                else "Add a reflection..."
+                            )
+                        },
+                        maxLines = 5,
+                        shape = RoundedCornerShape(24.dp)
                     )
+
+                    IconButton(
+                        onClick = { showMediaPicker = true },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                MaterialTheme.colorScheme.secondaryContainer,
+                                CircleShape
+                            )
+                    ) {
+                        M3Icon(imageVector = Icons.Default.Image, contentDescription = "Attach Image")
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    val isEnabled = textFieldValue.text.isNotBlank() || selectedImageUris.isNotEmpty()
+                    
+                    val sendScale by animateFloatAsState(
+                        targetValue = if (isEnabled) 1.1f else 1.0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "sendScale"
+                    )
+
+                    IconButton(
+                        onClick = {
+                            val text = textFieldValue.text.trim()
+                            if (text.isNotBlank() || selectedImageUris.isNotEmpty()) {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                
+                                // 1. Send text (if any)
+                                if (text.isNotBlank()) {
+                                    if (selectedImageUris.isNotEmpty()) {
+                                        // Send text + 1st image
+                                        viewModel.addMessageWithImage(text, selectedImageUris[0].toString(), replyTo = replyToMessage)
+                                        
+                                        // Send remaining images
+                                        for (i in 1 until selectedImageUris.size) {
+                                            viewModel.addMessageWithImage("", selectedImageUris[i].toString(), replyTo = null)
+                                        }
+                                    } else {
+                                        // Text only
+                                        viewModel.addMessageWithImage(text, null, replyTo = replyToMessage)
+                                    }
+                                } else {
+                                    // No text, just images
+                                    selectedImageUris.forEach { uri ->
+                                        viewModel.addMessageWithImage("", uri.toString(), replyTo = replyToMessage)
+                                    }
+                                }
+
+                                textFieldValue = TextFieldValue("")
+                                selectedImageUris = emptyList()
+                                tempImageFile = null
+                                replyToMessage = null
+                            }
+                        },
+                        enabled = isEnabled,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .scale(sendScale)
+                            .background(
+                                color = if (isEnabled) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                shape = CircleShape
+                            )
+                    ) {
+                        M3Icon(imageVector = Icons.Default.Send, contentDescription = "Send")
+                    }
                 }
             }
         }
     }
-    // --- End Action Menu ---
 
-    // --- Media Picker Dialog ---
-    if (showMediaPicker) {
+    // Message Options Dialog (Edit/Delete)
+    if (showOptionsDialog && messageActionMenuForId != null) {
         AlertDialog(
-            onDismissRequest = { showMediaPicker = false },
-            title = { Text("Add Media") },
+            onDismissRequest = {
+                showOptionsDialog = false
+                messageActionMenuForId = null
+            },
+            title = { M3Text("Message Options") },
             text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    // Take Photo Option
-                    TextButton(
+                Column {
+                    androidx.compose.material3.TextButton(
                         onClick = {
-                            // Create temp file and launch camera
-                            tempImageFile = createTempImageFile(context)
-                            tempImageFile?.let { file ->
-                                val photoURI: Uri = FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    file
-                                )
-                                takePictureLauncher.launch(photoURI)
-                            }
-                            showMediaPicker = false
+                            showOptionsDialog = false
+                            showEditDialog = true
+                            // messageActionMenuForId remains set
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Camera,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Take Photo")
-                        }
+                        M3Text("Edit Message")
                     }
-                    Divider()
-                    // Choose from Gallery Option
-                    TextButton(
+                    androidx.compose.material3.TextButton(
                         onClick = {
-                            pickImageLauncher.launch("image/*")
-                            showMediaPicker = false
+                            showOptionsDialog = false
+                            showDeleteDialog = true
+                            // messageActionMenuForId remains set
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Image,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Choose from Gallery")
-                        }
+                        M3Text("Delete Message", color = MaterialTheme.colorScheme.error)
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showMediaPicker = false }) {
-                    Text("Cancel")
+            confirmButton = {},
+            dismissButton = {
+                androidx.compose.material.TextButton(onClick = {
+                    showOptionsDialog = false
+                    messageActionMenuForId = null
+                }) {
+                    M3Text("Cancel")
                 }
             }
         )
     }
-    // --- End Media Picker Dialog ---
-}
 
-// --- Utility Functions ---
-
-fun createTempImageFile(context: Context): File {
-    val timeStamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-    val storageDir: File? = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-    return File.createTempFile(
-        "JPEG_${timeStamp}_", /* prefix */
-        ".jpg", /* suffix */
-        storageDir /* directory */
-    )
-}
-
-// Function to save image to app-private directory
-fun saveImageToPrivateDir(context: Context, imageUri: Uri): File {
-    val fileName = "image_${System.currentTimeMillis()}.jpg"
-    val privateDir = context.filesDir // App-specific private directory
-    val outputFile = File(privateDir, fileName)
-
-    try {
-        context.contentResolver.openInputStream(imageUri)?.use { input ->
-            FileOutputStream(outputFile).use { output ->
-                input.copyTo(output)
+    // Edit dialog
+    if (showEditDialog && messageActionMenuForId != null) {
+        val messageToEdit = entry.messages.find { it.id == messageActionMenuForId }
+        if (messageToEdit != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    showEditDialog = false
+                    messageActionMenuForId = null
+                },
+                title = { M3Text("Edit Message") },
+                text = {
+                    OutlinedTextField(
+                        value = editTextValue,
+                        onValueChange = { editTextValue = it },
+                        label = { M3Text("Content") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 5
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            val trimmed = editTextValue.trim()
+                            if (trimmed.isNotBlank()) {
+                                viewModel.editMessage(messageToEdit.id, trimmed)
+                            } else {
+                                viewModel.deleteMessage(messageToEdit.id)
+                            }
+                            showEditDialog = false
+                            messageActionMenuForId = null
+                        }
+                    ) {
+                        M3Text("Save")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material.TextButton(onClick = {
+                        showEditDialog = false
+                        messageActionMenuForId = null
+                    }) {
+                        M3Text("Cancel")
+                    }
+                }
+            )
+        } else {
+            // Safety fallback if message not found
+            LaunchedEffect(Unit) {
+                showEditDialog = false
+                messageActionMenuForId = null
             }
         }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        // Handle error (e.g., show Snackbar)
     }
 
-    return outputFile
+    // Delete dialog
+    if (showDeleteDialog && messageActionMenuForId != null) {
+        val messageToDelete = entry.messages.find { it.id == messageActionMenuForId }
+        if (messageToDelete != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    showDeleteDialog = false
+                    messageActionMenuForId = null
+                },
+                title = { M3Text("Delete Message") },
+                text = { M3Text("Are you sure you want to delete this message?") },
+                confirmButton = {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            viewModel.deleteMessage(messageToDelete.id)
+                            showDeleteDialog = false
+                            messageActionMenuForId = null
+                        }
+                    ) {
+                        M3Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material.TextButton(onClick = {
+                        showDeleteDialog = false
+                        messageActionMenuForId = null
+                    }) {
+                        M3Text("Cancel")
+                    }
+                }
+            )
+        } else {
+             // Safety fallback
+            LaunchedEffect(Unit) {
+                showDeleteDialog = false
+                messageActionMenuForId = null
+            }
+        }
+    }
+
+
+
+    // Media picker dialog
+    if (showMediaPicker) {
+        AlertDialog(
+            onDismissRequest = { showMediaPicker = false },
+            title = { M3Text("Add Media") },
+            text = {
+                Column {
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            when (PackageManager.PERMISSION_GRANTED) {
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
+                                    tempImageFile = createTempImageFile(context)
+                                    tempImageFile?.let { file ->
+                                        val photoURI = FileProvider.getUriForFile(
+                                            context,
+                                            "${context.packageName}.fileprovider",
+                                            file
+                                        )
+                                        takePictureLauncher.launch(photoURI)
+                                    }
+                                }
+                                else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                            showMediaPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        M3Icon(imageVector = Icons.Default.Camera, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        M3Text("Take Photo")
+                    }
+                    Divider()
+                    androidx.compose.material.TextButton(
+                        onClick = {
+                            pickImageLauncher.launch("image/*")
+                            showMediaPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        M3Icon(imageVector = Icons.Default.Image, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        M3Text("Choose from Gallery")
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material.TextButton(onClick = { showMediaPicker = false }) {
+                    M3Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Exit confirmation
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { M3Text("Discard Unsaved Changes?") },
+            text = { M3Text("You have unsaved text. Are you sure you want to leave?") },
+            confirmButton = {
+                androidx.compose.material.TextButton(
+                    onClick = {
+                        showExitConfirmation = false
+                        navController.popBackStack()
+                    }
+                ) {
+                    M3Text("Discard", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material.TextButton(onClick = { showExitConfirmation = false }) {
+                    M3Text("Keep Writing")
+                }
+            }
+        )
+    }
+}
+
+// helper
+fun createTempImageFile(context: android.content.Context): File {
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault())
+        .format(java.util.Date())
+    val storageDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+    return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+}
+
+@Composable
+fun EventBanner(event: Event) {
+    var isVisible by remember { mutableStateOf(true) }
+
+    if (isVisible) {
+        val backgroundColor = when (event.type) {
+            EventType.BIRTHDAY -> Color(0xFFFFD700).copy(alpha = 0.2f) // Gold
+            EventType.ANNIVERSARY -> Color(0xFFFF69B4).copy(alpha = 0.2f) // Pink
+            EventType.MEETING -> Color(0xFF2196F3).copy(alpha = 0.2f) // Blue
+            EventType.CUSTOM -> MaterialTheme.colorScheme.surfaceVariant
+        }
+
+        val icon = when (event.type) {
+            EventType.BIRTHDAY -> "🎂"
+            EventType.ANNIVERSARY -> "❤️"
+            EventType.MEETING -> "📅"
+            EventType.CUSTOM -> "🎉"
+        }
+
+        val contentColor = MaterialTheme.colorScheme.onSurface
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = backgroundColor),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                M3Text(
+                    text = icon,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+
+                M3Text(
+                    text = event.title, // Using title as the custom message
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+
+                IconButton(
+                    onClick = { isVisible = false },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    M3Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        tint = contentColor.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
 }
