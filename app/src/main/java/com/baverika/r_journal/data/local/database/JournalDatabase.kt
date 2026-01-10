@@ -14,6 +14,7 @@ import com.baverika.r_journal.data.local.dao.JournalDao
 import com.baverika.r_journal.data.local.dao.QuickNoteDao
 import com.baverika.r_journal.data.local.dao.PasswordDao
 import com.baverika.r_journal.data.local.dao.TaskDao
+import com.baverika.r_journal.data.local.dao.LifeTrackerDao
 import com.baverika.r_journal.quotes.data.QuoteDao
 import com.baverika.r_journal.quotes.data.QuoteEntity
 
@@ -25,6 +26,8 @@ import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.local.entity.Password
 import com.baverika.r_journal.data.local.entity.Task
 import com.baverika.r_journal.data.local.entity.TaskCategory
+import com.baverika.r_journal.data.local.entity.LifeTracker
+import com.baverika.r_journal.data.local.entity.LifeTrackerEntry
 
 
 @Database(
@@ -37,9 +40,11 @@ import com.baverika.r_journal.data.local.entity.TaskCategory
         Password::class,
         QuoteEntity::class,
         Task::class,
-        TaskCategory::class
+        TaskCategory::class,
+        LifeTracker::class,
+        LifeTrackerEntry::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -52,6 +57,7 @@ abstract class JournalDatabase : RoomDatabase() {
     abstract fun passwordDao(): PasswordDao
     abstract fun quoteDao(): QuoteDao
     abstract fun taskDao(): TaskDao
+    abstract fun lifeTrackerDao(): LifeTrackerDao
 
 
     companion object {
@@ -223,6 +229,38 @@ abstract class JournalDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create life_trackers table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `life_trackers` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `icon` TEXT NOT NULL,
+                        `color` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                """.trimIndent())
+
+                // Create life_tracker_entries table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `life_tracker_entries` (
+                        `id` TEXT NOT NULL,
+                        `trackerId` TEXT NOT NULL,
+                        `dateMillis` INTEGER NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`trackerId`) REFERENCES `life_trackers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                
+                // Create index for entries
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_life_tracker_entries_trackerId` ON `life_tracker_entries` (`trackerId`)")
+            }
+        }
+
         fun getDatabase(context: Context): JournalDatabase {
 
             return INSTANCE ?: synchronized(this) {
@@ -231,7 +269,7 @@ abstract class JournalDatabase : RoomDatabase() {
                     JournalDatabase::class.java,
                     "journal_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
 
                     .build()
                 INSTANCE = instance

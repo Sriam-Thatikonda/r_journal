@@ -4,7 +4,6 @@
     <!-- Camera permission for taking photos -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -15,11 +14,11 @@
 
     <application
         android:name=".RJournalApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.R_journal"
-        android:usesCleartextTraffic="true">
+        android:theme="@style/Theme.R_journal">
+
 
 
         <activity
@@ -83,6 +82,8 @@
                 <action android:name="android.intent.action.USER_PRESENT" />
             </intent-filter>
         </receiver>
+
+
 
         <!-- Task Widget -->
         <receiver

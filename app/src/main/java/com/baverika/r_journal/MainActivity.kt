@@ -65,6 +65,9 @@ class MainActivity : FragmentActivity() {
         // Task feature repositories
         val taskRepo = com.baverika.r_journal.repository.TaskRepository(db.taskDao())
 
+        // Life Tracker repository
+        val lifeTrackerRepo = com.baverika.r_journal.repository.LifeTrackerRepository(db.lifeTrackerDao())
+
 
         // Biometric Lock State
         var isLocked by mutableStateOf(true)
@@ -140,6 +143,7 @@ class MainActivity : FragmentActivity() {
                         quoteRepo = quoteRepo,
                         widgetSettingsDataStore = widgetSettingsDataStore,
                         taskRepo = taskRepo,
+                        lifeTrackerRepo = lifeTrackerRepo,
                         settingsRepo = settingsRepo,
                         initialRoute = initialRoute,
                         onThemeChanged = { newTheme -> currentTheme = newTheme }
@@ -162,6 +166,7 @@ fun MainApp(
     quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
     widgetSettingsDataStore: com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore,
     taskRepo: com.baverika.r_journal.repository.TaskRepository,
+    lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
     initialRoute: String = "archive",
     onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
@@ -203,7 +208,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -521,6 +526,28 @@ fun MainApp(
                         )
                     }
 
+                    // Life Trackers
+                    composable("life_trackers") {
+                        val vm: com.baverika.r_journal.ui.viewmodel.LifeTrackerViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.LifeTrackerViewModelFactory(lifeTrackerRepo)
+                        )
+                        com.baverika.r_journal.ui.screens.LifeTrackersScreen(
+                            viewModel = vm,
+                            onTrackerClick = { id -> navController.navigate("tracker_detail/$id") }
+                        )
+                    }
+
+                    composable("tracker_detail/{trackerId}") { backStackEntry ->
+                        val trackerId = backStackEntry.arguments?.getString("trackerId") ?: return@composable
+                        val vm: com.baverika.r_journal.ui.viewmodel.TrackerDetailViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TrackerDetailViewModelFactory(lifeTrackerRepo, trackerId)
+                        )
+                        com.baverika.r_journal.ui.screens.TrackerDetailScreen(
+                            viewModel = vm,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
                     // Tasks
                     composable("tasks") {
                         val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
@@ -642,6 +669,12 @@ fun DrawerContent(
             label = "Habits",
             isSelected = currentRoute == "habits",
             onClick = { onScreenSelected("habits") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.DateRange, 
+            label = "Life Trackers",
+            isSelected = currentRoute == "life_trackers",
+            onClick = { onScreenSelected("life_trackers") }
         )
         DrawerItem(
             icon = Icons.Filled.Checklist,

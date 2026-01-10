@@ -36,7 +36,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.baverika.r_journal"
+        applicationId = "com.baverika.r_journal.secure"
         minSdk = 26
         targetSdk = 34
         versionCode = appVersionCode
@@ -45,10 +45,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
+    
+    signingConfigs {
+        create("release") {
+            storeFile = file("../release-key.jks")
+            storePassword = "android"
+            keyAlias = "rjournal"
+            keyPassword = "android"
+        }
+    }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -137,12 +147,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
-    implementation("androidx.compose.material:material:1.6.8")
-
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.material:material")
-
-    implementation("androidx.compose.material3:material3")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

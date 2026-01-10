@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -76,6 +79,9 @@ import com.baverika.r_journal.data.local.entity.Password
 import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.baverika.r_journal.utils.PassphraseGenerator
+import com.baverika.r_journal.utils.PasswordSecurityUtils
+import androidx.compose.runtime.mutableIntStateOf
 
 @Composable
 fun PasswordGeneratorScreen(
@@ -86,19 +92,24 @@ fun PasswordGeneratorScreen(
 
     var siteName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
+    
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
-    // Generator State - Industry standard defaults
-    var lowerCount by remember { mutableStateOf(4) }
-    var upperCount by remember { mutableStateOf(4) }
-    var numberCount by remember { mutableStateOf(2) }
-    var specialCount by remember { mutableStateOf(2) }
-
+    // Generator State
+    var numberLength by remember { mutableIntStateOf(4) }
+    
     var generatedPassword by remember { mutableStateOf("") }
     var isGeneratorExpanded by remember { mutableStateOf(true) }
 
-    // Regenerate password when counts change
-    LaunchedEffect(lowerCount, upperCount, numberCount, specialCount) {
-        generatedPassword = generatePassword(lowerCount, upperCount, numberCount, specialCount)
+    // Initial load
+    LaunchedEffect(Unit) {
+        generatedPassword = PassphraseGenerator.generate(numberLength)
+    }
+
+    // Regenerate when length changes
+    LaunchedEffect(numberLength) {
+        generatedPassword = PassphraseGenerator.generate(numberLength)
     }
 
     LazyColumn(
@@ -131,8 +142,9 @@ fun PasswordGeneratorScreen(
                     .fillMaxWidth()
                     .animateContentSize(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    containerColor = MaterialTheme.colorScheme.surface,
                 ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -144,12 +156,21 @@ fun PasswordGeneratorScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "Password Generator",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Save, // Using Save icon as "Secure" symbol roughly
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "New Secure Credential",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Icon(
                             if (isGeneratorExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                             contentDescription = "Toggle",
@@ -158,113 +179,135 @@ fun PasswordGeneratorScreen(
                     }
 
                     if (isGeneratorExpanded) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Input Fields - Compact Row
+                        // Input Fields
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedTextField(
                                 value = siteName,
                                 onValueChange = { siteName = it },
-                                label = { Text("Site", style = MaterialTheme.typography.labelSmall) },
+                                label = { Text("Site / App") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                                )
                             )
                             OutlinedTextField(
                                 value = username,
                                 onValueChange = { username = it },
-                                label = { Text("User", style = MaterialTheme.typography.labelSmall) },
+                                label = { Text("Username") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                                )
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                        // Compact Scroll Wheels
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                        // Passphrase Display & Actions Container
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                    RoundedCornerShape(16.dp)
+                                )
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            CompactWheelPicker(
-                                label = "a-z",
-                                value = lowerCount,
-                                onValueChange = { lowerCount = it }
+                            // Large Preview
+                            Text(
+                                text = generatedPassword.ifEmpty { "—" },
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 32.sp
                             )
-                            CompactWheelPicker(
-                                label = "A-Z",
-                                value = upperCount,
-                                onValueChange = { upperCount = it }
-                            )
-                            CompactWheelPicker(
-                                label = "0-9",
-                                value = numberCount,
-                                onValueChange = { numberCount = it }
-                            )
-                            CompactWheelPicker(
-                                label = "#@!",
-                                value = specialCount,
-                                onValueChange = { specialCount = it }
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Generated Password Display
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 2.dp
-                        ) {
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Control Toolbar
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = generatedPassword.ifEmpty { "—" },
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                IconButton(
-                                    onClick = {
-                                        generatedPassword = generatePassword(lowerCount, upperCount, numberCount, specialCount)
-                                    },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Regenerate", modifier = Modifier.size(20.dp))
+                                // Length Selector
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "Suffix:", 
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    CompactWheelPicker(
+                                        label = "", // Hidden label, inline
+                                        value = numberLength,
+                                        onValueChange = { numberLength = it },
+                                        range = 2..6
+                                    )
+                                }
+
+                                // Action Buttons
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    IconButton(
+                                        onClick = {
+                                            generatedPassword = PassphraseGenerator.generate(numberLength)
+                                        },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(MaterialTheme.colorScheme.surface, CircleShape)
+                                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha=0.2f), CircleShape)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = "Regenerate", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(generatedPassword))
+                                            Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onPrimary)
+                                    }
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Save Button
-                        FilledTonalButton(
+                        Button(
                             onClick = {
                                 if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
-                                    viewModel.addPassword(siteName.trim(), username.trim(), generatedPassword)
+                                    val securePassword = PasswordSecurityUtils.hashPassword(generatedPassword)
+                                    viewModel.addPassword(siteName.trim(), username.trim(), securePassword)
                                     siteName = ""
                                     username = ""
-                                    generatedPassword = generatePassword(lowerCount, upperCount, numberCount, specialCount)
+                                    generatedPassword = PassphraseGenerator.generate(numberLength)
+                                    Toast.makeText(context, "Credential saved securely", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
                             enabled = siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank(),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save", style = MaterialTheme.typography.labelLarge)
+                            Text("Save to Vault", style = MaterialTheme.typography.titleSmall)
                         }
                     }
                 }
@@ -570,22 +613,4 @@ private fun PasswordListItem(
     }
 }
 
-private fun generatePassword(lower: Int, upper: Int, numbers: Int, special: Int): String {
-    val lowerChars = "abcdefghijklmnopqrstuvwxyz"
-    val upperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    val numberChars = "0123456789"
-    val specialChars = "!@#$%^&*_+-=" // Widely accepted special chars
 
-    val sb = StringBuilder()
-
-    repeat(lower) { sb.append(lowerChars.random()) }
-    repeat(upper) { sb.append(upperChars.random()) }
-    repeat(numbers) { sb.append(numberChars.random()) }
-    repeat(special) { sb.append(specialChars.random()) }
-
-    if (sb.isEmpty()) return ""
-
-    val list = sb.toString().toMutableList()
-    list.shuffle()
-    return list.joinToString("")
-}
