@@ -45,4 +45,11 @@ interface HabitDao {
     
     @Query("SELECT * FROM habit_logs WHERE dateMillis = :dateMillis")
     fun getHabitLogsForDateSync(dateMillis: Long): List<HabitLog>
+
+    // --- Export ---
+    @Query("SELECT * FROM habits")
+    fun getAllHabits(): Flow<List<Habit>>
+
+    @Query("SELECT * FROM habit_logs")
+    fun getAllHabitLogs(): Flow<List<HabitLog>>
 }

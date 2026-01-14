@@ -186,7 +186,7 @@ fun QuickNotesScreen(
                                         note = note,
                                         onDelete = { noteToDelete = it },
                                         onClick = { noteToEdit = note },
-                                        modifier = Modifier.animateItemPlacement()
+                                        modifier = Modifier
                                     )
                                 }
                             }
@@ -206,7 +206,7 @@ fun QuickNotesScreen(
                                         note = note,
                                         onDelete = { noteToDelete = it },
                                         onClick = { noteToEdit = note },
-                                        modifier = Modifier.animateItemPlacement()
+                                        modifier = Modifier
                                     )
                                 }
                             }

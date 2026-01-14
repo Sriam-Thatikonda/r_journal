@@ -95,7 +95,7 @@ fun SettingsScreen(
         uri?.let {
             isImporting = true
             scope.launch {
-                val (success, message) = PasswordExportUtils.importPasswords(context, it, passwordRepo)
+                val (_, message) = PasswordExportUtils.importPasswords(context, it, passwordRepo)
                 isImporting = false
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
@@ -205,7 +205,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 20.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
             // --- Security Section ---
             Text(
@@ -242,7 +242,7 @@ fun SettingsScreen(
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 20.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
             // --- Data Management Section ---
             Text(
@@ -266,7 +266,7 @@ fun SettingsScreen(
                 onClick = { navController.navigate("import") }
             )
 
-            Divider(modifier = Modifier.padding(vertical = 20.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
             // --- Password Management Section ---
             Text(
@@ -284,7 +284,7 @@ fun SettingsScreen(
                 onClick = {
                     isExporting = true
                     scope.launch {
-                        val (success, message) = PasswordExportUtils.exportPasswords(context, passwords)
+                        val (_, message) = PasswordExportUtils.exportPasswords(context, passwords)
                         isExporting = false
                         Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                     }
@@ -317,7 +317,7 @@ fun SettingsScreen(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 20.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
             // --- Personalization Section ---
             Text(

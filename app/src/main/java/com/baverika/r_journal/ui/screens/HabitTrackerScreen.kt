@@ -1,12 +1,16 @@
 package com.baverika.r_journal.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,78 +32,85 @@ import com.baverika.r_journal.ui.viewmodel.HabitUiState
 import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HabitTrackerScreen(
     viewModel: HabitViewModel,
     navController: NavController
 ) {
-    val habits by viewModel.habitState.collectAsState()
-    val selectedDate by viewModel.selectedDate.collectAsState()
-
+    val dashboardGrids by viewModel.dashboardHabitGrids.collectAsState()
+    val yearlyGrids by viewModel.yearlyHabitGrids.collectAsState()
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Habits") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                title = { Text("Habit Dashboard") },
+                actions = {
+                   IconButton(onClick = { navController.navigate("add_habit") }) {
+                       Icon(Icons.Default.Add, contentDescription = "Add Habit")
+                   }
+                }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("add_habit") },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Habit")
-            }
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
         ) {
-            // Date Selector
+            // Header for 7 Days
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 120.dp, bottom = 8.dp, top = 8.dp), // Match Name column width + padding
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                IconButton(onClick = { viewModel.updateSelectedDate(selectedDate.minusDays(1)) }) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Day")
-                }
-                Text(
-                    text = selectedDate.format(DateTimeFormatter.ofPattern("EEE, MMM d")),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = { viewModel.updateSelectedDate(selectedDate.plusDays(1)) }) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Next Day")
-                }
+                 val today = java.time.LocalDate.now()
+                 (0..6).forEach { i ->
+                     val date = today.plusDays(i.toLong())
+                     Column(
+                         horizontalAlignment = Alignment.CenterHorizontally,
+                         modifier = Modifier.width(32.dp)
+                     ) {
+                         Text(
+                             text = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()),
+                             style = MaterialTheme.typography.labelSmall,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                         )
+                         Text(
+                             text = date.dayOfMonth.toString(),
+                             style = MaterialTheme.typography.labelSmall,
+                             fontWeight = FontWeight.Bold
+                         )
+                     }
+                 }
             }
+            
+            Divider()
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (habits.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No habits for this day", color = Color.Gray)
-                }
+            if (dashboardGrids.isEmpty()) {
+                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                     Text("No habits yet. Tap + to add one.")
+                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(habits) { habitState ->
-                        HabitItem(
-                            habitState = habitState,
-                            onToggle = { isChecked ->
-                                viewModel.toggleHabit(habitState.habit.id, isChecked)
+                    items(dashboardGrids) { grid ->
+                        HabitRow7Day(
+                            grid = grid,
+                            onNameClick = { navController.navigate("habit_year_overview/${grid.habit.id}") },
+                            onEditClick = { habit ->
+                                navController.navigate("add_habit?habitId=${habit.id}")
                             },
-                            onClick = {
-                                navController.navigate("add_habit?habitId=${habitState.habit.id}")
+                            onDeleteClick = { habit ->
+                                viewModel.deleteHabit(habit)
+                            },
+                            onBlockClick = { date, isCompleted ->
+                                viewModel.toggleHabitForDate(grid.habit.id, date, isCompleted)
                             }
                         )
+                        Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     }
                 }
             }
@@ -107,78 +118,130 @@ fun HabitTrackerScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HabitItem(
-    habitState: HabitUiState,
-    onToggle: (Boolean) -> Unit,
-    onClick: () -> Unit
+fun HabitRow7Day(
+    grid: HabitViewModel.YearlyHabitGrid,
+    onNameClick: () -> Unit,
+    onEditClick: (com.baverika.r_journal.data.local.entity.Habit) -> Unit,
+    onDeleteClick: (com.baverika.r_journal.data.local.entity.Habit) -> Unit,
+    onBlockClick: (java.time.LocalDate, Boolean) -> Unit
 ) {
-    val habit = habitState.habit
-    val color = Color(habit.color)
+    // Context Menu State
+    var showMenu by remember { mutableStateOf(false) }
 
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .height(72.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // Name Column
+        Box(
+            modifier = Modifier
+                .width(120.dp) // Slightly wider for better readability
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surface)
+                .combinedClickable(
+                    onClick = onNameClick,
+                    onLongClick = { showMenu = true }
+                )
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center // Changed from Alignment.CenterStart
+        ) {
+            Text(
+                text = grid.habit.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Edit") },
+                    onClick = {
+                        showMenu = false
+                        onEditClick(grid.habit)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                    onClick = {
+                        showMenu = false
+                        onDeleteClick(grid.habit)
+                    }
+                )
+            }
+        }
+        
+        // 7 Day Grid
         Row(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .weight(1f)
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Color Indicator
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        text = habit.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (habit.description.isNotBlank()) {
-                        Text(
-                            text = habit.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            grid.days.forEach { dayState ->
+                HeatmapBlock(
+                    state = dayState,
+                    color = Color(grid.habit.color),
+                    isLarge = true, // Larger blocks for touch focus
+                    onClick = {
+                        if (dayState.status != HabitViewModel.HabitStatus.DISABLED) {
+                            val newState = dayState.status != HabitViewModel.HabitStatus.DONE
+                            onBlockClick(dayState.date, newState)
+                        }
                     }
-                }
+                )
             }
+        }
+    }
+}
 
-            // Checkbox (Custom styled)
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (habitState.isCompleted) color else Color.Transparent,
-                        shape = CircleShape
-                    )
-                    .clickable { onToggle(!habitState.isCompleted) }
-                    .then(
-                        if (!habitState.isCompleted) Modifier.border(2.dp, color, CircleShape) else Modifier
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (habitState.isCompleted) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+@Composable
+fun HeatmapBlock(
+    state: HabitViewModel.DayState,
+    color: Color,
+    isLarge: Boolean = false,
+    onClick: () -> Unit
+) {
+    val backgroundColor = when (state.status) {
+        HabitViewModel.HabitStatus.DONE -> color
+        HabitViewModel.HabitStatus.DISABLED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        HabitViewModel.HabitStatus.PENDING -> Color.Transparent
+    }
+    
+    val borderColor = when (state.status) {
+        HabitViewModel.HabitStatus.DONE -> color
+        HabitViewModel.HabitStatus.DISABLED -> Color.Transparent
+        HabitViewModel.HabitStatus.PENDING -> color.copy(alpha = 0.3f)
+    }
+
+    val size = if (isLarge) 32.dp else 18.dp
+    val radius = if (isLarge) 8.dp else 2.dp
+
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(radius))
+            .background(backgroundColor)
+            .border(1.dp, borderColor, RoundedCornerShape(radius))
+            .clickable(enabled = state.status != HabitViewModel.HabitStatus.DISABLED) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (state.status == HabitViewModel.HabitStatus.DONE && isLarge) {
+             Icon(
+                 Icons.Default.Check, 
+                 contentDescription = null, 
+                 tint = MaterialTheme.colorScheme.surface,
+                 modifier = Modifier.size(20.dp)
+             )
         }
     }
 }

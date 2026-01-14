@@ -142,18 +142,6 @@ class QuotesWidgetReceiver : AppWidgetProvider() {
                             Log.d(TAG, "Showing empty state")
                         }
 
-                        // Set click intent to open Quotes screen (on the root widget area)
-                        val openAppIntent = Intent(context, MainActivity::class.java).apply {
-                            putExtra("navigate_to", "quotes")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        val openPendingIntent = PendingIntent.getActivity(
-                            context,
-                            appWidgetId,
-                            openAppIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                        views.setOnClickPendingIntent(R.id.widget_root, openPendingIntent)
 
                         // Set refresh button click - use different unique request code
                         val refreshIntent = Intent(context, QuotesWidgetReceiver::class.java).apply {

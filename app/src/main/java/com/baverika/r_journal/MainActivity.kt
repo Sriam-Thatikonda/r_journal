@@ -7,6 +7,8 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +21,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.ui.platform.LocalLifecycleOwner
+//import androidx.compose.ui.platform.LocalLifecycleOwner
+//import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -84,8 +87,7 @@ class MainActivity : FragmentActivity() {
             )
         }
 
-        // Initialize Biometric
-        val biometricHelper = com.baverika.r_journal.utils.BiometricHelper
+
 
         // Schedule Daily Backup
         val backupRequest = androidx.work.PeriodicWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>(
@@ -94,8 +96,16 @@ class MainActivity : FragmentActivity() {
 
         androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "DailyBackup",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            androidx.work.ExistingPeriodicWorkPolicy.UPDATE, // Changed to UPDATE to apply new worker changes immediately
             backupRequest
+        )
+
+        // Trigger an immediate backup to ensure one exists (checking for "ImmediateBackup" uniqueness)
+        val immediateBackup = androidx.work.OneTimeWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>().build()
+        androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
+            "ImmediateBackup",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            immediateBackup
         )
 
         setContent {
@@ -185,7 +195,7 @@ fun MainApp(
     val userAge by mainViewModel.userAge.collectAsState()
     
     // Check birthday on app resume
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -226,7 +236,7 @@ fun MainApp(
                         modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp)
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     DrawerContent(
                         currentRoute = currentRoute,
@@ -372,6 +382,10 @@ fun MainApp(
                         ExportScreen(
                             journalRepo = journalRepo,
                             quickNoteRepo = quickNoteRepo,
+                            taskRepo = taskRepo,
+                            quoteRepo = quoteRepo,
+                            lifeTrackerRepo = lifeTrackerRepo,
+                            eventRepo = eventRepo,
                             context = context
                         )
                     }
@@ -380,7 +394,11 @@ fun MainApp(
                     composable("import") {
                         ImportScreen(
                             journalRepo = journalRepo,
-                            quickNoteRepo = quickNoteRepo
+                            quickNoteRepo = quickNoteRepo,
+                            taskRepo = taskRepo,
+                            quoteRepo = quoteRepo,
+                            lifeTrackerRepo = lifeTrackerRepo,
+                            eventRepo = eventRepo
                         )
                     }
 
@@ -432,6 +450,36 @@ fun MainApp(
                         HabitTrackerScreen(
                             viewModel = habitViewModel,
                             navController = navController
+                        )
+                    }
+
+                    // Habit Year Overview (New)
+                    composable("habit_year_overview/{habitId}") { backStackEntry ->
+                        val habitId = backStackEntry.arguments?.getString("habitId") ?: return@composable
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        HabitYearOverviewScreen(
+                            viewModel = habitViewModel,
+                            navController = navController,
+                            habitId = habitId
+                        )
+                    }
+
+                    // Habit Detail (New)
+                    composable("habit_detail/{habitId}/{month}") { backStackEntry ->
+                        val habitId = backStackEntry.arguments?.getString("habitId") ?: return@composable
+                        val monthStr = backStackEntry.arguments?.getString("month")
+                        val month = monthStr?.toIntOrNull() ?: java.time.LocalDate.now().monthValue
+                        
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        HabitDetailScreen(
+                            viewModel = habitViewModel,
+                            navController = navController,
+                            habitId = habitId,
+                            initialMonth = month
                         )
                     }
 
@@ -531,7 +579,7 @@ fun MainApp(
                         val vm: com.baverika.r_journal.ui.viewmodel.LifeTrackerViewModel = viewModel(
                             factory = com.baverika.r_journal.ui.viewmodel.LifeTrackerViewModelFactory(lifeTrackerRepo)
                         )
-                        com.baverika.r_journal.ui.screens.LifeTrackersScreen(
+                        LifeTrackersScreen(
                             viewModel = vm,
                             onTrackerClick = { id -> navController.navigate("tracker_detail/$id") }
                         )
@@ -542,7 +590,7 @@ fun MainApp(
                         val vm: com.baverika.r_journal.ui.viewmodel.TrackerDetailViewModel = viewModel(
                             factory = com.baverika.r_journal.ui.viewmodel.TrackerDetailViewModelFactory(lifeTrackerRepo, trackerId)
                         )
-                        com.baverika.r_journal.ui.screens.TrackerDetailScreen(
+                        TrackerDetailScreen(
                             viewModel = vm,
                             onBack = { navController.popBackStack() }
                         )
@@ -552,7 +600,7 @@ fun MainApp(
                     composable("tasks") {
                         val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
                             factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
-                                LocalContext.current.applicationContext as android.app.Application,
+                                LocalContext.current.applicationContext as Application,
                                 taskRepo
                             )
                         )
@@ -566,7 +614,7 @@ fun MainApp(
                     composable("add_task") {
                         val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
                             factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
-                                LocalContext.current.applicationContext as android.app.Application,
+                                LocalContext.current.applicationContext as Application,
                                 taskRepo
                             )
                         )
@@ -582,7 +630,7 @@ fun MainApp(
                         val taskId = backStackEntry.arguments?.getString("taskId")
                         val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
                             factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
-                                LocalContext.current.applicationContext as android.app.Application,
+                                LocalContext.current.applicationContext as Application,
                                 taskRepo
                             )
                         )
@@ -605,7 +653,7 @@ fun MainApp(
                             .size(72.dp)
                     ) {
                         Icon(
-                            Icons.Filled.Chat,
+                            Icons.AutoMirrored.Filled.Chat,
                             contentDescription = "New Journal Entry",
                             modifier = Modifier.size(24.dp)
                         )
@@ -653,7 +701,7 @@ fun DrawerContent(
             onClick = { onScreenSelected("archive") }
         )
         DrawerItem(
-            icon = Icons.Filled.Note,
+            icon = Icons.AutoMirrored.Filled.Note,
             label = "Notes",
             isSelected = currentRoute == "quick_notes",
             onClick = { onScreenSelected("quick_notes") }
@@ -672,7 +720,7 @@ fun DrawerContent(
         )
         DrawerItem(
             icon = Icons.Filled.DateRange, 
-            label = "Life Trackers",
+            label = "Life Tracker",
             isSelected = currentRoute == "life_trackers",
             onClick = { onScreenSelected("life_trackers") }
         )
@@ -717,7 +765,7 @@ fun DrawerContent(
             onClick = { onScreenSelected("settings") }
         )
 
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         // 🔧 NEW: Server settings item
         DrawerItem(

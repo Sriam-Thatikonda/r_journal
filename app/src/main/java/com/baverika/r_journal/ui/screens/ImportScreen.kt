@@ -29,7 +29,11 @@ import kotlin.system.exitProcess
 @Composable
 fun ImportScreen(
     journalRepo: JournalRepository,
-    quickNoteRepo: QuickNoteRepository
+    quickNoteRepo: QuickNoteRepository,
+    taskRepo: com.baverika.r_journal.repository.TaskRepository,
+    quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
+    lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+    eventRepo: com.baverika.r_journal.repository.EventRepository
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -57,6 +61,10 @@ fun ImportScreen(
                 uri = pickedUri,
                 journalRepo = journalRepo,
                 quickNoteRepo = quickNoteRepo,
+                taskRepo = taskRepo,
+                quoteRepo = quoteRepo,
+                lifeTrackerRepo = lifeTrackerRepo,
+                eventRepo = eventRepo,
                 coroutineScope = scope
             ) { success, message ->
                 isImporting = false

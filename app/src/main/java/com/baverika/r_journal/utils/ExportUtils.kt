@@ -23,7 +23,14 @@ object ExportUtils {
     fun exportAll(
         context: Context,
         journals: List<JournalEntry>,
-        quickNotes: List<QuickNote>
+        quickNotes: List<QuickNote>,
+        tasks: List<com.baverika.r_journal.data.local.entity.Task>,
+        habits: List<com.baverika.r_journal.data.local.entity.Habit>,
+        habitLogs: List<com.baverika.r_journal.data.local.entity.HabitLog>,
+        quotes: List<com.baverika.r_journal.quotes.data.QuoteEntity>,
+        lifeTrackers: List<com.baverika.r_journal.data.local.entity.LifeTracker>,
+        lifeTrackerEntries: List<com.baverika.r_journal.data.local.entity.LifeTrackerEntry>,
+        events: List<com.baverika.r_journal.data.local.entity.Event>
     ): Pair<Boolean, String?> {
         return try {
             // 1. Determine export directory
@@ -37,6 +44,8 @@ object ExportUtils {
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
             val zipFileName = "r_journal_export_$timestamp.zip"
             val zipFile = File(exportDir, zipFileName)
+
+            val gson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
 
             // 3. Create ZIP and write content
             ZipOutputStream(zipFile.outputStream()).use { zos ->
@@ -97,8 +106,65 @@ object ExportUtils {
                     zos.closeEntry()
                 }
 
+                // Export Tasks (JSON)
+                if (tasks.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/tasks.json"))
+                    zos.write(gson.toJson(tasks).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Habits (JSON)
+                if (habits.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/habits.json"))
+                    zos.write(gson.toJson(habits).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Habit Logs (JSON)
+                if (habitLogs.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/habit_logs.json"))
+                    zos.write(gson.toJson(habitLogs).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Quotes (JSON)
+                if (quotes.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/quotes.json"))
+                    zos.write(gson.toJson(quotes).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Life Trackers (JSON)
+                if (lifeTrackers.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/life_trackers.json"))
+                    zos.write(gson.toJson(lifeTrackers).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Life Tracker Entries (JSON)
+                if (lifeTrackerEntries.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/life_tracker_entries.json"))
+                    zos.write(gson.toJson(lifeTrackerEntries).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Events (JSON)
+                if (events.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/events.json"))
+                    zos.write(gson.toJson(events).toByteArray())
+                    zos.closeEntry()
+                }
+
                 // Add a README file
-                val readme = buildReadme(journals.size, quickNotes.size)
+                val readme = buildReadme(
+                    journals.size, 
+                    quickNotes.size, 
+                    tasks.size, 
+                    habits.size, 
+                    quotes.size,
+                    lifeTrackers.size,
+                    events.size
+                )
                 zos.putNextEntry(ZipEntry("README.txt"))
                 zos.write(readme.toByteArray())
                 zos.closeEntry()
@@ -171,7 +237,15 @@ object ExportUtils {
         }
     }
 
-    private fun buildReadme(journalCount: Int, noteCount: Int): String {
+    private fun buildReadme(
+        journalCount: Int, 
+        noteCount: Int, 
+        taskCount: Int, 
+        habitCount: Int, 
+        quoteCount: Int,
+        trackerCount: Int,
+        eventCount: Int
+    ): String {
         return """
             R-Journal Export
             ================
@@ -181,13 +255,25 @@ object ExportUtils {
             Contents:
             - $journalCount journal entries
             - $noteCount quick notes
+            - $taskCount tasks
+            - $habitCount habits
+            - $quoteCount quotes
+            - $trackerCount life trackers
+            - $eventCount special dates/events
             
             Structure:
             /data
-              /journals  - Contains all journal entries as Markdown files
-              /quick_notes - Contains all quick notes as Markdown files
+              /journals             - Contains all journal entries as Markdown files
+              /quick_notes          - Contains all quick notes as Markdown files
+              tasks.json            - All tasks in JSON format
+              habits.json           - All habits in JSON format
+              habit_logs.json       - All habit logs/completions in JSON format
+              quotes.json           - All quotes in JSON format
+              life_trackers.json    - All life trackers in JSON format
+              life_tracker_entries.json - All life tracker entries in JSON format
+              events.json           - All special dates/events in JSON format
             /images
-              /[date]  - Images organized by journal entry date
+              /[date]               - Images organized by journal entry date
             
             To import this data back into R-Journal:
             1. Open R-Journal app
