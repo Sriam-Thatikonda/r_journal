@@ -23,7 +23,11 @@ class Converters {
             obj.put("timestamp", msg.timestamp)
             obj.put("imageUri", msg.imageUri) // nullable
 
-            // NEW: write reply fields (may be null)
+            // Voice note fields
+            obj.put("voiceNoteUri", msg.voiceNoteUri)
+            obj.put("voiceNoteDuration", msg.voiceNoteDuration)
+
+            // Reply fields (may be null)
             obj.put("replyToMessageId", msg.replyToMessageId)
             obj.put("replyPreview", msg.replyPreview)
 
@@ -47,7 +51,11 @@ class Converters {
             val timestamp = if (obj.has("timestamp")) obj.getLong("timestamp") else System.currentTimeMillis()
             val imageUri = obj.optString("imageUri").takeIf { it.isNotBlank() }
 
-            // NEW: read reply fields using optString so missing keys result in null
+            // Voice note fields (backwards compatible - defaults to null/0)
+            val voiceNoteUri = obj.optString("voiceNoteUri").takeIf { it.isNotBlank() }
+            val voiceNoteDuration = obj.optLong("voiceNoteDuration", 0L)
+
+            // Reply fields using optString so missing keys result in null
             val replyToMessageId = obj.optString("replyToMessageId").takeIf { it.isNotBlank() }
             val replyPreview = obj.optString("replyPreview").takeIf { it.isNotBlank() }
 
@@ -58,6 +66,8 @@ class Converters {
                     content = content,
                     timestamp = timestamp,
                     imageUri = imageUri,
+                    voiceNoteUri = voiceNoteUri,
+                    voiceNoteDuration = voiceNoteDuration,
                     replyToMessageId = replyToMessageId,
                     replyPreview = replyPreview
                 )
@@ -118,5 +128,18 @@ class Converters {
         if (json.isNullOrEmpty() || json == "[]") return emptyList()
         val array = JSONArray(json)
         return List(array.length()) { i -> array.getInt(i) }
+    }
+
+    // -------------------------------
+    // TaskPriority converters
+    // -------------------------------
+    @TypeConverter
+    fun fromTaskPriority(priority: com.baverika.r_journal.data.local.entity.TaskPriority): String {
+        return priority.name
+    }
+
+    @TypeConverter
+    fun toTaskPriority(value: String): com.baverika.r_journal.data.local.entity.TaskPriority {
+        return com.baverika.r_journal.data.local.entity.TaskPriority.fromString(value)
     }
 }

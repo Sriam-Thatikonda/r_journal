@@ -1,115 +1,193 @@
 package com.baverika.r_journal.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
+// Composition local for current theme
+val LocalAppTheme = staticCompositionLocalOf { AppTheme.MIDNIGHT }
+
 /**
- * A custom, eye-friendly dark color scheme based on Material 3's baseline.
- *
- * Adjustments made:
- * - Slightly warmer background tones (blue-grey instead of pure grey) to reduce harshness.
- * - Ensured good contrast for primary/accent colors.
- * - Used tonal elevation for surfaces.
+ * Color scheme for Midnight theme (Dark)
  */
-private val CustomDarkColorScheme = darkColorScheme(
-    // Primary: A vibrant, saturated color for key actions/elements.
-    primary = Color(0xFF8FBFA8),
-    onPrimary = Color(0xFF073B34),
-    primaryContainer = Color(0xFF4F378B),
-    onPrimaryContainer = Color(0xFFEADDFF),
-
-    // Secondary: A complementary color, often for less prominent actions.
-    secondary = Color(0xFFE0CDA9),
-    onSecondary = Color(0xFF3A2E1D),
-    secondaryContainer = Color(0xFF4A4458),
-    onSecondaryContainer = Color(0xFFE8DEF8),
-
-    // Tertiary: Often for decorative or alternate actions.
-    tertiary = Color(0xFFEFB8C8),
-    onTertiary = Color(0xFF492532),
-    tertiaryContainer = Color(0xFF633B48),
-    onTertiaryContainer = Color(0xFFFFD8E4),
-
-    // Background: Pitch black as requested
-    background = Color.Black,
-    onBackground = Color(0xFFE6E1D8), // High contrast text
-
-    // Surface: Elements that sit on top of the background (cards, sheets).
-    surface = Color.Black,
-    onSurface = Color(0xFFCAC4D0), // Slightly lower contrast than background text
-    surfaceVariant = Color(0xFF49454F),
-    onSurfaceVariant = Color(0xFFCAC4D0),
-
-    // Error: For error states and destructive actions.
-    error = Color(0xFFF2B8B5),
-    onError = Color(0xFF601410),
-    errorContainer = Color(0xFF8C1D18),
-    onErrorContainer = Color(0xFFF9DEDC),
-
-    // Outline: For borders and dividers.
-    outline = Color(0xFF938F99),
-
-    // Inverse colors (used for light-on-dark scenarios, less common in pure dark themes)
-    inverseOnSurface = Color(0xFF1C1B1F),
-    inverseSurface = Color(0xFFE6E1E5),
-    inversePrimary = Color(0xFF6750A4),
-
-    // Scrim (for modals, usually semi-transparent black)
-    scrim = Color(0xFF000000).copy(alpha = 0.32f)
+private val MidnightColorScheme = darkColorScheme(
+    primary = MidnightColors.Primary,
+    onPrimary = MidnightColors.OnPrimary,
+    primaryContainer = MidnightColors.PrimaryContainer,
+    onPrimaryContainer = MidnightColors.OnPrimaryContainer,
+    secondary = MidnightColors.Secondary,
+    onSecondary = MidnightColors.OnSecondary,
+    secondaryContainer = MidnightColors.SecondaryContainer,
+    onSecondaryContainer = MidnightColors.OnSecondaryContainer,
+    tertiary = MidnightColors.Tertiary,
+    onTertiary = MidnightColors.OnTertiary,
+    tertiaryContainer = MidnightColors.TertiaryContainer,
+    onTertiaryContainer = MidnightColors.OnTertiaryContainer,
+    background = MidnightColors.Background,
+    onBackground = MidnightColors.OnBackground,
+    surface = MidnightColors.Surface,
+    onSurface = MidnightColors.OnSurface,
+    surfaceVariant = MidnightColors.SurfaceVariant,
+    onSurfaceVariant = MidnightColors.OnSurfaceVariant,
+    error = MidnightColors.Error,
+    onError = MidnightColors.OnError,
+    outline = MidnightColors.Outline
 )
 
 /**
- * Define your app's typography.
- * This ensures consistency in text styles across the app.
+ * Color scheme for Light theme
  */
-private val Typography = Typography(
+private val LightColorScheme = lightColorScheme(
+    primary = LightColors.Primary,
+    onPrimary = LightColors.OnPrimary,
+    primaryContainer = LightColors.PrimaryContainer,
+    onPrimaryContainer = LightColors.OnPrimaryContainer,
+    secondary = LightColors.Secondary,
+    onSecondary = LightColors.OnSecondary,
+    secondaryContainer = LightColors.SecondaryContainer,
+    onSecondaryContainer = LightColors.OnSecondaryContainer,
+    tertiary = LightColors.Tertiary,
+    onTertiary = LightColors.OnTertiary,
+    tertiaryContainer = LightColors.TertiaryContainer,
+    onTertiaryContainer = LightColors.OnTertiaryContainer,
+    background = LightColors.Background,
+    onBackground = LightColors.OnBackground,
+    surface = LightColors.Surface,
+    onSurface = LightColors.OnSurface,
+    surfaceVariant = LightColors.SurfaceVariant,
+    onSurfaceVariant = LightColors.OnSurfaceVariant,
+    error = LightColors.Error,
+    onError = LightColors.OnError,
+    outline = LightColors.Outline
+)
+
+/**
+ * Color scheme for Ocean theme (Subtle Dark Blue)
+ */
+private val OceanColorScheme = darkColorScheme(
+    primary = OceanColors.Primary,
+    onPrimary = OceanColors.OnPrimary,
+    primaryContainer = OceanColors.PrimaryContainer,
+    onPrimaryContainer = OceanColors.OnPrimaryContainer,
+    secondary = OceanColors.Secondary,
+    onSecondary = OceanColors.OnSecondary,
+    secondaryContainer = OceanColors.SecondaryContainer,
+    onSecondaryContainer = OceanColors.OnSecondaryContainer,
+    tertiary = OceanColors.Tertiary,
+    onTertiary = OceanColors.OnTertiary,
+    tertiaryContainer = OceanColors.TertiaryContainer,
+    onTertiaryContainer = OceanColors.OnTertiaryContainer,
+    background = OceanColors.Background,
+    onBackground = OceanColors.OnBackground,
+    surface = OceanColors.Surface,
+    onSurface = OceanColors.OnSurface,
+    surfaceVariant = OceanColors.SurfaceVariant,
+    onSurfaceVariant = OceanColors.OnSurfaceVariant,
+    error = OceanColors.Error,
+    onError = OceanColors.OnError,
+    outline = OceanColors.Outline
+)
+
+/**
+ * Color scheme for Rosewood theme (Subtle Warm)
+ */
+private val RosewoodColorScheme = darkColorScheme(
+    primary = RosewoodColors.Primary,
+    onPrimary = RosewoodColors.OnPrimary,
+    primaryContainer = RosewoodColors.PrimaryContainer,
+    onPrimaryContainer = RosewoodColors.OnPrimaryContainer,
+    secondary = RosewoodColors.Secondary,
+    onSecondary = RosewoodColors.OnSecondary,
+    secondaryContainer = RosewoodColors.SecondaryContainer,
+    onSecondaryContainer = RosewoodColors.OnSecondaryContainer,
+    tertiary = RosewoodColors.Tertiary,
+    onTertiary = RosewoodColors.OnTertiary,
+    tertiaryContainer = RosewoodColors.TertiaryContainer,
+    onTertiaryContainer = RosewoodColors.OnTertiaryContainer,
+    background = RosewoodColors.Background,
+    onBackground = RosewoodColors.OnBackground,
+    surface = RosewoodColors.Surface,
+    onSurface = RosewoodColors.OnSurface,
+    surfaceVariant = RosewoodColors.SurfaceVariant,
+    onSurfaceVariant = RosewoodColors.OnSurfaceVariant,
+    error = RosewoodColors.Error,
+    onError = RosewoodColors.OnError,
+    outline = RosewoodColors.Outline
+)
+
+/**
+ * Color scheme for Blue Sky theme
+ */
+private val BlueSkyColorScheme = darkColorScheme(
+    primary = BlueSkyColors.Primary,
+    onPrimary = BlueSkyColors.OnPrimary,
+    primaryContainer = BlueSkyColors.PrimaryContainer,
+    onPrimaryContainer = BlueSkyColors.OnPrimaryContainer,
+    secondary = BlueSkyColors.Secondary,
+    onSecondary = BlueSkyColors.OnSecondary,
+    secondaryContainer = BlueSkyColors.SecondaryContainer,
+    onSecondaryContainer = BlueSkyColors.OnSecondaryContainer,
+    tertiary = BlueSkyColors.Tertiary,
+    onTertiary = BlueSkyColors.OnTertiary,
+    tertiaryContainer = BlueSkyColors.TertiaryContainer,
+    onTertiaryContainer = BlueSkyColors.OnTertiaryContainer,
+    background = BlueSkyColors.Background,
+    onBackground = BlueSkyColors.OnBackground,
+    surface = BlueSkyColors.Surface,
+    onSurface = BlueSkyColors.OnSurface,
+    surfaceVariant = BlueSkyColors.SurfaceVariant,
+    onSurfaceVariant = BlueSkyColors.OnSurfaceVariant,
+    error = BlueSkyColors.Error,
+    onError = BlueSkyColors.OnError,
+    outline = BlueSkyColors.Outline
+)
+
+/**
+ * App typography
+ */
+private val AppTypography = Typography(
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
-    ),
-    // Add other text styles as needed (titleLarge, labelMedium, etc.)
-    // You can customize these based on your design.
+    )
 )
 
 /**
- * The main composable function that wraps your app content with the MaterialTheme.
- *
- * @param darkTheme Whether to use the dark theme. Defaults to system setting.
- * @param dynamicColor Whether to use dynamic colors from the device (Android 12+).
- *                      Falls back to the custom scheme if not supported.
- * @param content The main content of your app.
+ * Get color scheme based on theme
+ */
+fun getColorScheme(theme: AppTheme): ColorScheme {
+    return when (theme) {
+        AppTheme.MIDNIGHT -> MidnightColorScheme
+        AppTheme.LIGHT -> LightColorScheme
+        AppTheme.OCEAN -> OceanColorScheme
+        AppTheme.ROSEWOOD -> RosewoodColorScheme
+        AppTheme.BLUE_SKY -> BlueSkyColorScheme
+    }
+}
+
+/**
+ * Main theme composable
  */
 @Composable
 fun RJournalTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    theme: AppTheme = AppTheme.MIDNIGHT,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context).copy(background = Color.Black, surface = Color.Black) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = getColorScheme(theme)
 
-        darkTheme -> CustomDarkColorScheme
-        else -> lightColorScheme() // Or define a CustomLightColorScheme if desired
+    CompositionLocalProvider(LocalAppTheme provides theme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = AppTypography,
+            content = content
+        )
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography, // Use our defined Typography
-        content = content
-    )
 }

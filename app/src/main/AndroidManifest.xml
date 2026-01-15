@@ -4,8 +4,8 @@
     <!-- Camera permission for taking photos -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
-    <uses-permission android:name="android.permission.INTERNET" />
-
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Camera hardware feature (not required, app works without camera) -->
     <uses-feature
@@ -14,11 +14,11 @@
 
     <application
         android:name=".RJournalApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.R_journal"
-        android:usesCleartextTraffic="true">
+        android:theme="@style/Theme.R_journal">
+
 
 
         <activity
@@ -58,6 +58,49 @@
 
         <service
             android:name=".widget.HabitWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <!-- Quote Widget -->
+        <receiver
+            android:name=".quotes.widget.QuotesWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.baverika.r_journal.ACTION_REFRESH_QUOTE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quote_widget_info" />
+        </receiver>
+
+        <!-- Screen Unlock Receiver for quote widget refresh -->
+        <receiver
+            android:name=".quotes.widget.ScreenUnlockReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
+
+
+
+        <!-- Task Widget -->
+        <receiver
+            android:name=".tasks.widget.TaskWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.baverika.r_journal.ACTION_TOGGLE_TASK" />
+                <action android:name="com.baverika.r_journal.ACTION_QUICK_ADD_TASK" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/task_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".tasks.widget.TaskWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 

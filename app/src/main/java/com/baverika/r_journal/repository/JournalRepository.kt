@@ -234,6 +234,9 @@ class JournalRepository(
         return habitDao.getHabitLogsForDate(dateMillis)
     }
 
+    val allHabits: Flow<List<com.baverika.r_journal.data.local.entity.Habit>> = habitDao.getAllHabits()
+    val allHabitLogs: Flow<List<com.baverika.r_journal.data.local.entity.HabitLog>> = habitDao.getAllHabitLogs()
+
     suspend fun toggleHabitCompletion(habitId: String, dateMillis: Long, isCompleted: Boolean) {
         if (isCompleted) {
             val log = com.baverika.r_journal.data.local.entity.HabitLog(

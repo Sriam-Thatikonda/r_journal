@@ -15,6 +15,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.baverika.r_journal.R
+import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.data.local.entity.JournalEntrySummary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +36,15 @@ fun JournalArchiveScreen(
     val allEvents by eventRepo.allEvents.collectAsState(initial = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Celestial Background only for Blue Sky theme
+        if (LocalAppTheme.current == AppTheme.BLUE_SKY) {
+            Image(
+                painter = painterResource(id = R.drawable.bg_journal_archive),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().blur(6.dp),
+                contentScale = ContentScale.Crop
+            )
+        }
         if (allEntries.isEmpty()) {
             // Empty state
             com.baverika.r_journal.ui.components.EmptyState(
@@ -74,6 +90,8 @@ fun EnhancedJournalCard(
     val moodEmojis = entry.moodEmojis
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
+    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -83,10 +101,10 @@ fun EnhancedJournalCard(
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Black,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = if (isBlueSky) Color.Black.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surface,
+            contentColor = if (isBlueSky) Color.White else MaterialTheme.colorScheme.onSurface
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.6f))
+        border = if (isBlueSky) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     ) {
         Column(
             modifier = Modifier

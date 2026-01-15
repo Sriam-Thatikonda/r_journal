@@ -161,6 +161,28 @@ class JournalViewModel(
         saveCurrentEntry()
     }
 
+    /**
+     * Add a voice note message to the current entry
+     */
+    fun addVoiceNoteMessage(
+        voiceNoteUri: String,
+        durationMs: Long,
+        replyTo: ChatMessage? = null
+    ) {
+        val msg = ChatMessage(
+            role = "user",
+            content = "", // Voice notes have no text content
+            timestamp = System.currentTimeMillis(),
+            voiceNoteUri = voiceNoteUri,
+            voiceNoteDuration = durationMs,
+            replyToMessageId = replyTo?.id,
+            replyPreview = replyTo?.content?.take(80)
+        )
+
+        currentEntry = currentEntry.copy(messages = currentEntry.messages + msg)
+        saveCurrentEntry()
+    }
+
     private fun saveImageToPrivateStorage(imageUri: Uri): String? {
         return try {
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())

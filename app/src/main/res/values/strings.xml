@@ -104,4 +104,39 @@
 
     <!-- Widget -->
     <string name="widget_description">Track your daily habits</string>
+    <string name="quote_widget_description">Display motivational quotes</string>
+    
+    <!-- Motivational Quotes -->
+    <string name="quotes_title">Motivational Quotes</string>
+    <string name="add_quote">Add Quote</string>
+    <string name="edit_quote">Edit Quote</string>
+    <string name="delete_quote">Delete Quote</string>
+    <string name="quote_text_hint">Enter your motivational quote...</string>
+    <string name="quote_author_hint">Author (optional)</string>
+    <string name="no_quotes_yet">No quotes yet. Add your first one.</string>
+    <string name="widget_empty_message">Add motivational quotes in R-Journal</string>
+
+    <!-- Tasks -->
+    <string name="tasks_title">Tasks</string>
+    <string name="add_task">Add Task</string>
+    <string name="edit_task">Edit Task</string>
+    <string name="delete_task">Delete Task</string>
+    <string name="task_title_hint">Task title</string>
+    <string name="task_description_hint">Description (optional)</string>
+    <string name="task_due_date">Due Date</string>
+    <string name="task_priority">Priority</string>
+    <string name="task_category">Category</string>
+    <string name="task_checkbox">Toggle task completion</string>
+    <string name="no_upcoming_tasks">No upcoming tasks</string>
+    <string name="tap_to_add_task">Tap + to add a task</string>
+    <string name="quick_add_task">Quick add task</string>
+    <string name="task_widget_description">View and manage your upcoming tasks</string>
+    <string name="priority_high">High</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_low">Low</string>
+    <string name="filter_all">All</string>
+    <string name="filter_active">Active</string>
+    <string name="filter_completed">Completed</string>
+    <string name="filter_overdue">Overdue</string>
+    <string name="filter_today">Today</string>
 </resources>

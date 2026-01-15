@@ -25,10 +25,21 @@ import kotlinx.coroutines.launch
 fun ExportScreen(
     journalRepo: JournalRepository,
     quickNoteRepo: QuickNoteRepository,
+    taskRepo: com.baverika.r_journal.repository.TaskRepository,
+    quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
+    lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+    eventRepo: com.baverika.r_journal.repository.EventRepository,
     context: Context
 ) {
     val journals by journalRepo.allEntries.collectAsState(initial = emptyList())
     val notes by quickNoteRepo.allNotes.collectAsState(initial = emptyList())
+    val tasks by taskRepo.allTasks.collectAsState(initial = emptyList())
+    val habits by journalRepo.allHabits.collectAsState(initial = emptyList())
+    val habitLogs by journalRepo.allHabitLogs.collectAsState(initial = emptyList())
+    val quotes by quoteRepo.getAllQuotes().collectAsState(initial = emptyList())
+    val lifeTrackers by lifeTrackerRepo.allTrackers.collectAsState(initial = emptyList())
+    val lifeTrackerEntries by lifeTrackerRepo.allEntries.collectAsState(initial = emptyList())
+    val events by eventRepo.allEvents.collectAsState(initial = emptyList())
 
     val scope = rememberCoroutineScope()
     var isExporting by remember { mutableStateOf(false) }
@@ -63,9 +74,10 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Exporting ${journals.size} journals and ${notes.size} notes",
+                        text = "Exporting ${journals.size} journals, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} trackers, and ${events.size} events",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
 
@@ -151,25 +163,100 @@ fun ExportScreen(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = "${journals.size}",
-                                style = MaterialTheme.typography.displaySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Journal Entries",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "${notes.size}",
-                                style = MaterialTheme.typography.displaySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Notes",
-                                style = MaterialTheme.typography.labelMedium
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${journals.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Journals",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${notes.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Notes",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${tasks.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Tasks",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${habits.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Habits",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${quotes.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Quotes",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${lifeTrackers.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Trackers",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${events.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Events",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -180,7 +267,18 @@ fun ExportScreen(
                         onClick = {
                             isExporting = true
                             scope.launch {
-                                val (success, message) = ExportUtils.exportAll(context, journals, notes)
+                                val (success, message) = ExportUtils.exportAll(
+                                    context, 
+                                    journals, 
+                                    notes,
+                                    tasks,
+                                    habits,
+                                    habitLogs,
+                                    quotes,
+                                    lifeTrackers,
+                                    lifeTrackerEntries,
+                                    events
+                                )
                                 isExporting = false
                                 exportSuccess = success
                                 exportMessage = message

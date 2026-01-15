@@ -7,19 +7,21 @@ data class ChatMessage(
     val role: String = "user",
     val content: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    val imageUri: String? = null, // Nullable string for image path/URI,
-    val replyToMessageId: String? = null, // Nullable string for reply to message ID
-    val replyPreview: String? = null // Nullable string for reply preview text
+    val imageUri: String? = null,
+    val voiceNoteUri: String? = null, // Path to voice note file
+    val voiceNoteDuration: Long = 0L, // Duration in milliseconds
+    val replyToMessageId: String? = null,
+    val replyPreview: String? = null
 ) {
-    // ✅ No-arg constructor that calls primary with DEFAULTS
     constructor() : this(
         id = java.util.UUID.randomUUID().toString(),
         role = "user",
         content = "",
         timestamp = System.currentTimeMillis(),
         imageUri = null,
+        voiceNoteUri = null,
+        voiceNoteDuration = 0L,
         replyToMessageId = null,
         replyPreview = null
-
     )
 }

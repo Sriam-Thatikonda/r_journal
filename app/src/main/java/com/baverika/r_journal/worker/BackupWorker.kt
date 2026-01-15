@@ -16,31 +16,50 @@ class BackupWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            val dbName = "journal_database"
-            val dbPath = applicationContext.getDatabasePath(dbName)
+            val dbName = "journal_db"
+            val dbFolder = applicationContext.getDatabasePath(dbName).parentFile
+            
+            // Source paths
+            val dbFile = File(dbFolder, dbName)
+            val walFile = File(dbFolder, "$dbName-wal")
+            val shmFile = File(dbFolder, "$dbName-shm")
 
-            if (!dbPath.exists()) {
-                Log.e("BackupWorker", "Database file not found: ${dbPath.absolutePath}")
+            if (!dbFile.exists()) {
+                Log.e("BackupWorker", "Database file not found: ${dbFile.absolutePath}")
                 return Result.failure()
             }
 
-            // Create Backups directory in app-specific external storage
-            // /Android/data/com.baverika.r_journal/files/Backups
-            val backupDir = File(applicationContext.getExternalFilesDir(null), "Backups")
-            if (!backupDir.exists()) {
-                backupDir.mkdirs()
+            // Target: App-specific external storage (Backups folder) using the same path as DbRestoreUtils
+            val backupRoot = File(applicationContext.getExternalFilesDir(null), "Backups")
+            if (!backupRoot.exists()) {
+                backupRoot.mkdirs()
             }
 
-            // Create backup file name with timestamp
+            // Create timestamped filename
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val backupFile = File(backupDir, "journal_backup_$timestamp.db")
+            val destDbFile = File(backupRoot, "journal_backup_$timestamp.db")
+            
+            // Copy DB file
+            dbFile.copyTo(destDbFile, overwrite = true)
+            
+            // Copy WAL/SHM if they exist (Critical for data integrity in WAL mode)
+            // Note: For a restore to work simply, typically we just need the main DB if it was checkpointed, 
+            // but relying on that is risky.
+            // DbRestoreUtils expects a single .db file. 
+            // The Safest way for a single-file backup is to checkpoint properly or include -wal in the backup naming scheme 
+            // or ZIP them.
+            // However, DbRestoreUtils just copies the .db file back. If WAL is active, this might result in data loss 
+            // of the latest transactions. 
+            // To fix this properly for a single file restore: trigger a checkpoint before copy.
+            checkpointWal(applicationContext, dbName)
 
-            // Copy file
-            dbPath.copyTo(backupFile, overwrite = true)
-            Log.d("BackupWorker", "Backup created: ${backupFile.absolutePath}")
+            // Re-copy after checkpoint to ensure everything is in the main .db file
+            dbFile.copyTo(destDbFile, overwrite = true)
 
-            // Retention Policy: Keep only last 2 backups
-            cleanOldBackups(backupDir)
+            Log.d("BackupWorker", "Backup created at: ${destDbFile.absolutePath}")
+
+            // Retention Policy: Keep only 5 most recent backup FILES
+            cleanOldBackups(backupRoot)
 
             Result.success()
         } catch (e: Exception) {
@@ -49,23 +68,36 @@ class BackupWorker(
         }
     }
 
-    private fun cleanOldBackups(backupDir: File) {
-        val files = backupDir.listFiles { file ->
-            file.name.startsWith("journal_backup_") && file.name.endsWith(".db")
+    private fun checkpointWal(context: Context, dbName: String) {
+        try {
+            // Force a WAL checkpoint to move data to the main DB file
+            val db = androidx.room.Room.databaseBuilder(
+                context, 
+                com.baverika.r_journal.data.local.database.JournalDatabase::class.java, 
+                dbName
+            ).build()
+            db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
+            db.close()
+        } catch (e: Exception) {
+            Log.e("BackupWorker", "Checkpoint failed", e)
+        }
+    }
+
+    private fun cleanOldBackups(backupRoot: File) {
+        // List files that start with "journal_backup_" and end with ".db"
+        val backupFiles = backupRoot.listFiles { file -> 
+            file.isFile && file.name.startsWith("journal_backup_") && file.name.endsWith(".db")
         } ?: return
 
-        // Sort by modification time (oldest first)
-        val sortedFiles = files.sortedBy { it.lastModified() }
+        // Sort by modification time (newest first for logic simplicity, or oldest first to delete)
+        val sortedFiles = backupFiles.sortedBy { it.lastModified() }
 
-        // If more than 2, delete the oldest ones
-        if (sortedFiles.size > 2) {
-            val filesToDelete = sortedFiles.take(sortedFiles.size - 2)
+        // Keep last 5 (delete if count > 5)
+        if (sortedFiles.size > 5) {
+            val filesToDelete = sortedFiles.take(sortedFiles.size - 5)
             filesToDelete.forEach { file ->
-                if (file.delete()) {
-                    Log.d("BackupWorker", "Deleted old backup: ${file.name}")
-                } else {
-                    Log.w("BackupWorker", "Failed to delete old backup: ${file.name}")
-                }
+                file.delete() // Just delete the file
+                Log.d("BackupWorker", "Deleted old backup file: ${file.name}")
             }
         }
     }

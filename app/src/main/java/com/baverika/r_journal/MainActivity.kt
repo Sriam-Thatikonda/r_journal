@@ -7,6 +7,8 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,6 +19,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+//import androidx.compose.ui.platform.LocalLifecycleOwner
+//import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -27,7 +33,10 @@ import com.baverika.r_journal.data.remote.ServerPrefs
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+
 import com.baverika.r_journal.repository.SettingsRepository
+import com.baverika.r_journal.repository.PasswordRepository
+
 import com.baverika.r_journal.ui.screens.*
 import com.baverika.r_journal.ui.theme.RJournalTheme
 import com.baverika.r_journal.ui.viewmodel.EventViewModelFactory
@@ -35,7 +44,10 @@ import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import com.baverika.r_journal.ui.viewmodel.HabitViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.JournalViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
+
 import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
+import com.baverika.r_journal.ui.viewmodel.PasswordViewModelFactory
+
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
@@ -46,7 +58,19 @@ class MainActivity : FragmentActivity() {
         val journalRepo = JournalRepository(db.journalDao())
         val quickNoteRepo = QuickNoteRepository(db.quickNoteDao())
         val eventRepo = EventRepository(db.eventDao())
+        val passwordRepo = PasswordRepository(db.passwordDao())
         val settingsRepo = SettingsRepository(this)
+        
+        // Quote feature repositories
+        val quoteRepo = com.baverika.r_journal.quotes.data.QuoteRepository(db.quoteDao())
+        val widgetSettingsDataStore = com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore.getInstance(this)
+        
+        // Task feature repositories
+        val taskRepo = com.baverika.r_journal.repository.TaskRepository(db.taskDao())
+
+        // Life Tracker repository
+        val lifeTrackerRepo = com.baverika.r_journal.repository.LifeTrackerRepository(db.lifeTrackerDao())
+
 
         // Biometric Lock State
         var isLocked by mutableStateOf(true)
@@ -63,8 +87,7 @@ class MainActivity : FragmentActivity() {
             )
         }
 
-        // Initialize Biometric
-        val biometricHelper = com.baverika.r_journal.utils.BiometricHelper
+
 
         // Schedule Daily Backup
         val backupRequest = androidx.work.PeriodicWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>(
@@ -73,12 +96,23 @@ class MainActivity : FragmentActivity() {
 
         androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "DailyBackup",
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            androidx.work.ExistingPeriodicWorkPolicy.UPDATE, // Changed to UPDATE to apply new worker changes immediately
             backupRequest
         )
 
+        // Trigger an immediate backup to ensure one exists (checking for "ImmediateBackup" uniqueness)
+        val immediateBackup = androidx.work.OneTimeWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>().build()
+        androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
+            "ImmediateBackup",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            immediateBackup
+        )
+
         setContent {
-            RJournalTheme {
+            var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
+
+            RJournalTheme(theme = currentTheme) {
+
                 if (isLocked) {
                     // Lock Screen
                     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -108,8 +142,25 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                 } else {
-                    MainApp(journalRepo, quickNoteRepo, eventRepo, settingsRepo)
+                    // Check if launched from widget with navigation intent
+                    val initialRoute = intent?.getStringExtra("navigate_to") ?: "archive"
+                    
+                    MainApp(
+                        journalRepo = journalRepo,
+                        quickNoteRepo = quickNoteRepo,
+                        eventRepo = eventRepo,
+                        passwordRepo = passwordRepo,
+                        quoteRepo = quoteRepo,
+                        widgetSettingsDataStore = widgetSettingsDataStore,
+                        taskRepo = taskRepo,
+                        lifeTrackerRepo = lifeTrackerRepo,
+                        settingsRepo = settingsRepo,
+                        initialRoute = initialRoute,
+                        onThemeChanged = { newTheme -> currentTheme = newTheme }
+                    )
                 }
+
+
             }
         }
     }
@@ -121,12 +172,41 @@ fun MainApp(
     journalRepo: JournalRepository,
     quickNoteRepo: QuickNoteRepository,
     eventRepo: EventRepository,
-    settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current)
+    passwordRepo: PasswordRepository,
+    quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
+    widgetSettingsDataStore: com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore,
+    taskRepo: com.baverika.r_journal.repository.TaskRepository,
+    lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+    settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
+    initialRoute: String = "archive",
+    onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
 ) {
+
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val navController = rememberNavController()
+
+    // ViewModel for app-wide events (Birthday Easter Egg)
+    val mainViewModel: com.baverika.r_journal.ui.viewmodel.MainViewModel = viewModel(
+        factory = com.baverika.r_journal.ui.viewmodel.MainViewModelFactory(settingsRepo)
+    )
+    val showBirthdayEasterEgg by mainViewModel.showBirthdayEasterEgg.collectAsState()
+    val userAge by mainViewModel.userAge.collectAsState()
+    
+    // Check birthday on app resume
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                mainViewModel.checkBirthday()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Track current route for FAB visibility
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -138,7 +218,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -156,7 +236,7 @@ fun MainApp(
                         modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp)
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     DrawerContent(
                         currentRoute = currentRoute,
@@ -229,7 +309,7 @@ fun MainApp(
                 // Navigation content
                 NavHost(
                     navController = navController,
-                    startDestination = "archive"
+                    startDestination = initialRoute
                 ) {
                     // Archive screen (default/home)
                     composable("archive") {
@@ -302,6 +382,10 @@ fun MainApp(
                         ExportScreen(
                             journalRepo = journalRepo,
                             quickNoteRepo = quickNoteRepo,
+                            taskRepo = taskRepo,
+                            quoteRepo = quoteRepo,
+                            lifeTrackerRepo = lifeTrackerRepo,
+                            eventRepo = eventRepo,
                             context = context
                         )
                     }
@@ -310,7 +394,11 @@ fun MainApp(
                     composable("import") {
                         ImportScreen(
                             journalRepo = journalRepo,
-                            quickNoteRepo = quickNoteRepo
+                            quickNoteRepo = quickNoteRepo,
+                            taskRepo = taskRepo,
+                            quoteRepo = quoteRepo,
+                            lifeTrackerRepo = lifeTrackerRepo,
+                            eventRepo = eventRepo
                         )
                     }
 
@@ -362,6 +450,36 @@ fun MainApp(
                         HabitTrackerScreen(
                             viewModel = habitViewModel,
                             navController = navController
+                        )
+                    }
+
+                    // Habit Year Overview (New)
+                    composable("habit_year_overview/{habitId}") { backStackEntry ->
+                        val habitId = backStackEntry.arguments?.getString("habitId") ?: return@composable
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        HabitYearOverviewScreen(
+                            viewModel = habitViewModel,
+                            navController = navController,
+                            habitId = habitId
+                        )
+                    }
+
+                    // Habit Detail (New)
+                    composable("habit_detail/{habitId}/{month}") { backStackEntry ->
+                        val habitId = backStackEntry.arguments?.getString("habitId") ?: return@composable
+                        val monthStr = backStackEntry.arguments?.getString("month")
+                        val month = monthStr?.toIntOrNull() ?: java.time.LocalDate.now().monthValue
+                        
+                        val habitViewModel: HabitViewModel = viewModel(
+                            factory = HabitViewModelFactory(LocalContext.current.applicationContext as Application, journalRepo)
+                        )
+                        HabitDetailScreen(
+                            viewModel = habitViewModel,
+                            navController = navController,
+                            habitId = habitId,
+                            initialMonth = month
                         )
                     }
 
@@ -417,11 +535,109 @@ fun MainApp(
                         }
                     }
 
+                    // Password Generator
+                    composable("password_generator") {
+                        val viewModel: com.baverika.r_journal.ui.viewmodel.PasswordViewModel = viewModel(
+                            factory = PasswordViewModelFactory(passwordRepo)
+                        )
+                        PasswordGeneratorScreen(
+                            viewModel = viewModel
+                        )
+                    }
+
                     // Settings
                     composable("settings") {
                         SettingsScreen(
                             settingsRepo = settingsRepo,
+                            passwordRepo = passwordRepo,
+                            navController = navController,
+                            onThemeChanged = onThemeChanged
+                        )
+                    }
+
+                    // Motivational Quotes
+                    composable("quotes") {
+                        val quotesViewModel: com.baverika.r_journal.quotes.ui.QuotesViewModel = viewModel(
+                            factory = com.baverika.r_journal.quotes.ui.QuotesViewModelFactory(quoteRepo, context)
+                        )
+                        com.baverika.r_journal.quotes.ui.QuotesScreen(
+                            viewModel = quotesViewModel,
                             navController = navController
+                        )
+                    }
+
+                    // Quote Widget Settings
+                    composable("quote_widget_settings") {
+                        com.baverika.r_journal.quotes.settings.WidgetSettingsScreen(
+                            settingsDataStore = widgetSettingsDataStore,
+                            navController = navController
+                        )
+                    }
+
+                    // Life Trackers
+                    composable("life_trackers") {
+                        val vm: com.baverika.r_journal.ui.viewmodel.LifeTrackerViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.LifeTrackerViewModelFactory(lifeTrackerRepo)
+                        )
+                        LifeTrackersScreen(
+                            viewModel = vm,
+                            onTrackerClick = { id -> navController.navigate("tracker_detail/$id") }
+                        )
+                    }
+
+                    composable("tracker_detail/{trackerId}") { backStackEntry ->
+                        val trackerId = backStackEntry.arguments?.getString("trackerId") ?: return@composable
+                        val vm: com.baverika.r_journal.ui.viewmodel.TrackerDetailViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TrackerDetailViewModelFactory(lifeTrackerRepo, trackerId)
+                        )
+                        TrackerDetailScreen(
+                            viewModel = vm,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    // Tasks
+                    composable("tasks") {
+                        val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
+                                LocalContext.current.applicationContext as Application,
+                                taskRepo
+                            )
+                        )
+                        TaskListScreen(
+                            viewModel = taskViewModel,
+                            navController = navController
+                        )
+                    }
+
+                    // Add Task
+                    composable("add_task") {
+                        val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
+                                LocalContext.current.applicationContext as Application,
+                                taskRepo
+                            )
+                        )
+                        AddEditTaskScreen(
+                            viewModel = taskViewModel,
+                            navController = navController,
+                            taskId = null
+                        )
+                    }
+
+                    // Edit Task
+                    composable("edit_task/{taskId}") { backStackEntry ->
+                        val taskId = backStackEntry.arguments?.getString("taskId")
+                        val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TaskViewModelFactory(
+                                LocalContext.current.applicationContext as Application,
+                                taskRepo
+                            )
+                        )
+                        AddEditTaskScreen(
+                            viewModel = taskViewModel,
+                            navController = navController,
+                            taskId = taskId
                         )
                     }
                 }
@@ -437,11 +653,19 @@ fun MainApp(
                             .size(72.dp)
                     ) {
                         Icon(
-                            Icons.Filled.Chat,
+                            Icons.AutoMirrored.Filled.Chat,
                             contentDescription = "New Journal Entry",
                             modifier = Modifier.size(24.dp)
                         )
                     }
+                }
+
+
+                if (showBirthdayEasterEgg) {
+                    com.baverika.r_journal.ui.components.BirthdayEasterEggOverlay(
+                        age = userAge,
+                        onFinished = { mainViewModel.markBirthdayShown() }
+                    )
                 }
             }
         }
@@ -477,7 +701,7 @@ fun DrawerContent(
             onClick = { onScreenSelected("archive") }
         )
         DrawerItem(
-            icon = Icons.Filled.Note,
+            icon = Icons.AutoMirrored.Filled.Note,
             label = "Notes",
             isSelected = currentRoute == "quick_notes",
             onClick = { onScreenSelected("quick_notes") }
@@ -495,6 +719,24 @@ fun DrawerContent(
             onClick = { onScreenSelected("habits") }
         )
         DrawerItem(
+            icon = Icons.Filled.DateRange, 
+            label = "Life Tracker",
+            isSelected = currentRoute == "life_trackers",
+            onClick = { onScreenSelected("life_trackers") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.Checklist,
+            label = "Tasks",
+            isSelected = currentRoute == "tasks",
+            onClick = { onScreenSelected("tasks") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.FormatQuote,
+            label = "Quotes",
+            isSelected = currentRoute == "quotes",
+            onClick = { onScreenSelected("quotes") }
+        )
+        DrawerItem(
             icon = Icons.Filled.CalendarMonth,
             label = "Calendar",
             isSelected = currentRoute == "calendar",
@@ -502,7 +744,15 @@ fun DrawerContent(
         )
 
         DrawerItem(
+            icon = Icons.Filled.VpnKey,
+            label = "Password Generator",
+            isSelected = currentRoute == "password_generator",
+            onClick = { onScreenSelected("password_generator") }
+        )
+
+        DrawerItem(
             icon = Icons.Filled.Event,
+
             label = "Special Dates",
             isSelected = currentRoute == "events",
             onClick = { onScreenSelected("events") }
@@ -515,7 +765,7 @@ fun DrawerContent(
             onClick = { onScreenSelected("settings") }
         )
 
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         // 🔧 NEW: Server settings item
         DrawerItem(

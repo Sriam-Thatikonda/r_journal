@@ -30,6 +30,10 @@ object ImportUtils {
         uri: Uri,
         journalRepo: JournalRepository,
         quickNoteRepo: QuickNoteRepository,
+        taskRepo: com.baverika.r_journal.repository.TaskRepository,
+        quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
+        lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+        eventRepo: com.baverika.r_journal.repository.EventRepository,
         coroutineScope: CoroutineScope,
         onResult: (Boolean, String) -> Unit
     ) {
@@ -38,7 +42,18 @@ object ImportUtils {
                 val inputStream: InputStream = context.contentResolver.openInputStream(uri)
                     ?: throw Exception("Could not open input stream for URI: $uri")
 
-                importFromInputStream(context, inputStream, uri, journalRepo, quickNoteRepo, onResult)
+                importFromInputStream(
+                    context, 
+                    inputStream, 
+                    uri, 
+                    journalRepo, 
+                    quickNoteRepo, 
+                    taskRepo, 
+                    quoteRepo, 
+                    lifeTrackerRepo, 
+                    eventRepo, 
+                    onResult
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
                 onResult(false, "Failed to open file: ${e.message}")
@@ -52,23 +67,33 @@ object ImportUtils {
         uri: Uri,
         journalRepo: JournalRepository,
         quickNoteRepo: QuickNoteRepository,
+        taskRepo: com.baverika.r_journal.repository.TaskRepository,
+        quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
+        lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+        eventRepo: com.baverika.r_journal.repository.EventRepository,
         onResult: (Boolean, String) -> Unit
     ) {
         try {
             var journalCount = 0
             var quickNoteCount = 0
             var imageCount = 0
+            var taskCount = 0
+            var habitCount = 0
+            var quoteCount = 0
+            var trackerCount = 0
+            var eventCount = 0
 
             // Temporary storage for image files
             val tempImagesDir = File(context.cacheDir, "import_temp_images").apply { mkdirs() }
             val imageMap = mutableMapOf<String, File>() // Map of ZIP path to temp file
+            val gson = com.google.gson.Gson()
 
             ZipInputStream(inputStream).use { zis ->
                 var zipEntry = zis.nextEntry
 
-                // First pass: Extract all images to temp storage
+                // First pass: Extract all images and voice notes to temp storage
                 while (zipEntry != null) {
-                    if (!zipEntry.isDirectory && zipEntry.name.startsWith("images/")) {
+                    if (!zipEntry.isDirectory && (zipEntry.name.startsWith("images/") || zipEntry.name.startsWith("voice_notes/"))) {
                         try {
                             val tempFile = File(tempImagesDir, File(zipEntry.name).name)
                             FileOutputStream(tempFile).use { fos ->
@@ -84,32 +109,98 @@ object ImportUtils {
                 }
             }
 
-            // Second pass: Process markdown files and restore images
+            // Second pass: Process markdown and JSON files
             context.contentResolver.openInputStream(uri)?.use { secondStream ->
                 ZipInputStream(secondStream).use { zis ->
                     var zipEntry = zis.nextEntry
 
                     while (zipEntry != null) {
-                        if (!zipEntry.isDirectory && zipEntry.name.endsWith(".md")) {
-                            val content = zis.bufferedReader().readText()
+                        if (!zipEntry.isDirectory) {
+                            if (zipEntry.name.endsWith(".md")) {
+                                val content = zis.bufferedReader().readText()
 
-                            when {
-                                zipEntry.name.contains("journals/") -> {
-                                    val entry = parseJournalEntryMarkdown(
-                                        context,
-                                        content,
-                                        imageMap
-                                    )
-                                    entry?.let {
-                                        journalRepo.upsertEntry(it)
-                                        journalCount++
+                                when {
+                                    zipEntry.name.contains("journals/") -> {
+                                        val entry = parseJournalEntryMarkdown(
+                                            context,
+                                            content,
+                                            imageMap
+                                        )
+                                        entry?.let {
+                                            journalRepo.upsertEntry(it)
+                                            journalCount++
+                                        }
+                                    }
+                                    zipEntry.name.contains("quick_notes/") -> {
+                                        val note = parseQuickNoteMarkdown(content)
+                                        note?.let {
+                                            quickNoteRepo.upsertNote(it)
+                                            quickNoteCount++
+                                        }
                                     }
                                 }
-                                zipEntry.name.contains("quick_notes/") -> {
-                                    val note = parseQuickNoteMarkdown(content)
-                                    note?.let {
-                                        quickNoteRepo.upsertNote(it)
-                                        quickNoteCount++
+                            } else if (zipEntry.name.endsWith(".json")) {
+                                val content = zis.bufferedReader().readText()
+                                when {
+                                    zipEntry.name.endsWith("tasks.json") -> {
+                                        val tasks = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Task>::class.java)
+                                        tasks.forEach { taskRepo.insertTask(it) }
+                                        taskCount = tasks.size
+                                    }
+                                    zipEntry.name.endsWith("habits.json") -> {
+                                        val habits = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Habit>::class.java)
+                                        habits.forEach { journalRepo.addHabit(it) } // journalRepo exposes helper for habitDao
+                                        habitCount = habits.size
+                                    }
+                                    zipEntry.name.endsWith("habit_logs.json") -> {
+                                        val logs = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.HabitLog>::class.java)
+                                        logs.forEach { log -> 
+                                            // Manual insert needed as repo toggle is high level
+                                            // We need direct DAO access or exposing a method.
+                                            // JournalRepository has toggleHabitCompletion but it takes params.
+                                            // Let's assume we can add a method or use toggle if we decompose.
+                                            // Actually, the repo has `insertHabitLog` via `toggleHabitCompletion` internal logic.
+                                            // Better to add `insertHabitLog` to repo or just use toggle carefully.
+                                            // However, `toggleHabitCompletion` logic is: insert if true, delete if false.
+                                            // Logs are only stored for completed habits. So we can just call the insert logic. 
+                                            // But `JournalRepository` doesn't expose raw insert.
+                                            // Using `toggleHabitCompletion(log.habitId, log.dateMillis, true)` works.
+                                            journalRepo.toggleHabitCompletion(log.habitId, log.dateMillis, true)
+                                        }
+                                    }
+                                    zipEntry.name.endsWith("quotes.json") -> {
+                                        val quotes = gson.fromJson(content, Array<com.baverika.r_journal.quotes.data.QuoteEntity>::class.java)
+                                        quotes.forEach { 
+                                            // Check existence to avoid overwrite loop/dupes if needed, 
+                                            // or just insert. QuoteEntity has auto-inc ID, so if ID is 0 it generates new.
+                                            // If importing with IDs, we might want conflicts replace.
+                                            // Dao uses default or explicit.
+                                            // To preserve IDs, we should use the ID from JSON.
+                                            if (it.id > 0) {
+                                                // We can use a direct insert or update. 
+                                                // QuoteRepository exposes `insertQuote` and `updateQuote`.
+                                                // insertQuote checks for conflict REPLACE usually? The Dao has @Insert(onConflict = REPLACE) ?
+                                                // Let's assume insertQuote is fine.
+                                                quoteRepo.insertQuote(it)
+                                            } else {
+                                                quoteRepo.insertQuote(it)
+                                            }
+                                        }
+                                        quoteCount = quotes.size
+                                    }
+                                    zipEntry.name.endsWith("life_trackers.json") -> {
+                                        val trackers = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.LifeTracker>::class.java)
+                                        trackers.forEach { lifeTrackerRepo.insertTracker(it) }
+                                        trackerCount = trackers.size
+                                    }
+                                    zipEntry.name.endsWith("life_tracker_entries.json") -> {
+                                        val entries = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.LifeTrackerEntry>::class.java)
+                                        entries.forEach { lifeTrackerRepo.insertEntry(it) }
+                                    }
+                                    zipEntry.name.endsWith("events.json") -> {
+                                        val events = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Event>::class.java)
+                                        events.forEach { eventRepo.insertEvent(it) }
+                                        eventCount = events.size
                                     }
                                 }
                             }
@@ -124,7 +215,7 @@ object ImportUtils {
 
             onResult(
                 true,
-                "Successfully imported $journalCount journals, $quickNoteCount notes, and $imageCount images"
+                "Imported: $journalCount journals, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount trackers, $eventCount events"
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -225,6 +316,32 @@ object ImportUtils {
                             val lastMessage = messages.last()
                             messages[messages.lastIndex] = lastMessage.copy(
                                 imageUri = permanentFile.absolutePath
+                            )
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+
+                // Check for voice note reference
+                val voiceRegex = Regex("""🎤 \[Voice Note - (\d+)s\]\(\.\.\/\.\.\/voice_notes\/${localDate}\/(.+)\)""")
+                val voiceMatch = voiceRegex.find(line)
+
+                if (voiceMatch != null && messages.isNotEmpty()) {
+                    val durationSec = voiceMatch.groupValues[1].toLongOrNull() ?: 0L
+                    val voiceName = voiceMatch.groupValues[2]
+                    val zipVoicePath = "voice_notes/${localDate}/$voiceName"
+
+                    val voiceStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+                    imageMap[zipVoicePath]?.let { tempVoiceFile ->
+                        try {
+                            val permanentFile = File(voiceStorageDir, voiceName)
+                            tempVoiceFile.copyTo(permanentFile, overwrite = true)
+
+                            val lastMessage = messages.last()
+                            messages[messages.lastIndex] = lastMessage.copy(
+                                voiceNoteUri = permanentFile.absolutePath,
+                                voiceNoteDuration = durationSec * 1000
                             )
                         } catch (e: Exception) {
                             e.printStackTrace()

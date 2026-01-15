@@ -95,10 +95,23 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.ui.draw.alpha
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.paint
+import androidx.compose.ui.draw.blur
 
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.EventType
+import com.baverika.r_journal.ui.components.RecordingIndicator
+import com.baverika.r_journal.ui.components.VoiceNotePlayer
+import com.baverika.r_journal.utils.VoiceRecorderHelper
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -319,16 +332,27 @@ fun ChatBubble(
                     }
                 }
 
+                // voice note
+                message.voiceNoteUri?.let { voicePath ->
+                    VoiceNotePlayer(
+                        filePath = voicePath,
+                        durationMs = message.voiceNoteDuration,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        isUserMessage = isUser
+                    )
+                }
+
                 // text
                 if (message.content.isNotBlank()) {
+                    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
                     Surface(
                         shape = MaterialTheme.shapes.medium,
-                        color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (isBlueSky) Color.Black.copy(alpha = 0.6f) else if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         M3Text(
                             text = message.content,
-                            color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            color = if (isBlueSky) Color.White else if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -426,6 +450,87 @@ fun ChatInputScreen(
             selectedImageUris = selectedImageUris + uris
         }
     }
+
+    // Voice Recording States
+    var isRecording by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0L) }
+    
+    val voiceRecorder = remember {
+        VoiceRecorderHelper(context).apply {
+            onRecordingComplete = { path, duration ->
+                viewModel.addVoiceNoteMessage(path, duration, replyToMessage)
+                replyToMessage = null
+                isRecording = false
+                isPaused = false
+            }
+            onError = { error ->
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Recording failed: $error")
+                }
+                isRecording = false
+                isPaused = false
+            }
+        }
+    }
+
+    // Microphone permission launcher
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            if (voiceRecorder.startRecording()) {
+                isRecording = true
+                isPaused = false
+                recordingDuration = 0L
+            }
+        } else {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Microphone permission required for voice notes")
+            }
+        }
+    }
+
+    // Lifecycle observer - auto-save recording on pause/stop
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE,
+                Lifecycle.Event.ON_STOP -> {
+                    if (voiceRecorder.isCurrentlyRecording) {
+                        voiceRecorder.forceStopAndSave()
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            voiceRecorder.release()
+        }
+    }
+
+    // Update recording duration
+    LaunchedEffect(isRecording, isPaused) {
+        while (isRecording && !isPaused) {
+            kotlinx.coroutines.delay(100)
+            recordingDuration = voiceRecorder.currentDuration
+        }
+    }
+
+    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isBlueSky) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = R.drawable.bg_journal_archive),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().blur(6.dp),
+                contentScale = ContentScale.Crop
+            )
+        }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -671,6 +776,33 @@ fun ChatInputScreen(
                     }
                 }
 
+                // Voice Recording Indicator
+                if (isRecording) {
+                    RecordingIndicator(
+                        durationMs = recordingDuration,
+                        isPaused = isPaused,
+                        onPause = {
+                            if (voiceRecorder.pauseRecording()) {
+                                isPaused = true
+                            }
+                        },
+                        onResume = {
+                            if (voiceRecorder.resumeRecording()) {
+                                isPaused = false
+                            }
+                        },
+                        onStop = {
+                            voiceRecorder.stopAndSave()
+                        },
+                        onCancel = {
+                            voiceRecorder.cancelRecording()
+                            isRecording = false
+                            isPaused = false
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -690,8 +822,41 @@ fun ChatInputScreen(
                             )
                         },
                         maxLines = 5,
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(24.dp),
+                        enabled = !isRecording
                     )
+
+                    // Mic button (hidden while recording)
+                    if (!isRecording) {
+                        IconButton(
+                            onClick = {
+                                when (PackageManager.PERMISSION_GRANTED) {
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) -> {
+                                        if (voiceRecorder.startRecording()) {
+                                            isRecording = true
+                                            isPaused = false
+                                            recordingDuration = 0L
+                                        }
+                                    }
+                                    else -> micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.tertiaryContainer,
+                                    CircleShape
+                                )
+                        ) {
+                            M3Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Voice Note",
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+
+                        Spacer(Modifier.width(8.dp))
+                    }
 
                     IconButton(
                         onClick = { showMediaPicker = true },
@@ -700,14 +865,15 @@ fun ChatInputScreen(
                             .background(
                                 MaterialTheme.colorScheme.secondaryContainer,
                                 CircleShape
-                            )
+                            ),
+                        enabled = !isRecording
                     ) {
                         M3Icon(imageVector = Icons.Default.Image, contentDescription = "Attach Image")
                     }
 
                     Spacer(Modifier.width(8.dp))
 
-                    val isEnabled = textFieldValue.text.isNotBlank() || selectedImageUris.isNotEmpty()
+                    val isEnabled = (textFieldValue.text.isNotBlank() || selectedImageUris.isNotEmpty()) && !isRecording
                     
                     val sendScale by animateFloatAsState(
                         targetValue = if (isEnabled) 1.1f else 1.0f,
@@ -980,7 +1146,10 @@ fun ChatInputScreen(
             }
         )
     }
+    }
 }
+
+// helper
 
 // helper
 fun createTempImageFile(context: android.content.Context): File {
