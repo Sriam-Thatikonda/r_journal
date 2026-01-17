@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+import com.baverika.r_journal.repository.PasswordRepository
 import com.baverika.r_journal.utils.ExportUtils
 import com.baverika.r_journal.utils.PdfExportUtils
 import kotlinx.coroutines.launch
@@ -28,7 +29,9 @@ fun ExportScreen(
     taskRepo: com.baverika.r_journal.repository.TaskRepository,
     quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
     lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+
     eventRepo: com.baverika.r_journal.repository.EventRepository,
+    passwordRepo: PasswordRepository,
     context: Context
 ) {
     val journals by journalRepo.allEntries.collectAsState(initial = emptyList())
@@ -40,6 +43,7 @@ fun ExportScreen(
     val lifeTrackers by lifeTrackerRepo.allTrackers.collectAsState(initial = emptyList())
     val lifeTrackerEntries by lifeTrackerRepo.allEntries.collectAsState(initial = emptyList())
     val events by eventRepo.allEvents.collectAsState(initial = emptyList())
+    val passwords by passwordRepo.allPasswords.collectAsState(initial = emptyList())
 
     val scope = rememberCoroutineScope()
     var isExporting by remember { mutableStateOf(false) }
@@ -74,7 +78,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Exporting ${journals.size} journals, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} trackers, and ${events.size} events",
+                        text = "Exporting ${journals.size} journals, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} trackers, ${events.size} events, and ${passwords.size} passwords",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -228,6 +232,17 @@ fun ExportScreen(
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${passwords.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Passwords",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(
@@ -277,7 +292,8 @@ fun ExportScreen(
                                     quotes,
                                     lifeTrackers,
                                     lifeTrackerEntries,
-                                    events
+                                    events,
+                                    passwords
                                 )
                                 isExporting = false
                                 exportSuccess = success

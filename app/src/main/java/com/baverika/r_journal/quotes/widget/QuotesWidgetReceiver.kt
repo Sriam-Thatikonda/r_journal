@@ -9,7 +9,6 @@ import android.content.Intent
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
-import com.baverika.r_journal.MainActivity
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.database.JournalDatabase
 import com.baverika.r_journal.quotes.data.QuoteRepository

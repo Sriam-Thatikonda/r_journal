@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
@@ -41,6 +44,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -80,7 +85,8 @@ import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import com.baverika.r_journal.utils.PassphraseGenerator
-import com.baverika.r_journal.utils.PasswordSecurityUtils
+import com.baverika.r_journal.utils.SecurityUtils
+
 import androidx.compose.runtime.mutableIntStateOf
 
 @Composable
@@ -93,6 +99,7 @@ fun PasswordGeneratorScreen(
     var siteName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
@@ -236,55 +243,102 @@ fun PasswordGeneratorScreen(
                                 lineHeight = 32.sp
                             )
                             
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(32.dp))
                             
-                            // Control Toolbar
+                            // Control Toolbar (Compact & Grouped)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Length Selector
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        "Suffix:", 
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                // Grouped Suffix Selector [- 4 +]
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.height(50.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    ) {
+                                        IconButton(
+                                            onClick = { if (numberLength > 2) numberLength-- },
+                                            modifier = Modifier.size(44.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Remove,
+                                                contentDescription = "Decrease length",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .width(32.dp)
+                                                .fillMaxHeight(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = numberLength.toString(),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = { if (numberLength < 6) numberLength++ },
+                                            modifier = Modifier.size(44.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Increase length",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Refresh Button (Rectangular & Weighted)
+                                FilledTonalButton(
+                                    onClick = {
+                                        generatedPassword = PassphraseGenerator.generate(numberLength)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(50.dp),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    CompactWheelPicker(
-                                        label = "", // Hidden label, inline
-                                        value = numberLength,
-                                        onValueChange = { numberLength = it },
-                                        range = 2..6
+                                    Text(
+                                        text = "",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
 
-                                // Action Buttons
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    IconButton(
-                                        onClick = {
-                                            generatedPassword = PassphraseGenerator.generate(numberLength)
-                                        },
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(MaterialTheme.colorScheme.surface, CircleShape)
-                                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha=0.2f), CircleShape)
-                                    ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = "Regenerate", tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                    
-                                    IconButton(
-                                        onClick = {
-                                            clipboardManager.setText(AnnotatedString(generatedPassword))
-                                            Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(MaterialTheme.colorScheme.primary, CircleShape)
-                                    ) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onPrimary)
-                                    }
+                                // Copy Button (Rectangular Shape)
+                                FilledIconButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(generatedPassword))
+                                        Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.size(50.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = "Copy"
+                                    )
                                 }
                             }
                         }
@@ -292,10 +346,11 @@ fun PasswordGeneratorScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Save Button
+
                         Button(
                             onClick = {
                                 if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
-                                    val securePassword = PasswordSecurityUtils.hashPassword(generatedPassword)
+                                    val securePassword = SecurityUtils.encrypt(generatedPassword)
                                     viewModel.addPassword(siteName.trim(), username.trim(), securePassword)
                                     siteName = ""
                                     username = ""
@@ -355,6 +410,8 @@ fun PasswordGeneratorScreen(
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }
 }
+
+
 
 @Composable
 private fun CompactWheelPicker(
@@ -488,8 +545,14 @@ private fun PasswordListItem(
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    
+    // Decrypt the password for display
+    val decryptedPassword = remember(password.passwordValue) {
+        SecurityUtils.decrypt(password.passwordValue)
+    }
 
     // Delete Confirmation Dialog
     if (showDeleteConfirmation) {
@@ -563,8 +626,9 @@ private fun PasswordListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
+                // Use decryptedPassword for display
                 Text(
-                    text = if (isVisible) password.passwordValue else "•".repeat(password.passwordValue.length.coerceAtMost(16)),
+                    text = if (isVisible) decryptedPassword else "•".repeat(12),
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.primary,
@@ -585,7 +649,8 @@ private fun PasswordListItem(
                 }
                 IconButton(
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(password.passwordValue))
+                        // Copy decrypted password
+                        clipboardManager.setText(AnnotatedString(decryptedPassword))
                         Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.size(36.dp)

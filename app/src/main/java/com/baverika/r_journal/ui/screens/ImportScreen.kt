@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+import com.baverika.r_journal.repository.PasswordRepository
 import com.baverika.r_journal.utils.DbRestoreUtils
 import com.baverika.r_journal.utils.ImportUtils
 import kotlinx.coroutines.launch
@@ -33,7 +34,8 @@ fun ImportScreen(
     taskRepo: com.baverika.r_journal.repository.TaskRepository,
     quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
     lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
-    eventRepo: com.baverika.r_journal.repository.EventRepository
+    eventRepo: com.baverika.r_journal.repository.EventRepository,
+    passwordRepo: PasswordRepository
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -65,6 +67,7 @@ fun ImportScreen(
                 quoteRepo = quoteRepo,
                 lifeTrackerRepo = lifeTrackerRepo,
                 eventRepo = eventRepo,
+                passwordRepo = passwordRepo,
                 coroutineScope = scope
             ) { success, message ->
                 isImporting = false

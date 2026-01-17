@@ -6,11 +6,16 @@ import android.app.Application
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
+//import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Note
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +56,13 @@ import com.baverika.r_journal.ui.viewmodel.PasswordViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
+    // Define Bottom Navigation Items
+    sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
+        data object Journal : BottomNavItem("archive", Icons.AutoMirrored.Filled.MenuBook, "Journal")
+        data object QuickNotes : BottomNavItem("quick_notes", Icons.AutoMirrored.Filled.Note, "Notes")
+        data object Tasks : BottomNavItem("tasks", Icons.Filled.Checklist, "Tasks")
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -90,23 +102,8 @@ class MainActivity : FragmentActivity() {
 
 
         // Schedule Daily Backup
-        val backupRequest = androidx.work.PeriodicWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>(
-            24, java.util.concurrent.TimeUnit.HOURS
-        ).build()
-
-        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "DailyBackup",
-            androidx.work.ExistingPeriodicWorkPolicy.UPDATE, // Changed to UPDATE to apply new worker changes immediately
-            backupRequest
-        )
-
-        // Trigger an immediate backup to ensure one exists (checking for "ImmediateBackup" uniqueness)
-        val immediateBackup = androidx.work.OneTimeWorkRequestBuilder<com.baverika.r_journal.worker.BackupWorker>().build()
-        androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
-            "ImmediateBackup",
-            androidx.work.ExistingWorkPolicy.KEEP,
-            immediateBackup
-        )
+        // Auto-backup disabled by user request
+        androidx.work.WorkManager.getInstance(this).cancelUniqueWork("DailyBackup")
 
         setContent {
             var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
@@ -299,8 +296,82 @@ fun MainApp(
                         }
                     }
                 )
+            },
+        bottomBar = {
+            val bottomNavItems = listOf(
+                MainActivity.BottomNavItem.Journal,
+                MainActivity.BottomNavItem.QuickNotes,
+                MainActivity.BottomNavItem.Tasks
+            )
+            val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+            
+            if (showBottomBar) {
+                NavigationBar {
+                    val haptic = LocalHapticFeedback.current
+                    bottomNavItems.forEach { item ->
+                        val isSelected = currentRoute == item.route
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) },
+                            selected = isSelected,
+                            alwaysShowLabel = false,
+                            onClick = {
+                                if (currentRoute != item.route) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    navController.navigate(item.route) {
+                                        popUpTo("archive") {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             }
-        ) { padding ->
+        },
+        floatingActionButton = {
+            val fabAction: (() -> Unit)?
+            val fabIcon: ImageVector?
+            val fabDesc: String?
+            
+            when (currentRoute) {
+                "archive" -> {
+                    fabAction = { navController.navigate("chat_input") }
+                    fabIcon = Icons.AutoMirrored.Filled.Chat
+                    fabDesc = "New Journal Entry"
+                }
+                "quick_notes" -> {
+                    fabAction = { navController.navigate("new_quick_note") }
+                    fabIcon = Icons.Filled.Add
+                    fabDesc = "New Quick Note"
+                }
+                "tasks" -> {
+                    fabAction = { navController.navigate("add_task") }
+                    fabIcon = Icons.Filled.Add
+                    fabDesc = "New Task"
+                }
+                else -> {
+                    fabAction = null
+                    fabIcon = null
+                    fabDesc = null
+                }
+            }
+
+            if (fabAction != null && fabIcon != null) {
+                FloatingActionButton(
+                    onClick = fabAction,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = androidx.compose.foundation.shape.CircleShape
+                ) {
+                    Icon(fabIcon, contentDescription = fabDesc)
+                }
+            }
+        }
+    ) { padding ->
             Box(
                 modifier = Modifier
                     .padding(padding)
@@ -385,7 +456,9 @@ fun MainApp(
                             taskRepo = taskRepo,
                             quoteRepo = quoteRepo,
                             lifeTrackerRepo = lifeTrackerRepo,
+
                             eventRepo = eventRepo,
+                            passwordRepo = passwordRepo,
                             context = context
                         )
                     }
@@ -398,7 +471,9 @@ fun MainApp(
                             taskRepo = taskRepo,
                             quoteRepo = quoteRepo,
                             lifeTrackerRepo = lifeTrackerRepo,
-                            eventRepo = eventRepo
+
+                            eventRepo = eventRepo,
+                            passwordRepo = passwordRepo
                         )
                     }
 
@@ -642,23 +717,7 @@ fun MainApp(
                     }
                 }
 
-                if (currentRoute == "archive") {
-                    FloatingActionButton(
-                        onClick = { navController.navigate("chat_input") },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 36.dp, bottom = 80.dp)
-                            .size(72.dp)
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Chat,
-                            contentDescription = "New Journal Entry",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+
 
 
                 if (showBirthdayEasterEgg) {
@@ -694,41 +753,12 @@ fun DrawerContent(
     onServerSettingsClick: () -> Unit
 ) {
     Column {
-        DrawerItem(
-            icon = Icons.Filled.Book,
-            label = "Journal Archive",
-            isSelected = currentRoute == "archive",
-            onClick = { onScreenSelected("archive") }
-        )
-        DrawerItem(
-            icon = Icons.AutoMirrored.Filled.Note,
-            label = "Notes",
-            isSelected = currentRoute == "quick_notes",
-            onClick = { onScreenSelected("quick_notes") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.BarChart,
-            label = "Dashboard",
-            isSelected = currentRoute == "dashboard",
-            onClick = { onScreenSelected("dashboard") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.CheckCircle,
-            label = "Habits",
-            isSelected = currentRoute == "habits",
-            onClick = { onScreenSelected("habits") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.DateRange, 
-            label = "Life Tracker",
-            isSelected = currentRoute == "life_trackers",
-            onClick = { onScreenSelected("life_trackers") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Checklist,
-            label = "Tasks",
-            isSelected = currentRoute == "tasks",
-            onClick = { onScreenSelected("tasks") }
+        // Section: Reference
+        Text(
+            text = "Reference",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
         )
         DrawerItem(
             icon = Icons.Filled.FormatQuote,
@@ -737,41 +767,71 @@ fun DrawerContent(
             onClick = { onScreenSelected("quotes") }
         )
         DrawerItem(
+            icon = Icons.Filled.BarChart,
+            label = "Dashboard",
+            isSelected = currentRoute == "dashboard",
+            onClick = { onScreenSelected("dashboard") }
+        )
+        DrawerItem(
             icon = Icons.Filled.CalendarMonth,
             label = "Calendar",
             isSelected = currentRoute == "calendar",
             onClick = { onScreenSelected("calendar") }
         )
 
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Section: Utilities
+        Text(
+            text = "Utilities",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
+        )
         DrawerItem(
             icon = Icons.Filled.VpnKey,
             label = "Password Generator",
             isSelected = currentRoute == "password_generator",
             onClick = { onScreenSelected("password_generator") }
         )
-
         DrawerItem(
             icon = Icons.Filled.Event,
-
             label = "Special Dates",
             isSelected = currentRoute == "events",
             onClick = { onScreenSelected("events") }
         )
+        DrawerItem(
+            icon = Icons.Filled.DateRange, 
+            label = "Life Tracker",
+            isSelected = currentRoute == "life_trackers",
+            onClick = { onScreenSelected("life_trackers") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.CheckCircle,
+            label = "Habits",
+            isSelected = currentRoute == "habits",
+            onClick = { onScreenSelected("habits") }
+        )
 
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Section: System
+        Text(
+            text = "System",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
+        )
         DrawerItem(
             icon = Icons.Filled.Settings,
             label = "Settings",
             isSelected = currentRoute == "settings",
             onClick = { onScreenSelected("settings") }
         )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // 🔧 NEW: Server settings item
         DrawerItem(
             icon = Icons.Filled.Details,
             label = "Server Details",
-            isSelected = false, // not a screen, just a dialog
+            isSelected = false,
             onClick = { onServerSettingsClick() }
         )
 
@@ -813,6 +873,9 @@ fun ServerConfigDialog(
     var text by remember {
         mutableStateOf(ServerPrefs.getHostPort(context))
     }
+    var isSyncEnabled by remember {
+        mutableStateOf(ServerPrefs.isSyncOnOpenEnabled(context))
+    }
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -832,11 +895,37 @@ fun ServerConfigDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                
+                Spacer(Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Sync on Open",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Automatically sync with server when opening Today's entry",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = isSyncEnabled,
+                        onCheckedChange = { isSyncEnabled = it }
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
+                    // Save sync preference immediately here (since onSave only takes string)
+                    ServerPrefs.setSyncOnOpenEnabled(context, isSyncEnabled)
                     onSave(text)
                 }
             ) {

@@ -12,16 +12,4 @@ data class ChatMessage(
     val voiceNoteDuration: Long = 0L, // Duration in milliseconds
     val replyToMessageId: String? = null,
     val replyPreview: String? = null
-) {
-    constructor() : this(
-        id = java.util.UUID.randomUUID().toString(),
-        role = "user",
-        content = "",
-        timestamp = System.currentTimeMillis(),
-        imageUri = null,
-        voiceNoteUri = null,
-        voiceNoteDuration = 0L,
-        replyToMessageId = null,
-        replyPreview = null
-    )
-}
+)

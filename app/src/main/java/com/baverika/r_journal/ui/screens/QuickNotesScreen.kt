@@ -51,15 +51,7 @@ fun QuickNotesScreen(
 
     Scaffold(
         // No TopAppBar - direct content
-        floatingActionButton = {
-            if (!isEditing) {
-                FloatingActionButton(
-                    onClick = { navController.navigate("new_quick_note") }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Quick Note")
-                }
-            }
-        }
+
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             // --- Main List Content ---

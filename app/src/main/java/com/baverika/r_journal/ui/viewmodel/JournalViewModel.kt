@@ -4,7 +4,9 @@ package com.baverika.r_journal.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -48,6 +50,7 @@ class JournalViewModel(
 
     // Track if current entry is today
     val isCurrentEntryToday: Boolean
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         get() = JournalEntry.isToday(currentEntry.dateMillis)
 
     // Track if mood can be edited (Allowed for all entries now)
@@ -76,12 +79,14 @@ class JournalViewModel(
 
             // 2) merge with server (site ➜ app)
             // This happens silently in background while user sees local data
-            val merged = repo.syncTodayFromServer(currentEntry)
-            if (merged != null) {
-                currentEntry = merged
-
-                Log.d("VM", "Loaded entry messages (MERGED): " +
-                        merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
+            if (com.baverika.r_journal.data.remote.ServerPrefs.isSyncOnOpenEnabled(appContext)) {
+                val merged = repo.syncTodayFromServer(currentEntry)
+                if (merged != null) {
+                    currentEntry = merged
+    
+                    Log.d("VM", "Loaded entry messages (MERGED): " +
+                            merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
+                }
             }
 
             // 3) Load events for today
@@ -191,10 +196,16 @@ class JournalViewModel(
             val imageFile = File(storageDir, fileName)
 
             // Load and compress the image
-            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(
-                appContext.contentResolver,
-                imageUri
-            )
+            val bitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val source = android.graphics.ImageDecoder.createSource(appContext.contentResolver, imageUri)
+                android.graphics.ImageDecoder.decodeBitmap(source)
+            } else {
+                @Suppress("DEPRECATION")
+                android.provider.MediaStore.Images.Media.getBitmap(
+                    appContext.contentResolver,
+                    imageUri
+                )
+            }
 
             // Calculate scaled dimensions (max 1024px on longest side)
             val maxDimension = 1024

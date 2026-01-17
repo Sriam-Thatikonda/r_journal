@@ -19,4 +19,16 @@ object ServerPrefs {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putString(KEY_HOST_PORT, hostPort.trim()).apply()
     }
+
+    private const val KEY_SYNC_ON_OPEN = "sync_on_open"
+
+    fun isSyncOnOpenEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_SYNC_ON_OPEN, true)
+    }
+
+    fun setSyncOnOpenEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_SYNC_ON_OPEN, enabled).apply()
+    }
 }

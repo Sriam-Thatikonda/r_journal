@@ -67,11 +67,3 @@ data class TaskCategory(
     val icon: String = "folder",          // Icon name for the category
     val createdAt: Long = System.currentTimeMillis()
 )
-
-/**
- * Data class for Task with Category information (for JOIN queries).
- */
-data class TaskWithCategory(
-    val task: Task,
-    val category: TaskCategory?
-)

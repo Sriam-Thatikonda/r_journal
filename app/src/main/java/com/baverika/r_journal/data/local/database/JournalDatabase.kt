@@ -64,33 +64,12 @@ abstract class JournalDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: JournalDatabase? = null
 
-        val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                // Migration logic for version 1 to 2
-            }
-        }
-
-        val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                 // Migration logic for version 2 to 3
-            }
-        }
-
-        val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                 // Migration logic for version 3 to 4
-            }
-        }
-
-        val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                 // Migration logic for version 4 to 5
-            }
-        }
+        // Migrations 1-4 are imported from Migrations.kt
+        // (MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         val MIGRATION_5_6 = object : Migration(5, 6) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `events` (
                         `id` TEXT NOT NULL, 
@@ -108,9 +87,9 @@ abstract class JournalDatabase : RoomDatabase() {
         }
 
         val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Create Habits table
-                database.execSQL(
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `habits` (
                         `id` TEXT NOT NULL, 
@@ -126,7 +105,7 @@ abstract class JournalDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
                 // Create HabitLogs table
-                database.execSQL(
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `habit_logs` (
                         `id` TEXT NOT NULL, 
@@ -140,20 +119,20 @@ abstract class JournalDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
                 // Create Index for HabitLogs
-                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_habit_logs_habitId_dateMillis` ON `habit_logs` (`habitId`, `dateMillis`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_habit_logs_habitId_dateMillis` ON `habit_logs` (`habitId`, `dateMillis`)")
             }
         }
 
         val MIGRATION_7_8 = object : Migration(7, 8) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Add color column to quick_notes table
-                database.execSQL("ALTER TABLE quick_notes ADD COLUMN color INTEGER NOT NULL DEFAULT 4294967295")
+                db.execSQL("ALTER TABLE quick_notes ADD COLUMN color INTEGER NOT NULL DEFAULT 4294967295")
             }
         }
 
         val MIGRATION_8_9 = object : Migration(8, 9) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `passwords` (
                         `id` TEXT NOT NULL, 
@@ -170,9 +149,9 @@ abstract class JournalDatabase : RoomDatabase() {
         }
 
         val MIGRATION_9_10 = object : Migration(9, 10) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Create quotes table for Motivational Quotes feature
-                database.execSQL(
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `quotes` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -187,9 +166,9 @@ abstract class JournalDatabase : RoomDatabase() {
         }
 
         val MIGRATION_10_11 = object : Migration(10, 11) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Create task_categories table
-                database.execSQL(
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `task_categories` (
                         `id` TEXT NOT NULL,
@@ -203,7 +182,7 @@ abstract class JournalDatabase : RoomDatabase() {
                 )
 
                 // Create tasks table
-                database.execSQL(
+                db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `tasks` (
                         `id` TEXT NOT NULL,
@@ -225,14 +204,14 @@ abstract class JournalDatabase : RoomDatabase() {
                 )
 
                 // Create index for categoryId
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_categoryId` ON `tasks` (`categoryId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_categoryId` ON `tasks` (`categoryId`)")
             }
         }
 
         val MIGRATION_11_12 = object : Migration(11, 12) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Create life_trackers table
-                database.execSQL("""
+                db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `life_trackers` (
                         `id` TEXT NOT NULL,
                         `name` TEXT NOT NULL,
@@ -244,7 +223,7 @@ abstract class JournalDatabase : RoomDatabase() {
                 """.trimIndent())
 
                 // Create life_tracker_entries table
-                database.execSQL("""
+                db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `life_tracker_entries` (
                         `id` TEXT NOT NULL,
                         `trackerId` TEXT NOT NULL,
@@ -257,7 +236,7 @@ abstract class JournalDatabase : RoomDatabase() {
                 """.trimIndent())
                 
                 // Create index for entries
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_life_tracker_entries_trackerId` ON `life_tracker_entries` (`trackerId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_life_tracker_entries_trackerId` ON `life_tracker_entries` (`trackerId`)")
             }
         }
 

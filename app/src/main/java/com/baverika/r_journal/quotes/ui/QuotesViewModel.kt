@@ -1,6 +1,8 @@
 package com.baverika.r_journal.quotes.ui
 
+import android.app.Application
 import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -29,9 +31,9 @@ data class QuotesUiState(
  * Handles CRUD operations and widget updates.
  */
 class QuotesViewModel(
-    private val repository: QuoteRepository,
-    private val context: Context
-) : ViewModel() {
+    application: Application,
+    private val repository: QuoteRepository
+) : AndroidViewModel(application) {
 
     // All quotes (including inactive) - for display in list
     val allQuotes: StateFlow<List<QuoteEntity>> = repository.getAllQuotes()
@@ -64,7 +66,7 @@ class QuotesViewModel(
                     errorMessage = null
                 )
                 // Update widget after adding a quote
-                QuotesWidgetUpdater.updateWidget(context)
+                QuotesWidgetUpdater.updateWidget(getApplication())
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -98,7 +100,7 @@ class QuotesViewModel(
                     errorMessage = null
                 )
                 // Update widget after editing a quote
-                QuotesWidgetUpdater.updateWidget(context)
+                QuotesWidgetUpdater.updateWidget(getApplication())
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -116,7 +118,7 @@ class QuotesViewModel(
             try {
                 repository.toggleQuoteActive(quote.id, !quote.isActive)
                 // Update widget when quote status changes
-                QuotesWidgetUpdater.updateWidget(context)
+                QuotesWidgetUpdater.updateWidget(getApplication())
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "Failed to update quote: ${e.message}"
@@ -133,7 +135,7 @@ class QuotesViewModel(
             try {
                 repository.deleteQuote(quote)
                 // Update widget after deletion
-                QuotesWidgetUpdater.updateWidget(context)
+                QuotesWidgetUpdater.updateWidget(getApplication())
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     errorMessage = "Failed to delete quote: ${e.message}"
@@ -187,7 +189,7 @@ class QuotesViewModel(
      */
     fun refreshWidget() {
         viewModelScope.launch {
-            QuotesWidgetUpdater.updateWidget(context)
+            QuotesWidgetUpdater.updateWidget(getApplication())
         }
     }
 }
@@ -202,7 +204,7 @@ class QuotesViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(QuotesViewModel::class.java)) {
-            return QuotesViewModel(repository, context.applicationContext) as T
+            return QuotesViewModel(context.applicationContext as Application, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

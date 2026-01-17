@@ -3,9 +3,12 @@
 package com.baverika.r_journal.utils
 
 import android.content.Context
+import android.os.Build
 import android.os.Environment
+import androidx.annotation.RequiresApi
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.local.entity.QuickNote
+import com.baverika.r_journal.data.local.entity.Password
 import java.io.File
 import java.io.FileInputStream
 import java.time.LocalDateTime
@@ -20,6 +23,7 @@ object ExportUtils {
      * Exports all journal entries and quick notes to a single organized ZIP file.
      * Includes images in organized folders.
      */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     fun exportAll(
         context: Context,
         journals: List<JournalEntry>,
@@ -30,7 +34,9 @@ object ExportUtils {
         quotes: List<com.baverika.r_journal.quotes.data.QuoteEntity>,
         lifeTrackers: List<com.baverika.r_journal.data.local.entity.LifeTracker>,
         lifeTrackerEntries: List<com.baverika.r_journal.data.local.entity.LifeTrackerEntry>,
-        events: List<com.baverika.r_journal.data.local.entity.Event>
+
+        events: List<com.baverika.r_journal.data.local.entity.Event>,
+        passwords: List<Password>
     ): Pair<Boolean, String?> {
         return try {
             // 1. Determine export directory
@@ -155,6 +161,28 @@ object ExportUtils {
                     zos.closeEntry()
                 }
 
+                // Export Passwords (JSON) - DECRYPTED for portability
+                if (passwords.isNotEmpty()) {
+                    try {
+                        // We must decrypt for the export to be useful on other devices
+                        // WARNING: This puts plain text passwords in the JSON
+                        val exportablePasswords = passwords.map { 
+                            // Try to decrypt; if fails, keep original (might already be plain or broken)
+                            val decoded = try {
+                                SecurityUtils.decrypt(it.passwordValue)
+                            } catch (e: Exception) {
+                                it.passwordValue
+                            }
+                            it.copy(passwordValue = decoded)
+                        }
+                        zos.putNextEntry(ZipEntry("data/passwords.json"))
+                        zos.write(gson.toJson(exportablePasswords).toByteArray())
+                        zos.closeEntry()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
                 // Add a README file
                 val readme = buildReadme(
                     journals.size, 
@@ -163,7 +191,9 @@ object ExportUtils {
                     habits.size, 
                     quotes.size,
                     lifeTrackers.size,
-                    events.size
+
+                    events.size,
+                    passwords.size
                 )
                 zos.putNextEntry(ZipEntry("README.txt"))
                 zos.write(readme.toByteArray())
@@ -177,6 +207,7 @@ object ExportUtils {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun buildJournalEntryMarkdown(entry: JournalEntry): String {
         return buildString {
             append("---\n")
@@ -244,7 +275,9 @@ object ExportUtils {
         habitCount: Int, 
         quoteCount: Int,
         trackerCount: Int,
-        eventCount: Int
+
+        eventCount: Int,
+        passwordCount: Int
     ): String {
         return """
             R-Journal Export
@@ -259,7 +292,9 @@ object ExportUtils {
             - $habitCount habits
             - $quoteCount quotes
             - $trackerCount life trackers
+
             - $eventCount special dates/events
+            - $passwordCount passwords (CAUTION: Exported unencrypted inside this archive)
             
             Structure:
             /data
@@ -271,7 +306,9 @@ object ExportUtils {
               quotes.json           - All quotes in JSON format
               life_trackers.json    - All life trackers in JSON format
               life_tracker_entries.json - All life tracker entries in JSON format
+
               events.json           - All special dates/events in JSON format
+              passwords.json        - All saved passwords in JSON format
             /images
               /[date]               - Images organized by journal entry date
             

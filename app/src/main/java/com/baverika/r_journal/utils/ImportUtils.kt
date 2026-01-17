@@ -10,6 +10,9 @@ import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
+import com.baverika.r_journal.repository.PasswordRepository
+import com.baverika.r_journal.data.local.entity.Password
+import com.baverika.r_journal.utils.SecurityUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -33,7 +36,9 @@ object ImportUtils {
         taskRepo: com.baverika.r_journal.repository.TaskRepository,
         quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
         lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+
         eventRepo: com.baverika.r_journal.repository.EventRepository,
+        passwordRepo: PasswordRepository,
         coroutineScope: CoroutineScope,
         onResult: (Boolean, String) -> Unit
     ) {
@@ -51,7 +56,9 @@ object ImportUtils {
                     taskRepo, 
                     quoteRepo, 
                     lifeTrackerRepo, 
-                    eventRepo, 
+
+                    eventRepo,
+                    passwordRepo,
                     onResult
                 )
             } catch (e: Exception) {
@@ -70,7 +77,9 @@ object ImportUtils {
         taskRepo: com.baverika.r_journal.repository.TaskRepository,
         quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
         lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+
         eventRepo: com.baverika.r_journal.repository.EventRepository,
+        passwordRepo: PasswordRepository,
         onResult: (Boolean, String) -> Unit
     ) {
         try {
@@ -81,7 +90,9 @@ object ImportUtils {
             var habitCount = 0
             var quoteCount = 0
             var trackerCount = 0
+
             var eventCount = 0
+            var passwordCount = 0
 
             // Temporary storage for image files
             val tempImagesDir = File(context.cacheDir, "import_temp_images").apply { mkdirs() }
@@ -202,6 +213,19 @@ object ImportUtils {
                                         events.forEach { eventRepo.insertEvent(it) }
                                         eventCount = events.size
                                     }
+
+                                    zipEntry.name.endsWith("passwords.json") -> {
+                                        val passwords = gson.fromJson(content, Array<Password>::class.java)
+                                        passwords.forEach { 
+                                            // The exported password is in PLAIN TEXT (decrypted).
+                                            // We must ENCRYPT it before saving to the new database.
+                                            val encryptedPassword = it.copy(
+                                                passwordValue = SecurityUtils.encrypt(it.passwordValue)
+                                            )
+                                            passwordRepo.insertPassword(encryptedPassword) 
+                                        }
+                                        passwordCount = passwords.size
+                                    }
                                 }
                             }
                         }
@@ -215,7 +239,7 @@ object ImportUtils {
 
             onResult(
                 true,
-                "Imported: $journalCount journals, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount trackers, $eventCount events"
+                "Imported: $journalCount journals, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount trackers, $eventCount events, $passwordCount passwords"
             )
         } catch (e: Exception) {
             e.printStackTrace()

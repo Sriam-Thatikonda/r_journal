@@ -1,12 +1,12 @@
 package com.baverika.r_journal.repository
 
 import android.os.Build
-import android.util.Log
+//import android.util.Log
 import androidx.annotation.RequiresApi
 import com.baverika.r_journal.data.local.dao.JournalDao
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.remote.RetrofitClient
-import com.baverika.r_journal.data.remote.toDto
+//import com.baverika.r_journal.data.remote.toDto
 import com.baverika.r_journal.data.remote.toEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate

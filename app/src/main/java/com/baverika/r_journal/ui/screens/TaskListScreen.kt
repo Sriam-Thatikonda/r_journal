@@ -146,15 +146,7 @@ fun TaskListScreen(
                 )
             }
         },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { navController.navigate("add_task") },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add Task") }
-            )
-        },
+
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -192,7 +184,7 @@ fun TaskListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
