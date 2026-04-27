@@ -41,7 +41,7 @@ class EventViewModel(private val repository: EventRepository) : ViewModel() {
         val currentYear = today.year
         var eventDate = LocalDate.of(currentYear, month, day)
 
-        if (eventDate.isBefore(today) || eventDate.isEqual(today)) {
+        if (eventDate.isBefore(today)) {
             eventDate = eventDate.plusYears(1)
         }
 

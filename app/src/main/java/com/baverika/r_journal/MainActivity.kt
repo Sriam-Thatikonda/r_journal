@@ -361,13 +361,13 @@ fun MainApp(
             }
 
             if (fabAction != null && fabIcon != null) {
-                FloatingActionButton(
+                LargeFloatingActionButton(
                     onClick = fabAction,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = androidx.compose.foundation.shape.CircleShape
                 ) {
-                    Icon(fabIcon, contentDescription = fabDesc)
+                    Icon(fabIcon, contentDescription = fabDesc, modifier = Modifier.size(36.dp))
                 }
             }
         }

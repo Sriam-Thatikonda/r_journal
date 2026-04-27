@@ -46,6 +46,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -81,6 +84,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baverika.r_journal.data.local.entity.Password
+import com.baverika.r_journal.data.local.entity.PasswordType // Import added
 import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -89,6 +93,7 @@ import com.baverika.r_journal.utils.SecurityUtils
 
 import androidx.compose.runtime.mutableIntStateOf
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordGeneratorScreen(
     viewModel: PasswordViewModel
@@ -104,6 +109,7 @@ fun PasswordGeneratorScreen(
     val context = LocalContext.current
 
     // Generator State
+    var isPinMode by remember { mutableStateOf(false) }
     var numberLength by remember { mutableIntStateOf(4) }
     
     var generatedPassword by remember { mutableStateOf("") }
@@ -111,12 +117,20 @@ fun PasswordGeneratorScreen(
 
     // Initial load
     LaunchedEffect(Unit) {
-        generatedPassword = PassphraseGenerator.generate(numberLength)
+        generatedPassword = if (isPinMode) {
+             PassphraseGenerator.generatePin(numberLength)
+        } else {
+             PassphraseGenerator.generate(numberLength)
+        }
     }
 
-    // Regenerate when length changes
-    LaunchedEffect(numberLength) {
-        generatedPassword = PassphraseGenerator.generate(numberLength)
+    // Regenerate when length or mode changes
+    LaunchedEffect(numberLength, isPinMode) {
+        generatedPassword = if (isPinMode) {
+             PassphraseGenerator.generatePin(numberLength)
+        } else {
+             PassphraseGenerator.generate(numberLength)
+        }
     }
 
     LazyColumn(
@@ -142,229 +156,205 @@ fun PasswordGeneratorScreen(
             )
         }
 
-        // Generator Card (Collapsible)
+        // Generator Section
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(16.dp)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Header Row
+                // 1. Toggles (Row 1)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FilterChip(
+                        selected = !isPinMode,
+                        onClick = { 
+                            isPinMode = false 
+                            numberLength = 4
+                        },
+                        label = { 
+                            Text(
+                                "Passphrase", 
+                                modifier = Modifier.fillMaxWidth(), 
+                                textAlign = TextAlign.Center
+                            ) 
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = CircleShape,
+                        leadingIcon = { if (!isPinMode) Icon(Icons.Default.Check, null) else null }
+                    )
+                    FilterChip(
+                        selected = isPinMode,
+                        onClick = { 
+                            isPinMode = true 
+                            numberLength = 6
+                        },
+                        label = { 
+                            Text(
+                                "PIN", 
+                                modifier = Modifier.fillMaxWidth(), 
+                                textAlign = TextAlign.Center
+                            ) 
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = CircleShape,
+                        leadingIcon = { if (isPinMode) Icon(Icons.Default.Check, null) else null }
+                    )
+                }
+
+                // 2. Inputs (Row 2)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = siteName,
+                        onValueChange = { siteName = it },
+                        placeholder = { Text("Site / App") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        shape = CircleShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        placeholder = { Text("Username") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        shape = CircleShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+
+                // 3. Generator Card (Standard Theme Box)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) // Subtle card background
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { isGeneratorExpanded = !isGeneratorExpanded },
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Save, // Using Save icon as "Secure" symbol roughly
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "New Secure Credential",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Icon(
-                            if (isGeneratorExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Toggle",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    if (isGeneratorExpanded) {
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Input Fields
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        // Left: Length Picker Strip
+                        val range = if (isPinMode) 4..16 else 2..6
+                        
+                        // Vertical Strip styling for wheel
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface, // Standard surface for contrast
+                            modifier = Modifier.width(48.dp)
                         ) {
-                            OutlinedTextField(
-                                value = siteName,
-                                onValueChange = { siteName = it },
-                                label = { Text("Site / App") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                            OutlinedTextField(
-                                value = username,
-                                onValueChange = { username = it },
-                                label = { Text("Username") },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
+                             // Re-using CompactWheelPicker logic but stripped down visually
+                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 8.dp)) {
+                                 // We use the VerticalWheelPicker directly here for cleaner look in strip
+                                 val items = range.toList()
+                                 VerticalWheelPicker(
+                                     items = items,
+                                     initialIndex = items.indexOf(numberLength).coerceAtLeast(0),
+                                     onValueChange = { numberLength = it },
+                                     itemHeight = 32.dp,
+                                     visibleItems = 5, // Taller strip
+                                     width = 48.dp
+                                 )
+                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Passphrase Display & Actions Container
+                        // Right: Password & Actions
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
-                            // Large Preview
                             Text(
-                                text = generatedPassword.ifEmpty { "—" },
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontFamily = FontFamily.Serif,
+                                text = "Generated password",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            // The Password
+                            Text(
+                                text = generatedPassword.ifEmpty { "..." },
+                                style = MaterialTheme.typography.headlineSmall, // Large text
+                                fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 32.sp
                             )
-                            
-                            Spacer(modifier = Modifier.height(32.dp))
-                            
-                            // Control Toolbar (Compact & Grouped)
+
+                            // Actions Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Grouped Suffix Selector [- 4 +]
-                                Surface(
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    modifier = Modifier.height(50.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 4.dp)
-                                    ) {
-                                        IconButton(
-                                            onClick = { if (numberLength > 2) numberLength-- },
-                                            modifier = Modifier.size(44.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Remove,
-                                                contentDescription = "Decrease length",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        
-                                        Box(
-                                            modifier = Modifier
-                                                .width(32.dp)
-                                                .fillMaxHeight(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = numberLength.toString(),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-
-                                        IconButton(
-                                            onClick = { if (numberLength < 6) numberLength++ },
-                                            modifier = Modifier.size(44.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Add,
-                                                contentDescription = "Increase length",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // Refresh Button (Rectangular & Weighted)
+                                // Regenerate (Pill Button)
                                 FilledTonalButton(
                                     onClick = {
-                                        generatedPassword = PassphraseGenerator.generate(numberLength)
+                                        generatedPassword = if (isPinMode) {
+                                             PassphraseGenerator.generatePin(numberLength)
+                                        } else {
+                                             PassphraseGenerator.generate(numberLength)
+                                        }
                                     },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(50.dp),
-                                    shape = RoundedCornerShape(16.dp)
+                                    modifier = Modifier.height(48.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "",
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Text("Regenerate")
                                 }
+                                
+                                Spacer(modifier = Modifier.width(12.dp))
 
-                                // Copy Button (Rectangular Shape)
+                                // Copy (Circle Button)
                                 FilledIconButton(
                                     onClick = {
                                         clipboardManager.setText(AnnotatedString(generatedPassword))
                                         Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                                     },
-                                    modifier = Modifier.size(50.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    )
+                                    modifier = Modifier.size(48.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "Copy"
-                                    )
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Save Button
-
-                        Button(
-                            onClick = {
-                                if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
-                                    val securePassword = SecurityUtils.encrypt(generatedPassword)
-                                    viewModel.addPassword(siteName.trim(), username.trim(), securePassword)
-                                    siteName = ""
-                                    username = ""
-                                    generatedPassword = PassphraseGenerator.generate(numberLength)
-                                    Toast.makeText(context, "Credential saved securely", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            enabled = siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Save to Vault", style = MaterialTheme.typography.titleSmall)
-                        }
                     }
+                }
+
+                // 4. Save Button (Bottom)
+                Button(
+                    onClick = {
+                        if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
+                            val securePassword = SecurityUtils.encrypt(generatedPassword)
+                            val type = if (isPinMode) PasswordType.PIN else PasswordType.PASSWORD
+                            viewModel.addPassword(siteName.trim(), username.trim(), securePassword, type)
+                            siteName = ""
+                            username = ""
+                            generatedPassword = if (isPinMode) PassphraseGenerator.generatePin(numberLength) else PassphraseGenerator.generate(numberLength)
+                            Toast.makeText(context, "Saved to Vault", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("Save to Vault", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -431,9 +421,10 @@ private fun CompactWheelPicker(
         )
         Spacer(modifier = Modifier.height(4.dp))
         
+        val items = range.toList()
         VerticalWheelPicker(
-            items = range.toList(),
-            initialIndex = value.coerceIn(range),
+            items = items,
+            initialIndex = items.indexOf(value).coerceAtLeast(0),
             onValueChange = onValueChange,
             itemHeight = 28.dp,
             visibleItems = 3,
@@ -458,8 +449,15 @@ private fun VerticalWheelPicker(
     val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
     val fadingEdgeHeight = itemHeight
 
+    // Sync scroll when items/initialIndex change
+    LaunchedEffect(items, initialIndex) {
+        if (listState.firstVisibleItemIndex != initialIndex) {
+            listState.scrollToItem(initialIndex)
+        }
+    }
+
     // Track scroll and update value
-    LaunchedEffect(listState) {
+    LaunchedEffect(listState, items) { // Restart when items change
         snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()
             .collect { index ->
@@ -618,13 +616,29 @@ private fun PasswordListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = password.username,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (password.type == PasswordType.PIN) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.padding(end = 6.dp)
+                        ) {
+                            Text(
+                                text = "PIN",
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                    Text(
+                        text = password.username,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 // Use decryptedPassword for display
                 Text(

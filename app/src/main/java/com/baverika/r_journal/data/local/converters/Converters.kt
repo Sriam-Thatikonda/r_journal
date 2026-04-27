@@ -142,4 +142,17 @@ class Converters {
     fun toTaskPriority(value: String): com.baverika.r_journal.data.local.entity.TaskPriority {
         return com.baverika.r_journal.data.local.entity.TaskPriority.fromString(value)
     }
+
+    // -------------------------------
+    // PasswordType converters
+    // -------------------------------
+    @TypeConverter
+    fun fromPasswordType(type: com.baverika.r_journal.data.local.entity.PasswordType): String {
+        return type.name
+    }
+
+    @TypeConverter
+    fun toPasswordType(value: String): com.baverika.r_journal.data.local.entity.PasswordType {
+        return com.baverika.r_journal.data.local.entity.PasswordType.fromString(value)
+    }
 }

@@ -58,11 +58,11 @@ fun EventsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            LargeFloatingActionButton(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Event")
+                Icon(Icons.Default.Add, contentDescription = "Add Event", modifier = Modifier.size(36.dp))
             }
         }
     ) { padding ->

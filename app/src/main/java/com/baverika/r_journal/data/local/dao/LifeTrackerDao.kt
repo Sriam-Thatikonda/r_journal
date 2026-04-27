@@ -18,7 +18,7 @@ interface LifeTrackerDao {
     @Query("SELECT * FROM life_trackers WHERE id = :id")
     fun getTrackerByIdFlow(id: String): Flow<LifeTracker?>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertTracker(tracker: LifeTracker)
 
     @Delete

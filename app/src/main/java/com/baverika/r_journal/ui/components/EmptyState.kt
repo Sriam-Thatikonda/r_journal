@@ -7,7 +7,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
 
 @Composable
 fun EmptyState(
@@ -15,6 +17,9 @@ fun EmptyState(
     title: String,
     message: String,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 120.dp,
+    titleStyle: TextStyle = MaterialTheme.typography.headlineSmall,
+    messageStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     actionLabel: String? = null,
     onActionClick: (() -> Unit)? = null
 ) {
@@ -28,7 +33,7 @@ fun EmptyState(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(120.dp),
+            modifier = Modifier.size(iconSize),
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
         )
 
@@ -36,7 +41,7 @@ fun EmptyState(
 
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = titleStyle,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
@@ -45,7 +50,7 @@ fun EmptyState(
 
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
+            style = messageStyle,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )

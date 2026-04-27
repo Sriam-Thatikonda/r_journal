@@ -114,8 +114,8 @@ fun LifeTrackersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Tracker")
+            LargeFloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Tracker", modifier = Modifier.size(36.dp))
             }
         }
     ) { padding ->
@@ -386,7 +386,7 @@ fun TrackerDialog(
     var selectedIcon by remember { mutableStateOf(tracker?.icon ?: "\uD83D\uDCC5") } // Default Calendar
     var selectedColor by remember { mutableStateOf(tracker?.color ?: 0xFF2196F3) } // Default Blue
     
-    val icons = listOf("⚽", "\uD83D\uDE97", "\uD83D\uDCBB", "\uD83D\uDCAA", "\uD83E\uDE7A", "\uD83D\uDCD6", "\uD83C\uDFA8", "\uD83C\uDFB8", "✂️", "\uD83D\uDEEC")
+    val icons = listOf("⚽", "🚗", "💻", "💪", "🩺", "📚", "🎨", "🎸", "✂️", "🛫", "🍱", "🍺", "🧩")
     val colors = listOf(0xFFF44336, 0xFFE91E63, 0xFF9C27B0, 0xFF673AB7, 0xFF3F51B5, 0xFF2196F3, 0xFF009688, 0xFF4CAF50, 0xFFFFC107, 0xFFFF5722)
 
     AlertDialog(
@@ -402,15 +402,15 @@ fun TrackerDialog(
                 )
                 
                 Text("Icon", style = MaterialTheme.typography.labelLarge)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                   icons.take(5).forEach { icon ->
-                       SelectionChip(selected = selectedIcon == icon, onClick = { selectedIcon = icon }, label = icon)
-                   }
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                   icons.drop(5).forEach { icon ->
-                       SelectionChip(selected = selectedIcon == icon, onClick = { selectedIcon = icon }, label = icon)
-                   }
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    icons.forEach { icon ->
+                        SelectionChip(selected = selectedIcon == icon, onClick = { selectedIcon = icon }, label = icon)
+                    }
                 }
 
                 Text("Color", style = MaterialTheme.typography.labelLarge)

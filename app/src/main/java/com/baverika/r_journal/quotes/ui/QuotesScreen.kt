@@ -49,17 +49,16 @@ fun QuotesScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Refresh Widget FAB (smaller)
-                FloatingActionButton(
+                // Refresh Widget FAB (larger)
+                LargeFloatingActionButton(
                     onClick = { viewModel.refreshWidget() },
-                    modifier = Modifier.size(48.dp),
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
                     Icon(
                         Icons.Default.Refresh,
                         contentDescription = "Refresh Widget",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(36.dp)
                     )
                 }
                 

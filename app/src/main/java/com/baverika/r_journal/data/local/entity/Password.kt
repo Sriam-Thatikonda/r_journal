@@ -12,5 +12,21 @@ data class Password(
     val username: String,
     val passwordValue: String,
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val type: PasswordType = PasswordType.PASSWORD
 )
+
+enum class PasswordType {
+    PASSWORD,
+    PIN;
+
+    companion object {
+        fun fromString(value: String): PasswordType {
+            return try {
+                valueOf(value)
+            } catch (e: IllegalArgumentException) {
+                PASSWORD
+            }
+        }
+    }
+}

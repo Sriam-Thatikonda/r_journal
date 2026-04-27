@@ -57,4 +57,14 @@ object PassphraseGenerator {
 
         return "$adj$secondWord$specialChar$number"
     }
+
+    /**
+     * Generates a numeric PIN of specified length.
+     * @param length The number of digits (4 to 16).
+     */
+    fun generatePin(length: Int): String {
+        return (1..length)
+            .map { (0..9).random() }
+            .joinToString("")
+    }
 }

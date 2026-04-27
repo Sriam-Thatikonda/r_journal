@@ -40,13 +40,14 @@ class PasswordViewModel(private val repository: PasswordRepository) : ViewModel(
         _searchQuery.value = query
     }
 
-    fun addPassword(siteName: String, username: String, passwordValue: String) {
+    fun addPassword(siteName: String, username: String, passwordValue: String, type: com.baverika.r_journal.data.local.entity.PasswordType = com.baverika.r_journal.data.local.entity.PasswordType.PASSWORD) {
         viewModelScope.launch {
             repository.insertPassword(
                 Password(
                     siteName = siteName,
                     username = username,
-                    passwordValue = passwordValue
+                    passwordValue = passwordValue,
+                    type = type
                 )
             )
         }
