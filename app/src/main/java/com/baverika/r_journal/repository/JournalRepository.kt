@@ -171,10 +171,9 @@ class JournalRepository(
                     }
                     .sortedBy { it.timestamp }
 
-                // ✅ Only update messages (and optionally id).
-                //    Mood, tags, imageUris stay exactly as in 'base' (app).
+                // ✅ Only update messages. Keep local id/mood/tags/imageUris intact.
+                //    dateMillis (the PrimaryKey) handles DB uniqueness; id is a stable UUID.
                 val mergedEntry = base.copy(
-                    id = remote.id,          // or keep base.id if you prefer
                     messages = distinctMessages
                     // tags = base.tags
                     // mood = base.mood

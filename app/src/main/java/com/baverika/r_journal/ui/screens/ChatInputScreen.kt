@@ -393,7 +393,12 @@ fun ChatInputScreen(
     val context = LocalContext.current
     var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
-    val hasUnsavedText = textFieldValue.text.trim().isNotEmpty() || selectedImageUris.isNotEmpty()
+    // Voice recording state — declared early so hasUnsavedText can reference it
+    var isRecording by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0L) }
+
+    val hasUnsavedText = textFieldValue.text.trim().isNotEmpty() || selectedImageUris.isNotEmpty() || isRecording
 
     var showExitConfirmation by remember { mutableStateOf(false) }
     var messageActionMenuForId by remember { mutableStateOf<String?>(null) }
@@ -451,10 +456,7 @@ fun ChatInputScreen(
         }
     }
 
-    // Voice Recording States
-    var isRecording by remember { mutableStateOf(false) }
-    var isPaused by remember { mutableStateOf(false) }
-    var recordingDuration by remember { mutableStateOf(0L) }
+    // Voice Recording States (declared above for early use in hasUnsavedText)
     
     val voiceRecorder = remember {
         VoiceRecorderHelper(context).apply {
@@ -630,7 +632,9 @@ fun ChatInputScreen(
                             }
                         )
 
-                        LaunchedEffect(dismissState.currentValue) {
+                        // Keyed on message.id to prevent stale swipe state from re-triggering
+                        // when the LazyColumn recomposes after a message edit or delete.
+                        LaunchedEffect(message.id, dismissState.currentValue) {
                             if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd) {
                                 replyToMessage = message
 

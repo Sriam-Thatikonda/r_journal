@@ -18,12 +18,17 @@ import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.*
 
@@ -44,9 +49,21 @@ class JournalViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Events for the current entry's date
-    private val _todaysEvents = MutableStateFlow<List<Event>>(emptyList())
-    val todaysEvents: StateFlow<List<Event>> = _todaysEvents.asStateFlow()
+    // Tracks the date of the currently displayed entry, used to filter events reactively
+    private val _currentDateMillis = MutableStateFlow(currentEntry.dateMillis)
+
+    // Events for the current entry's date — reactive, no coroutine leak
+    val todaysEvents: StateFlow<List<Event>> = combine(
+        _currentDateMillis,
+        eventRepo.allEvents
+    ) { dateMillis, events ->
+        val date = Instant.ofEpochMilli(dateMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+        events.filter { event ->
+            event.day == date.dayOfMonth && event.month == date.monthValue
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Track if current entry is today
     val isCurrentEntryToday: Boolean
@@ -68,6 +85,7 @@ class JournalViewModel(
                 // 1) get local
                 val local = repo.getOrCreateTodaysEntry()
                 currentEntry = local
+                _currentDateMillis.value = local.dateMillis  // update reactive events filter
 
                 Log.d("VM", "Loaded entry messages (LOCAL): " +
                         local.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
@@ -83,14 +101,11 @@ class JournalViewModel(
                 val merged = repo.syncTodayFromServer(currentEntry)
                 if (merged != null) {
                     currentEntry = merged
-    
+
                     Log.d("VM", "Loaded entry messages (MERGED): " +
                             merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
                 }
             }
-
-            // 3) Load events for today
-            loadEventsForDate(currentEntry.dateMillis)
         }
     }
 
@@ -101,28 +116,13 @@ class JournalViewModel(
                 val entry = repo.getEntryById(entryId)
                 if (entry != null) {
                     currentEntry = entry
+                    _currentDateMillis.value = entry.dateMillis  // update reactive events filter
                 } else {
                     // Entry not found, fallback to today
                     loadTodaysEntry()
                 }
-                // Load events for the loaded entry's date
-                loadEventsForDate(currentEntry.dateMillis)
             } finally {
                 _isLoading.value = false
-            }
-        }
-    }
-
-    private fun loadEventsForDate(dateMillis: Long) {
-        viewModelScope.launch {
-            val date = java.time.Instant.ofEpochMilli(dateMillis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-            
-            eventRepo.allEvents.collect { events ->
-                _todaysEvents.value = events.filter { event ->
-                    event.day == date.dayOfMonth && event.month == date.monthValue
-                }
             }
         }
     }
@@ -256,8 +256,8 @@ class JournalViewModel(
         // Find target message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
 
-        // Only allow editing messages from today
-        if (!isMessageFromToday(message)) return
+        // Only allow editing messages from the current entry's date
+        if (!isMessageFromCurrentEntryDate(message)) return
 
         if (newContent.isBlank()) {
             // If new content empty -> delete
@@ -268,8 +268,8 @@ class JournalViewModel(
         // Update target message content
         val updatedMessages = currentEntry.messages.map { msg ->
             if (msg.id == messageId) {
-                // replace content and timestamp
-                msg.copy(content = newContent, timestamp = System.currentTimeMillis())
+                // replace content, keep original timestamp
+                msg.copy(content = newContent)
             } else {
                 msg
             }
@@ -291,8 +291,8 @@ class JournalViewModel(
         // Find message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
 
-        // Only allow deleting messages from today
-        if (!isMessageFromToday(message)) return
+        // Only allow deleting messages from the current entry's date
+        if (!isMessageFromCurrentEntryDate(message)) return
 
         // Remove the message
         val filteredMessages = currentEntry.messages.filterNot { it.id == messageId }
@@ -328,23 +328,30 @@ class JournalViewModel(
         return currentEntry.messages.find { it.id == id }
     }
 
-    // FIXED: Helper function compatible with API 26+
-    private fun isMessageFromToday(message: ChatMessage): Boolean {
-        val messageDate = java.time.Instant.ofEpochMilli(message.timestamp)
+    /**
+     * Returns true if the message's date matches the current entry's date.
+     * (Note: this is NOT the same as "today" — archive entries use their own date.)
+     * Used to guard edit/delete so only messages from the viewed entry's date are mutable.
+     */
+    private fun isMessageFromCurrentEntryDate(message: ChatMessage): Boolean {
+        val messageDate = Instant.ofEpochMilli(message.timestamp)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
-        val entryDate = java.time.Instant.ofEpochMilli(currentEntry.dateMillis)
+        val entryDate = Instant.ofEpochMilli(currentEntry.dateMillis)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
         return messageDate == entryDate
     }
 
-    // FIXED: Check if message was added later (for UI display) - API 26 compatible
+    /**
+     * Returns true if the message was added on a different day than the entry's date.
+     * Used in ChatBubble to show the "Added MMM d, yyyy" label.
+     */
     fun isMessageAddedLater(message: ChatMessage): Boolean {
-        val messageDate = java.time.Instant.ofEpochMilli(message.timestamp)
+        val messageDate = Instant.ofEpochMilli(message.timestamp)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
-        val entryDate = java.time.Instant.ofEpochMilli(currentEntry.dateMillis)
+        val entryDate = Instant.ofEpochMilli(currentEntry.dateMillis)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
         return messageDate != entryDate
@@ -390,13 +397,12 @@ class JournalViewModel(
     private fun saveCurrentEntry() {
         viewModelScope.launch {
             try {
-                // always sort by timestamp before saving (keeps deterministic order)
+                // repo.saveEntry already sorts by timestamp — no need to sort twice here
+                repo.saveEntry(currentEntry)
+                // Update in-memory state to reflect the sorted order used for persistence
                 currentEntry = currentEntry.copy(
                     messages = currentEntry.messages.sortedBy { it.timestamp }
                 )
-
-                repo.saveEntry(currentEntry)          // local Room
-                // inside JournalViewModel.saveCurrentEntry() just before/after repo.saveEntry(currentEntry)
                 Log.d("VM", "Saving entry messages: ${currentEntry.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" }}")
 
             } catch (e: Exception) {

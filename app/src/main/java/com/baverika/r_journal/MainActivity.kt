@@ -41,6 +41,9 @@ import com.baverika.r_journal.repository.QuickNoteRepository
 
 import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.repository.PasswordRepository
+import com.baverika.r_journal.repository.CravingQuestRepository
+import com.baverika.r_journal.ui.viewmodel.CravingQuestViewModel
+import com.baverika.r_journal.ui.viewmodel.CravingQuestViewModelFactory
 
 import com.baverika.r_journal.ui.screens.*
 import com.baverika.r_journal.ui.theme.RJournalTheme
@@ -82,6 +85,9 @@ class MainActivity : FragmentActivity() {
 
         // Life Tracker repository
         val lifeTrackerRepo = com.baverika.r_journal.repository.LifeTrackerRepository(db.lifeTrackerDao())
+
+        // Craving Quest repository
+        val cravingRepo = CravingQuestRepository(db.cravingLogDao())
 
 
         // Biometric Lock State
@@ -151,6 +157,7 @@ class MainActivity : FragmentActivity() {
                         widgetSettingsDataStore = widgetSettingsDataStore,
                         taskRepo = taskRepo,
                         lifeTrackerRepo = lifeTrackerRepo,
+                        cravingRepo = cravingRepo,
                         settingsRepo = settingsRepo,
                         initialRoute = initialRoute,
                         onThemeChanged = { newTheme -> currentTheme = newTheme }
@@ -174,6 +181,7 @@ fun MainApp(
     widgetSettingsDataStore: com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore,
     taskRepo: com.baverika.r_journal.repository.TaskRepository,
     lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+    cravingRepo: CravingQuestRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
     initialRoute: String = "archive",
     onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
@@ -215,7 +223,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -352,6 +360,11 @@ fun MainApp(
                     fabAction = { navController.navigate("add_task") }
                     fabIcon = Icons.Filled.Add
                     fabDesc = "New Task"
+                }
+                "craving_quest" -> {
+                    fabAction = { navController.navigate("add_craving") }
+                    fabIcon = Icons.Filled.Add
+                    fabDesc = "Log Craving"
                 }
                 else -> {
                     fabAction = null
@@ -715,6 +728,29 @@ fun MainApp(
                             taskId = taskId
                         )
                     }
+
+                    // Craving Quest
+                    composable("craving_quest") {
+                        val vm: CravingQuestViewModel = viewModel(
+                            factory = CravingQuestViewModelFactory(cravingRepo)
+                        )
+                        CravingQuestScreen(viewModel = vm, navController = navController)
+                    }
+
+                    composable("add_craving") {
+                        val vm: CravingQuestViewModel = viewModel(
+                            factory = CravingQuestViewModelFactory(cravingRepo)
+                        )
+                        AddCravingQuestScreen(viewModel = vm, navController = navController)
+                    }
+
+                    composable("craving_detail/{logId}") { backStackEntry ->
+                        val logId = backStackEntry.arguments?.getString("logId") ?: return@composable
+                        val vm: CravingQuestViewModel = viewModel(
+                            factory = CravingQuestViewModelFactory(cravingRepo)
+                        )
+                        CravingDetailScreen(logId = logId, viewModel = vm, navController = navController)
+                    }
                 }
 
 
@@ -771,6 +807,12 @@ fun DrawerContent(
             label = "Dashboard",
             isSelected = currentRoute == "dashboard",
             onClick = { onScreenSelected("dashboard") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.FitnessCenter,
+            label = "Craving Quest",
+            isSelected = currentRoute == "craving_quest",
+            onClick = { onScreenSelected("craving_quest") }
         )
         DrawerItem(
             icon = Icons.Filled.CalendarMonth,

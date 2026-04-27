@@ -136,7 +136,8 @@ fun EditNoteScreen(
                 note.copy(
                     title = title.ifBlank { "Untitled" },
                     content = finalContent,
-                    color = selectedColor
+                    color = selectedColor,
+                    timestamp = System.currentTimeMillis()  // Update to last-modified time
                 )
             )
         }
@@ -225,6 +226,7 @@ fun EditNoteScreen(
                         listItems.forEachIndexed { index, item ->
                             EditNoteItemRow(
                                 item = item,
+                                itemIndex = index,
                                 textColor = textColor,
                                 secondaryTextColor = secondaryTextColor,
                                 onCheckedChange = { checked ->
@@ -446,7 +448,7 @@ private fun EditTypeButton(
 
 private fun parseNoteContent(content: String): List<EditNoteItem> {
     if (content.isBlank()) return emptyList()
-    
+
     return content.lines().mapNotNull { line ->
         when {
             line.trimStart().startsWith("[ ]") -> EditNoteItem(
@@ -467,6 +469,7 @@ private fun parseNoteContent(content: String): List<EditNoteItem> {
                 text = line.trimStart().replaceFirst(Regex("^\\d+\\.\\s"), ""),
                 type = EditItemType.NUMBERED
             )
+            line.isBlank() -> null  // Skip blank lines — don't create empty list items
             else -> EditNoteItem(
                 text = line,
                 type = EditItemType.TEXT
@@ -478,6 +481,7 @@ private fun parseNoteContent(content: String): List<EditNoteItem> {
 @Composable
 private fun EditNoteItemRow(
     item: EditNoteItem,
+    itemIndex: Int,
     textColor: Color,
     secondaryTextColor: Color,
     onCheckedChange: (Boolean) -> Unit,
@@ -511,8 +515,9 @@ private fun EditNoteItemRow(
                 )
             }
             EditItemType.NUMBERED -> {
+                // Show actual position number (1., 2., etc.) instead of bullet
                 Text(
-                    text = "•",
+                    text = "${itemIndex + 1}.",
                     color = textColor,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
