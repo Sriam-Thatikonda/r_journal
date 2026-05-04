@@ -65,54 +65,6 @@ fun LifeTrackersScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (isSearchActive) {
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search trackers...") },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    } else {
-                        Text("Life Trackers", fontWeight = FontWeight.Bold)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { 
-                        if (isSearchActive) {
-                             isSearchActive = false
-                             searchQuery = ""
-                        } else {
-                             isSearchActive = true
-                        }
-                    }) {
-                        Icon(
-                            if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = if (isSearchActive) "Close Search" else "Search"
-                        )
-                    }
-                    if (!isSearchActive) {
-                        IconButton(onClick = { isGridView = !isGridView }) {
-                            Icon(
-                                if (isGridView) Icons.Default.List else Icons.Default.GridView,
-                                contentDescription = "Toggle View"
-                            )
-                        }
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             LargeFloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Tracker", modifier = Modifier.size(36.dp))
@@ -125,6 +77,52 @@ fun LifeTrackersScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
+            // Actions Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (isSearchActive) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search trackers...") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        shape = RoundedCornerShape(24.dp),
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { 
+                                isSearchActive = false
+                                searchQuery = "" 
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close")
+                            }
+                        }
+                    )
+                } else {
+                    Text(
+                        "Trackers", 
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    IconButton(onClick = { isSearchActive = true }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+                    
+                    IconButton(onClick = { isGridView = !isGridView }) {
+                        Icon(
+                            if (isGridView) Icons.Default.List else Icons.Default.GridView,
+                            contentDescription = "Toggle View"
+                        )
+                    }
+                }
+            }
             if (trackers.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No trackers yet. Add one!", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

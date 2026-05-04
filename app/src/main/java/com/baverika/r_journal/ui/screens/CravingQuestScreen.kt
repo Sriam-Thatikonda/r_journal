@@ -29,16 +29,6 @@ fun CravingQuestScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Craving Quest") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             FloatingActionButton(onClick = { navController.navigate("add_craving") }) {
                 Icon(Icons.Default.Add, contentDescription = "Log Craving")

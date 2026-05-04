@@ -42,21 +42,6 @@ fun EventsScreen(
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Special Dates") },
-                navigationIcon = {
-                    IconButton(onClick = { 
-                        // Open drawer (handled by parent scaffold usually, but here we might need a callback or just back)
-                        // Assuming this screen is top-level in drawer, we might want a Menu icon if we can access drawer state
-                        // For now, let's assume standard behavior or back if pushed
-                        // If it's a top level drawer item, we usually pass a lambda to open drawer
-                    }) {
-                        Icon(Icons.Default.Event, contentDescription = null)
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             LargeFloatingActionButton(
                 onClick = { showAddDialog = true },

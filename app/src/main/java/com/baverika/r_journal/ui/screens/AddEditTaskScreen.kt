@@ -171,39 +171,6 @@ fun AddEditTaskScreen(
     }
     
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (isEditing) "Edit Task" else "New Task") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel")
-                    }
-                },
-                actions = {
-                    if (isEditing) {
-                        IconButton(onClick = { showDeleteConfirmation = true }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                    TextButton(
-                        onClick = { validateAndSave() },
-                        enabled = title.isNotBlank()
-                    ) {
-                        Text(
-                            "Save",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (isLoading) {
@@ -224,6 +191,43 @@ fun AddEditTaskScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
+                // Actions Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel")
+                    }
+                    
+                    Text(
+                        text = if (isEditing) "Edit Task" else "New Task",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (isEditing) {
+                        IconButton(onClick = { showDeleteConfirmation = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    
+                    TextButton(
+                        onClick = { validateAndSave() },
+                        enabled = title.isNotBlank()
+                    ) {
+                        Text(
+                            "Save",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 // Title Input
                 OutlinedTextField(
                     value = title,

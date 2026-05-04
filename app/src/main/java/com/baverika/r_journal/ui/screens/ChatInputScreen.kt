@@ -543,41 +543,6 @@ fun ChatInputScreen(
             )
         }
 
-        // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = {
-                if (hasUnsavedText) {
-                    showExitConfirmation = true
-                } else {
-                    navController.popBackStack()
-                }
-            }) {
-                M3Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                M3Text(
-                    text = if (isCurrentEntryToday) "Today's Journal" else "Journal Entry",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                M3Text(
-                    text = entry.localDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            M3Text(
-                text = "${entry.messages.size}",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
 
         // Event Banner (Option 1)
         if (todaysEvents.isNotEmpty()) {

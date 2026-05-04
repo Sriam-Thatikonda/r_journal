@@ -73,15 +73,15 @@ fun TaskListScreen(
     val selectedPriority by viewModel.selectedPriority.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-    
+
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var isSearchActive by remember { mutableStateOf(false) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
-    
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     // Show error message
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
@@ -89,64 +89,8 @@ fun TaskListScreen(
             viewModel.clearError()
         }
     }
-    
-    Scaffold(
-        topBar = {
-            if (isSearchActive) {
-                // Search TopBar
-                SearchTopBar(
-                    query = searchQuery,
-                    onQueryChange = { viewModel.setSearchQuery(it) },
-                    onClose = {
-                        viewModel.setSearchQuery("")
-                        isSearchActive = false
-                    }
-                )
-            } else {
-                TopAppBar(
-                    title = { Text("Tasks") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    ),
-                    actions = {
-                        // Search button
-                        IconButton(onClick = { isSearchActive = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
-                        }
-                        
-                        // Sort button
-                        Box {
-                            IconButton(onClick = { showSortMenu = true }) {
-                                Icon(Icons.Default.Sort, contentDescription = "Sort")
-                            }
-                            SortDropdownMenu(
-                                expanded = showSortMenu,
-                                currentSort = currentSort,
-                                onSortSelected = {
-                                    viewModel.setSort(it)
-                                    showSortMenu = false
-                                },
-                                onDismiss = { showSortMenu = false }
-                            )
-                        }
-                        
-                        // Filter button
-                        IconButton(onClick = { showFilterSheet = true }) {
-                            BadgedBox(
-                                badge = {
-                                    if (selectedCategoryId != null || selectedPriority != null) {
-                                        Badge { Text("!") }
-                                    }
-                                }
-                            ) {
-                                Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                            }
-                        }
-                    }
-                )
-            }
-        },
 
+    Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -154,9 +98,84 @@ fun TaskListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Actions Row (Search, Sort, Filter)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (isSearchActive) {
+                    // Search Bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.setSearchQuery(it) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Search tasks...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                viewModel.setSearchQuery("")
+                                isSearchActive = false
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close")
+                            }
+                        },
+                        shape = RoundedCornerShape(24.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                } else {
+                    Text(
+                        text = "Summary",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Search button
+                    IconButton(onClick = { isSearchActive = true }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+
+                    // Sort button
+                    Box {
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.Default.Sort, contentDescription = "Sort")
+                        }
+                        SortDropdownMenu(
+                            expanded = showSortMenu,
+                            currentSort = currentSort,
+                            onSortSelected = {
+                                viewModel.setSort(it)
+                                showSortMenu = false
+                            },
+                            onDismiss = { showSortMenu = false }
+                        )
+                    }
+
+                    // Filter button
+                    IconButton(onClick = { showFilterSheet = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (selectedCategoryId != null || selectedPriority != null) {
+                                    Badge { Text("!") }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                        }
+                    }
+                }
+            }
+
             // Statistics Summary Card
             TaskStatsSummary(stats = taskStats)
-            
+
             // Filter Chips
             FilterChipsRow(
                 currentFilter = currentFilter,
@@ -166,7 +185,7 @@ fun TaskListScreen(
                 onFilterSelected = { viewModel.setFilter(it) },
                 onClearFilters = { viewModel.clearFilters() }
             )
-            
+
             // Task List
             if (isLoading) {
                 Box(
@@ -184,7 +203,12 @@ fun TaskListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 16.dp,
+                        end = 16.dp,
+                        bottom = 88.dp
+                    ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
@@ -194,7 +218,12 @@ fun TaskListScreen(
                         SwipeableTaskItem(
                             task = task,
                             category = categories.find { it.id == task.categoryId },
-                            onToggleComplete = { viewModel.toggleTaskCompletion(task.id, !task.isCompleted) },
+                            onToggleComplete = {
+                                viewModel.toggleTaskCompletion(
+                                    task.id,
+                                    !task.isCompleted
+                                )
+                            },
                             onClick = { navController.navigate("edit_task/${task.id}") },
                             onDelete = { taskToDelete = task }
                         )
@@ -202,48 +231,48 @@ fun TaskListScreen(
                 }
             }
         }
-    }
-    
-    // Filter Bottom Sheet
-    if (showFilterSheet) {
-        FilterBottomSheet(
-            categories = categories,
-            selectedCategoryId = selectedCategoryId,
-            selectedPriority = selectedPriority,
-            onCategorySelected = { viewModel.filterByCategory(it) },
-            onPrioritySelected = { viewModel.filterByPriority(it) },
-            onDismiss = { showFilterSheet = false }
-        )
-    }
-    
-    // Delete Confirmation Dialog
-    taskToDelete?.let { task ->
-        AlertDialog(
-            onDismissRequest = { taskToDelete = null },
-            title = { Text("Delete Task") },
-            text = { Text("Are you sure you want to delete \"${task.title}\"?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteTask(task)
-                        taskToDelete = null
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Task deleted")
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Delete")
+
+        // Filter Bottom Sheet
+        if (showFilterSheet) {
+            FilterBottomSheet(
+                categories = categories,
+                selectedCategoryId = selectedCategoryId,
+                selectedPriority = selectedPriority,
+                onCategorySelected = { viewModel.filterByCategory(it) },
+                onPrioritySelected = { viewModel.filterByPriority(it) },
+                onDismiss = { showFilterSheet = false }
+            )
+        }
+
+        // Delete Confirmation Dialog
+        taskToDelete?.let { task ->
+            AlertDialog(
+                onDismissRequest = { taskToDelete = null },
+                title = { Text("Delete Task") },
+                text = { Text("Are you sure you want to delete \"${task.title}\"?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteTask(task)
+                            taskToDelete = null
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Task deleted")
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { taskToDelete = null }) {
+                        Text("Cancel")
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { taskToDelete = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -457,7 +486,7 @@ private fun FilterChipsRow(
                 )
             }
         }
-        
+
         // Filter chips
         TaskFilter.entries.forEach { filter ->
             item {
@@ -466,7 +495,13 @@ private fun FilterChipsRow(
                     onClick = { onFilterSelected(filter) },
                     label = { Text(getFilterDisplayName(filter)) },
                     leadingIcon = if (currentFilter == filter && selectedCategoryId == null && selectedPriority == null) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     } else null
                 )
             }
@@ -497,7 +532,7 @@ fun SwipeableTaskItem(
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     val swipeThreshold = with(LocalDensity.current) { 100.dp.toPx() }
-    
+
     val animatedOffset by animateFloatAsState(
         targetValue = offsetX,
         animationSpec = spring(
@@ -506,10 +541,10 @@ fun SwipeableTaskItem(
         ),
         label = "swipe_offset"
     )
-    
+
     // Completion animation removed to prevent background bleed-through
 
-    
+
     Box(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -519,8 +554,12 @@ fun SwipeableTaskItem(
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .clip(RoundedCornerShape(16.dp))
-                .graphicsLayer { 
-                    alpha = (kotlin.math.abs(animatedOffset) / (swipeThreshold * 0.5f)).coerceIn(0f, 1f)
+                .graphicsLayer {
+                    alpha =
+                        (kotlin.math.abs(animatedOffset) / (swipeThreshold * 0.5f)).coerceIn(
+                            0f,
+                            1f
+                        )
                 },
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -539,7 +578,7 @@ fun SwipeableTaskItem(
                     tint = Color.White
                 )
             }
-            
+
             // Right side - Delete action
             Box(
                 modifier = Modifier
@@ -556,7 +595,7 @@ fun SwipeableTaskItem(
                 )
             }
         }
-        
+
         // Task card
         Card(
             modifier = Modifier
@@ -569,6 +608,7 @@ fun SwipeableTaskItem(
                                 offsetX > swipeThreshold -> {
                                     onToggleComplete()
                                 }
+
                                 offsetX < -swipeThreshold -> {
                                     onDelete()
                                 }
@@ -577,7 +617,10 @@ fun SwipeableTaskItem(
                         },
                         onDragCancel = { offsetX = 0f }
                     ) { _, dragAmount ->
-                        offsetX = (offsetX + dragAmount).coerceIn(-swipeThreshold * 1.5f, swipeThreshold * 1.5f)
+                        offsetX = (offsetX + dragAmount).coerceIn(
+                            -swipeThreshold * 1.5f,
+                            swipeThreshold * 1.5f
+                        )
                     }
                 }
                 .clickable(onClick = onClick),
@@ -606,7 +649,7 @@ fun SwipeableTaskItem(
                     priority = task.priority,
                     onToggle = onToggleComplete
                 )
-                
+
                 // Task content
                 Column(
                     modifier = Modifier.weight(1f)
@@ -625,7 +668,7 @@ fun SwipeableTaskItem(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
+
                     // Description preview
                     if (task.description.isNotBlank()) {
                         Text(
@@ -637,7 +680,7 @@ fun SwipeableTaskItem(
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
-                    
+
                     // Meta info row
                     Row(
                         modifier = Modifier.padding(top = 8.dp),
@@ -646,20 +689,21 @@ fun SwipeableTaskItem(
                     ) {
                         // Due date
                         task.dueDate?.let { dueDate ->
-                            val isOverdue = dueDate < System.currentTimeMillis() && !task.isCompleted
+                            val isOverdue =
+                                dueDate < System.currentTimeMillis() && !task.isCompleted
                             DueDateChip(
                                 dueDate = dueDate,
                                 isOverdue = isOverdue
                             )
                         }
-                        
+
                         // Category
                         category?.let {
                             CategoryChip(category = it)
                         }
                     }
                 }
-                
+
                 // Priority indicator
                 PriorityIndicator(priority = task.priority)
             }
@@ -684,7 +728,7 @@ private fun TaskCheckbox(
         ),
         label = "check_scale"
     )
-    
+
     Box(
         modifier = Modifier
             .size(28.dp)
@@ -717,7 +761,7 @@ private fun TaskCheckbox(
 @Composable
 private fun PriorityIndicator(priority: TaskPriority) {
     val color = Color(priority.colorValue)
-    
+
     Surface(
         color = color.copy(alpha = 0.15f),
         shape = RoundedCornerShape(4.dp)
@@ -743,19 +787,19 @@ private fun DueDateChip(
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
-    
+
     val formattedDate = remember(dueDate) {
         val calendar = Calendar.getInstance()
         val today = Calendar.getInstance()
         calendar.timeInMillis = dueDate
-        
+
         when {
             isSameDay(calendar, today) -> "Today, ${timeFormat.format(Date(dueDate))}"
             isSameDay(calendar, today.apply { add(Calendar.DAY_OF_YEAR, 1) }) -> "Tomorrow"
             else -> dateFormat.format(Date(dueDate))
         }
     }
-    
+
     Surface(
         color = if (isOverdue) {
             Color(0xFFE53935).copy(alpha = 0.15f)
@@ -834,9 +878,9 @@ private fun EmptyTasksState(
             modifier = Modifier.size(80.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = when {
                 searchQuery.isNotBlank() -> "No tasks found"
@@ -848,9 +892,9 @@ private fun EmptyTasksState(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = when {
                 searchQuery.isNotBlank() -> "Try a different search term"
@@ -860,10 +904,10 @@ private fun EmptyTasksState(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )
-        
+
         if (filter == TaskFilter.ALL || filter == TaskFilter.ACTIVE) {
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Button(onClick = onAddTask) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -887,7 +931,7 @@ private fun FilterBottomSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
-    
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
@@ -904,7 +948,7 @@ private fun FilterBottomSheet(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             // Priority section
             Text(
                 text = "Priority",
@@ -912,7 +956,7 @@ private fun FilterBottomSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -934,9 +978,9 @@ private fun FilterBottomSheet(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Category section
             Text(
                 text = "Category",
@@ -944,7 +988,7 @@ private fun FilterBottomSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -969,3 +1013,4 @@ private fun FilterBottomSheet(
         }
     }
 }
+
