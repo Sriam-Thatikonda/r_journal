@@ -27,7 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.data.local.entity.QuickNote
+import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel
 import com.baverika.r_journal.utils.ColorUtils
+import androidx.navigation.NavController
 
 // Google Keep-style colors
 private val editNoteColors = listOf(
@@ -58,24 +60,40 @@ private enum class EditItemType {
 
 @Composable
 fun EditNoteScreen(
-    note: QuickNote,
-    onSave: (QuickNote) -> Unit,
-    onCancel: () -> Unit
+    noteId: String,
+    viewModel: QuickNoteViewModel,
+    navController: NavController
 ) {
-    var title by remember { mutableStateOf(note.title) }
-    var selectedColor by remember { mutableLongStateOf(note.color) }
+    var note by remember { mutableStateOf<QuickNote?>(null) }
+    
+    LaunchedEffect(noteId) {
+        note = viewModel.getNoteById(noteId)
+    }
+
+    if (note == null) {
+        // Show loading or error
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val currentNote = note!!
+    var title by remember { mutableStateOf(currentNote.title) }
+    var selectedColor by remember { mutableLongStateOf(currentNote.color) }
     
     // Determine initial mode
-    val initialItems = remember(note.content) { parseNoteContent(note.content) }
-    val initialMode = remember(initialItems) { 
-        if (initialItems.any { it.type != EditItemType.TEXT }) EditItemType.CHECKBOX else EditItemType.TEXT
+    val initialItems = remember(currentNote.content) { parseNoteContent(currentNote.content) }
+    val initialMode = remember(initialItems) {
+        // Derive mode from the ACTUAL type of the parsed items, not just "is it a list?"
+        initialItems.firstOrNull { it.type != EditItemType.TEXT }?.type ?: EditItemType.TEXT
     }
 
     var currentItemType by remember { mutableStateOf(initialMode) }
     
     // Content States
     // If text mode, body is just content. If list mode, body is empty initially.
-    var noteBody by remember { mutableStateOf(if (initialMode == EditItemType.TEXT) note.content else "") }
+    var noteBody by remember { mutableStateOf(if (initialMode == EditItemType.TEXT) currentNote.content else "") }
     // If list mode, items are parsed. If text mode, items empty initially.
     var listItems by remember { mutableStateOf(if (initialMode != EditItemType.TEXT) initialItems else emptyList()) }
 
@@ -98,9 +116,9 @@ fun EditNoteScreen(
             // Switching TO List
             if (currentItemType == EditItemType.TEXT) {
                 if (noteBody.isNotBlank()) {
-                    listItems = noteBody.lines().map { 
-                        EditNoteItem(text = it, type = newType) 
-                    }
+                    listItems = noteBody.lines()
+                        .filter { it.isNotBlank() }
+                        .map { EditNoteItem(text = it, type = newType) }
                 }
                 noteBody = ""
             } else {
@@ -121,19 +139,19 @@ fun EditNoteScreen(
                 listItems
             }
             
-            itemsToSave.joinToString("\n") { item ->
+            itemsToSave.mapIndexed { index, item ->
                 when (item.type) {
                     EditItemType.CHECKBOX -> if (item.isChecked) "[x] ${item.text}" else "[ ] ${item.text}"
                     EditItemType.BULLET -> "- ${item.text}"
-                    EditItemType.NUMBERED -> "${itemsToSave.indexOf(item) + 1}. ${item.text}"
+                    EditItemType.NUMBERED -> "${index + 1}. ${item.text}"
                     EditItemType.TEXT -> item.text
                 }
-            }
+            }.joinToString("\n")
         }
             
         if (title.isNotBlank() || finalContent.isNotBlank()) {
-            onSave(
-                note.copy(
+            viewModel.updateNote(
+                currentNote.copy(
                     title = title.ifBlank { "Untitled" },
                     content = finalContent,
                     color = selectedColor,
@@ -155,7 +173,7 @@ fun EditNoteScreen(
             ) {
                 IconButton(onClick = { 
                     saveNote()
-                    onCancel()
+                    navController.popBackStack()
                 }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = textColor)
                 }
@@ -185,7 +203,7 @@ fun EditNoteScreen(
                 IconButton(
                     onClick = {
                         saveNote()
-                        onCancel()
+                        navController.popBackStack()
                     },
                     enabled = title.isNotBlank() || noteBody.isNotBlank() || listItems.isNotEmpty()
                 ) {
@@ -505,13 +523,12 @@ private fun EditNoteItemRow(
                 )
             }
             EditItemType.BULLET -> {
-                Icon(
-                    imageVector = Icons.Default.Circle,
-                    contentDescription = null,
-                    tint = textColor,
-                    modifier = Modifier
-                        .size(8.dp)
-                        .padding(horizontal = 12.dp)
+                // Use Text for bullet dot — avoids size+padding clipping issues with Icon
+                Text(
+                    text = "•",
+                    color = textColor,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
             EditItemType.NUMBERED -> {

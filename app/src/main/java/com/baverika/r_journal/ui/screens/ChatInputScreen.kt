@@ -638,11 +638,8 @@ fun ChatInputScreen(
                             if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd) {
                                 replyToMessage = message
 
-                                // haptic + snackbar feedback
+                                // haptic feedback on swipe
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Replying to message")
-                                }
 
                                 dismissState.reset()
                             }
@@ -1177,7 +1174,7 @@ fun EventBanner(event: Event) {
 
         val icon = when (event.type) {
             EventType.BIRTHDAY -> "🎂"
-            EventType.ANNIVERSARY -> "❤️"
+            EventType.ANNIVERSARY -> "💍"
             EventType.MEETING -> "📅"
             EventType.CUSTOM -> "🎉"
         }

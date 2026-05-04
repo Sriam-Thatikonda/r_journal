@@ -18,6 +18,8 @@ class QuickNoteRepository(private val dao: QuickNoteDao) {
 
     suspend fun deleteNote(note: QuickNote) = dao.deleteNote(note)
 
+    suspend fun getNoteById(id: String): QuickNote? = dao.getNoteById(id)
+
     suspend fun upsertNote(note: QuickNote) {
         // This relies on your QuickNoteDao's insertNote method using
         // @Insert(onConflict = OnConflictStrategy.REPLACE).

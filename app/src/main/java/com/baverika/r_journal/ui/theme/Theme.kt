@@ -148,6 +148,34 @@ private val BlueSkyColorScheme = darkColorScheme(
 )
 
 /**
+ * Color scheme for Cloud Dancer theme (Pantone Color of the Year 2026)
+ * Warm, creamy off-white light theme — not pure white
+ */
+private val CloudDancerColorScheme = lightColorScheme(
+    primary = CloudDancerColors.Primary,
+    onPrimary = CloudDancerColors.OnPrimary,
+    primaryContainer = CloudDancerColors.PrimaryContainer,
+    onPrimaryContainer = CloudDancerColors.OnPrimaryContainer,
+    secondary = CloudDancerColors.Secondary,
+    onSecondary = CloudDancerColors.OnSecondary,
+    secondaryContainer = CloudDancerColors.SecondaryContainer,
+    onSecondaryContainer = CloudDancerColors.OnSecondaryContainer,
+    tertiary = CloudDancerColors.Tertiary,
+    onTertiary = CloudDancerColors.OnTertiary,
+    tertiaryContainer = CloudDancerColors.TertiaryContainer,
+    onTertiaryContainer = CloudDancerColors.OnTertiaryContainer,
+    background = CloudDancerColors.Background,
+    onBackground = CloudDancerColors.OnBackground,
+    surface = CloudDancerColors.Surface,
+    onSurface = CloudDancerColors.OnSurface,
+    surfaceVariant = CloudDancerColors.SurfaceVariant,
+    onSurfaceVariant = CloudDancerColors.OnSurfaceVariant,
+    error = CloudDancerColors.Error,
+    onError = CloudDancerColors.OnError,
+    outline = CloudDancerColors.Outline
+)
+
+/**
  * App typography
  */
 private val AppTypography = Typography(
@@ -170,6 +198,7 @@ fun getColorScheme(theme: AppTheme): ColorScheme {
         AppTheme.OCEAN -> OceanColorScheme
         AppTheme.ROSEWOOD -> RosewoodColorScheme
         AppTheme.BLUE_SKY -> BlueSkyColorScheme
+        AppTheme.CLOUD_DANCER -> CloudDancerColorScheme
     }
 }
 

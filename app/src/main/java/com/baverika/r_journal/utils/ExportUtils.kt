@@ -28,6 +28,7 @@ object ExportUtils {
         context: Context,
         journals: List<JournalEntry>,
         quickNotes: List<QuickNote>,
+        taskCategories: List<com.baverika.r_journal.data.local.entity.TaskCategory>,
         tasks: List<com.baverika.r_journal.data.local.entity.Task>,
         habits: List<com.baverika.r_journal.data.local.entity.Habit>,
         habitLogs: List<com.baverika.r_journal.data.local.entity.HabitLog>,
@@ -109,6 +110,13 @@ object ExportUtils {
                     val content = buildQuickNoteMarkdown(note)
                     zos.putNextEntry(ZipEntry(fileName))
                     zos.write(content.toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Task Categories (JSON) — MUST be exported before tasks (FK dependency)
+                if (taskCategories.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/task_categories.json"))
+                    zos.write(gson.toJson(taskCategories).toByteArray())
                     zos.closeEntry()
                 }
 

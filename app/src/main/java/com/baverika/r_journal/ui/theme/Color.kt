@@ -162,11 +162,49 @@ object BlueSkyColors {
     val Outline = Color(0xFF8E9099)
 }
 
+// ============================================
+// THEME: CLOUD DANCER (Pantone Color of the Year 2026)
+// Warm, creamy off-white inspired by PANTONE 11-4201
+// Elegant light theme — not pure white, but a living canvas
+// ============================================
+object CloudDancerColors {
+    // Primary accent: warm sage green — earthy and grounding
+    val Primary = Color(0xFF6B8C6F)         // Sage Green
+    val OnPrimary = Color(0xFFFFFFFF)
+    val PrimaryContainer = Color(0xFFCDE8C8) // Pale sage
+    val OnPrimaryContainer = Color(0xFF1A3320)
+
+    // Secondary: warm dusty rose — feminine and soft
+    val Secondary = Color(0xFFA07870)        // Dusty rose
+    val OnSecondary = Color(0xFFFFFFFF)
+    val SecondaryContainer = Color(0xFFEED9D5) // Blush
+    val OnSecondaryContainer = Color(0xFF3B1917)
+
+    // Tertiary: warm terracotta sand
+    val Tertiary = Color(0xFFAA8865)         // Warm sand / terracotta
+    val OnTertiary = Color(0xFFFFFFFF)
+    val TertiaryContainer = Color(0xFFEFDCC8) // Pale sand
+    val OnTertiaryContainer = Color(0xFF3C2410)
+
+    // Background: Pantone Cloud Dancer (#F2F0E9) — warm off-white, NOT pure white
+    val Background = Color(0xFFF2F0E9)
+    val OnBackground = Color(0xFF2C2520)     // Warm dark brown
+    val Surface = Color(0xFFFAF8F3)          // Slightly lighter warm white
+    val OnSurface = Color(0xFF2C2520)
+    val SurfaceVariant = Color(0xFFE8E4DA)   // Warm light grey-tan
+    val OnSurfaceVariant = Color(0xFF5C5249)
+
+    val Error = Color(0xFFB3261E)
+    val OnError = Color(0xFFFFFFFF)
+    val Outline = Color(0xFFB0A89E)          // Warm greige
+}
+
 // Theme enum for easy reference
 enum class AppTheme(val displayName: String) {
     MIDNIGHT("Midnight"),
     LIGHT("Light"),
     OCEAN("Ocean"),
     ROSEWOOD("Rosewood"),
-    BLUE_SKY("Blue Sky")
+    BLUE_SKY("Blue Sky"),
+    CLOUD_DANCER("Cloud '26")
 }

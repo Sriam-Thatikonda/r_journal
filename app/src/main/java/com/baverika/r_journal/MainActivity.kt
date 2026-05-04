@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -267,11 +268,53 @@ fun MainApp(
     ) {
         Scaffold(
             topBar = {
+                val screenTitle = when {
+                    currentRoute == "archive" -> "R-Journal"
+                    currentRoute == "quick_notes" -> "Quick Notes"
+                    currentRoute == "tasks" -> "Tasks"
+                    currentRoute == "habits" -> "Habit Tracker"
+                    currentRoute == "password_generator" -> "Password Generator"
+                    currentRoute == "quotes" -> "Motivational Quotes"
+                    currentRoute == "calendar" -> "Calendar"
+                    currentRoute == "events" -> "Special Dates"
+                    currentRoute == "life_trackers" -> "Life Trackers"
+                    currentRoute == "craving_quest" -> "Craving Quest"
+                    currentRoute == "search" -> "Search"
+                    currentRoute == "dashboard" -> "Dashboard"
+                    currentRoute == "settings" -> "Settings"
+                    currentRoute?.startsWith("chat_input") == true -> "Journal Entry"
+                    currentRoute?.startsWith("edit_quick_note") == true -> "Edit Note"
+                    currentRoute == "new_quick_note" -> "New Note"
+                    currentRoute?.startsWith("habit_year_overview") == true -> "Habit Overview"
+                    currentRoute?.startsWith("habit_detail") == true -> "Habit Details"
+                    currentRoute?.startsWith("add_habit") == true -> "Habit"
+                    currentRoute?.startsWith("tracker_detail") == true -> "Tracker Details"
+                    currentRoute?.startsWith("edit_task") == true -> "Edit Task"
+                    currentRoute == "add_task" -> "New Task"
+                    currentRoute == "add_craving" -> "Log Craving"
+                    currentRoute?.startsWith("craving_detail") == true -> "Craving Details"
+                    else -> "R-Journal"
+                }
+
+                val showBackButton = currentRoute != "archive"
+
                 TopAppBar(
-                    title = { Text("r_journal") },
+                    title = { 
+                        Text(
+                            text = screenTitle,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                        if (showBackButton) {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        } else {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                            }
                         }
                     },
                     actions = {
@@ -365,6 +408,17 @@ fun MainApp(
                     fabAction = { navController.navigate("add_craving") }
                     fabIcon = Icons.Filled.Add
                     fabDesc = "Log Craving"
+                }
+                "habits" -> {
+                    fabAction = { navController.navigate("add_habit") }
+                    fabIcon = Icons.Filled.Add
+                    fabDesc = "New Habit"
+                }
+                // Explicitly hide FAB for note creation/editing
+                "new_quick_note", "edit_quick_note/{noteId}" -> {
+                    fabAction = null
+                    fabIcon = null
+                    fabDesc = null
                 }
                 else -> {
                     fabAction = null
@@ -590,6 +644,19 @@ fun MainApp(
                             viewModel(factory = QuickNoteViewModelFactory(quickNoteRepo, context))
 
                         NewQuickNoteScreen(
+                            viewModel = quickNoteViewModel,
+                            navController = navController
+                        )
+                    }
+
+                    // Edit quick note screen
+                    composable("edit_quick_note/{noteId}") { backStackEntry ->
+                        val noteId = backStackEntry.arguments?.getString("noteId") ?: return@composable
+                        val quickNoteViewModel: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel =
+                            viewModel(factory = QuickNoteViewModelFactory(quickNoteRepo, context))
+
+                        EditNoteScreen(
+                            noteId = noteId,
                             viewModel = quickNoteViewModel,
                             navController = navController
                         )

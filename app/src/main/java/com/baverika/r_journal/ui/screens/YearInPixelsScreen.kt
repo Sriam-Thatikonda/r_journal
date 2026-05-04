@@ -39,7 +39,7 @@ import java.util.Locale
 @Composable
 fun getMoodColors(): Map<String, Color> {
     val currentTheme = LocalAppTheme.current
-    val isDarkTheme = currentTheme != AppTheme.LIGHT
+    val isDarkTheme = currentTheme != AppTheme.LIGHT && currentTheme != AppTheme.CLOUD_DANCER
     
     return if (isDarkTheme) {
         // Dark theme colors - vibrant but not too harsh
@@ -70,6 +70,7 @@ fun getEmptyCellColor(): Color {
     val currentTheme = LocalAppTheme.current
     return when (currentTheme) {
         AppTheme.LIGHT -> Color(0xFFEBEDF0)
+        AppTheme.CLOUD_DANCER -> Color(0xFFE4E0D6) // Warm greige cell for Cloud Dancer
         AppTheme.MIDNIGHT -> Color(0xFF161B22)
         AppTheme.OCEAN -> Color(0xFF0D2137)
         AppTheme.ROSEWOOD -> Color(0xFF2D1F1D)

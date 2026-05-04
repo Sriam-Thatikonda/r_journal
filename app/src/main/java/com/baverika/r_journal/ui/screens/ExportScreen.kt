@@ -36,6 +36,7 @@ fun ExportScreen(
 ) {
     val journals by journalRepo.allEntries.collectAsState(initial = emptyList())
     val notes by quickNoteRepo.allNotes.collectAsState(initial = emptyList())
+    val taskCategories by taskRepo.allCategories.collectAsState(initial = emptyList())
     val tasks by taskRepo.allTasks.collectAsState(initial = emptyList())
     val habits by journalRepo.allHabits.collectAsState(initial = emptyList())
     val habitLogs by journalRepo.allHabitLogs.collectAsState(initial = emptyList())
@@ -286,6 +287,7 @@ fun ExportScreen(
                                     context, 
                                     journals, 
                                     notes,
+                                    taskCategories,
                                     tasks,
                                     habits,
                                     habitLogs,

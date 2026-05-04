@@ -121,111 +121,38 @@ object ImportUtils {
             }
 
             // Second pass: Process markdown and JSON files
+            // We MUST collect all JSON blobs first before inserting,
+            // because ZipInputStream is forward-only and FK order matters.
+            val jsonPayloads = mutableMapOf<String, String>()
+
             context.contentResolver.openInputStream(uri)?.use { secondStream ->
                 ZipInputStream(secondStream).use { zis ->
                     var zipEntry = zis.nextEntry
-
                     while (zipEntry != null) {
                         if (!zipEntry.isDirectory) {
-                            if (zipEntry.name.endsWith(".md")) {
-                                val content = zis.bufferedReader().readText()
-
-                                when {
-                                    zipEntry.name.contains("journals/") -> {
-                                        val entry = parseJournalEntryMarkdown(
-                                            context,
-                                            content,
-                                            imageMap
-                                        )
-                                        entry?.let {
-                                            journalRepo.upsertEntry(it)
-                                            journalCount++
+                            when {
+                                zipEntry.name.endsWith(".md") -> {
+                                    val content = zis.bufferedReader().readText()
+                                    when {
+                                        zipEntry.name.contains("journals/") -> {
+                                            val entry = parseJournalEntryMarkdown(context, content, imageMap)
+                                            entry?.let {
+                                                journalRepo.upsertEntry(it)
+                                                journalCount++
+                                            }
                                         }
-                                    }
-                                    zipEntry.name.contains("quick_notes/") -> {
-                                        val note = parseQuickNoteMarkdown(content)
-                                        note?.let {
-                                            quickNoteRepo.upsertNote(it)
-                                            quickNoteCount++
+                                        zipEntry.name.contains("quick_notes/") -> {
+                                            val note = parseQuickNoteMarkdown(content)
+                                            note?.let {
+                                                quickNoteRepo.upsertNote(it)
+                                                quickNoteCount++
+                                            }
                                         }
                                     }
                                 }
-                            } else if (zipEntry.name.endsWith(".json")) {
-                                val content = zis.bufferedReader().readText()
-                                when {
-                                    zipEntry.name.endsWith("tasks.json") -> {
-                                        val tasks = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Task>::class.java)
-                                        tasks.forEach { taskRepo.insertTask(it) }
-                                        taskCount = tasks.size
-                                    }
-                                    zipEntry.name.endsWith("habits.json") -> {
-                                        val habits = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Habit>::class.java)
-                                        habits.forEach { journalRepo.addHabit(it) } // journalRepo exposes helper for habitDao
-                                        habitCount = habits.size
-                                    }
-                                    zipEntry.name.endsWith("habit_logs.json") -> {
-                                        val logs = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.HabitLog>::class.java)
-                                        logs.forEach { log -> 
-                                            // Manual insert needed as repo toggle is high level
-                                            // We need direct DAO access or exposing a method.
-                                            // JournalRepository has toggleHabitCompletion but it takes params.
-                                            // Let's assume we can add a method or use toggle if we decompose.
-                                            // Actually, the repo has `insertHabitLog` via `toggleHabitCompletion` internal logic.
-                                            // Better to add `insertHabitLog` to repo or just use toggle carefully.
-                                            // However, `toggleHabitCompletion` logic is: insert if true, delete if false.
-                                            // Logs are only stored for completed habits. So we can just call the insert logic. 
-                                            // But `JournalRepository` doesn't expose raw insert.
-                                            // Using `toggleHabitCompletion(log.habitId, log.dateMillis, true)` works.
-                                            journalRepo.toggleHabitCompletion(log.habitId, log.dateMillis, true)
-                                        }
-                                    }
-                                    zipEntry.name.endsWith("quotes.json") -> {
-                                        val quotes = gson.fromJson(content, Array<com.baverika.r_journal.quotes.data.QuoteEntity>::class.java)
-                                        quotes.forEach { 
-                                            // Check existence to avoid overwrite loop/dupes if needed, 
-                                            // or just insert. QuoteEntity has auto-inc ID, so if ID is 0 it generates new.
-                                            // If importing with IDs, we might want conflicts replace.
-                                            // Dao uses default or explicit.
-                                            // To preserve IDs, we should use the ID from JSON.
-                                            if (it.id > 0) {
-                                                // We can use a direct insert or update. 
-                                                // QuoteRepository exposes `insertQuote` and `updateQuote`.
-                                                // insertQuote checks for conflict REPLACE usually? The Dao has @Insert(onConflict = REPLACE) ?
-                                                // Let's assume insertQuote is fine.
-                                                quoteRepo.insertQuote(it)
-                                            } else {
-                                                quoteRepo.insertQuote(it)
-                                            }
-                                        }
-                                        quoteCount = quotes.size
-                                    }
-                                    zipEntry.name.endsWith("life_trackers.json") -> {
-                                        val trackers = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.LifeTracker>::class.java)
-                                        trackers.forEach { lifeTrackerRepo.insertTracker(it) }
-                                        trackerCount = trackers.size
-                                    }
-                                    zipEntry.name.endsWith("life_tracker_entries.json") -> {
-                                        val entries = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.LifeTrackerEntry>::class.java)
-                                        entries.forEach { lifeTrackerRepo.insertEntry(it) }
-                                    }
-                                    zipEntry.name.endsWith("events.json") -> {
-                                        val events = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Event>::class.java)
-                                        events.forEach { eventRepo.insertEvent(it) }
-                                        eventCount = events.size
-                                    }
-
-                                    zipEntry.name.endsWith("passwords.json") -> {
-                                        val passwords = gson.fromJson(content, Array<Password>::class.java)
-                                        passwords.forEach { 
-                                            // The exported password is in PLAIN TEXT (decrypted).
-                                            // We must ENCRYPT it before saving to the new database.
-                                            val encryptedPassword = it.copy(
-                                                passwordValue = SecurityUtils.encrypt(it.passwordValue)
-                                            )
-                                            passwordRepo.insertPassword(encryptedPassword) 
-                                        }
-                                        passwordCount = passwords.size
-                                    }
+                                zipEntry.name.endsWith(".json") -> {
+                                    // Collect all JSON payloads — insert AFTER the loop in FK-safe order
+                                    jsonPayloads[zipEntry.name] = zis.bufferedReader().readText()
                                 }
                             }
                         }
@@ -233,6 +160,93 @@ object ImportUtils {
                     }
                 }
             }
+
+            // ── Insert JSON data in FK-safe order ──────────────────────────────────
+            // 1. Task categories (parent of tasks)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("task_categories.json") }?.let { (_, content) ->
+                try {
+                    val categories = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.TaskCategory>::class.java)
+                    categories.forEach { taskRepo.insertCategory(it) }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 2. Tasks (depends on task_categories)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("tasks.json") }?.let { (_, content) ->
+                try {
+                    val tasks = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Task>::class.java)
+                    tasks.forEach { taskRepo.insertTask(it) }
+                    taskCount = tasks.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 3. Habits (parent of habit_logs)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("habits.json") }?.let { (_, content) ->
+                try {
+                    val habits = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Habit>::class.java)
+                    habits.forEach { journalRepo.addHabit(it) }
+                    habitCount = habits.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 4. Habit logs (depends on habits — must come AFTER habits are inserted)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("habit_logs.json") }?.let { (_, content) ->
+                try {
+                    val logs = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.HabitLog>::class.java)
+                    logs.forEach { log ->
+                        journalRepo.toggleHabitCompletion(log.habitId, log.dateMillis, true)
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 5. Life trackers (parent of life_tracker_entries)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("life_trackers.json") }?.let { (_, content) ->
+                try {
+                    val trackers = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.LifeTracker>::class.java)
+                    trackers.forEach { lifeTrackerRepo.insertTracker(it) }
+                    trackerCount = trackers.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 6. Life tracker entries (depends on life_trackers — must come AFTER trackers are inserted)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("life_tracker_entries.json") }?.let { (_, content) ->
+                try {
+                    val entries = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.LifeTrackerEntry>::class.java)
+                    entries.forEach { lifeTrackerRepo.insertEntry(it) }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 7. Events (no FK dependencies)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("events.json") }?.let { (_, content) ->
+                try {
+                    val events = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Event>::class.java)
+                    events.forEach { eventRepo.insertEvent(it) }
+                    eventCount = events.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 8. Quotes (no FK dependencies)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("quotes.json") }?.let { (_, content) ->
+                try {
+                    val quotes = gson.fromJson(content, Array<com.baverika.r_journal.quotes.data.QuoteEntity>::class.java)
+                    quotes.forEach { quoteRepo.insertQuote(it) }
+                    quoteCount = quotes.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 9. Passwords (no FK dependencies)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("passwords.json") }?.let { (_, content) ->
+                try {
+                    val passwords = gson.fromJson(content, Array<Password>::class.java)
+                    passwords.forEach {
+                        val encryptedPassword = it.copy(
+                            passwordValue = SecurityUtils.encrypt(it.passwordValue)
+                        )
+                        passwordRepo.insertPassword(encryptedPassword)
+                    }
+                    passwordCount = passwords.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
 
             // Clean up temp files
             tempImagesDir.deleteRecursively()

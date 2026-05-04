@@ -140,7 +140,7 @@ fun EnhancedJournalCard(
                             events.take(3).forEach { event ->
                                 val icon = when (event.type) {
                                     com.baverika.r_journal.data.local.entity.EventType.BIRTHDAY -> "🎂"
-                                    com.baverika.r_journal.data.local.entity.EventType.ANNIVERSARY -> "❤️"
+                                    com.baverika.r_journal.data.local.entity.EventType.ANNIVERSARY -> "💍"
                                     else -> "🎉"
                                 }
                                 Text(text = icon, style = MaterialTheme.typography.bodySmall)

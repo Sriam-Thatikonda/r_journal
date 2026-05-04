@@ -43,6 +43,7 @@ import com.baverika.r_journal.ui.theme.MidnightColors
 import com.baverika.r_journal.ui.theme.OceanColors
 import com.baverika.r_journal.ui.theme.RosewoodColors
 import com.baverika.r_journal.ui.theme.BlueSkyColors
+import com.baverika.r_journal.ui.theme.CloudDancerColors
 import com.baverika.r_journal.utils.PasswordExportUtils
 import com.baverika.r_journal.BuildConfig
 import kotlinx.coroutines.launch
@@ -119,7 +120,6 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
-                .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
 
@@ -138,7 +138,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Theme Selection - Single Row
+            // Theme Selection - Two rows for 6 themes
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -148,6 +148,7 @@ fun SettingsScreen(
                     backgroundColor = MidnightColors.Background,
                     primaryColor = MidnightColors.Primary,
                     isSelected = currentTheme == AppTheme.MIDNIGHT,
+                    isLightBackground = false,
                     onClick = {
                         currentTheme = AppTheme.MIDNIGHT
                         settingsRepo.appTheme = AppTheme.MIDNIGHT
@@ -160,6 +161,7 @@ fun SettingsScreen(
                     backgroundColor = LightColors.Background,
                     primaryColor = LightColors.Primary,
                     isSelected = currentTheme == AppTheme.LIGHT,
+                    isLightBackground = true,
                     onClick = {
                         currentTheme = AppTheme.LIGHT
                         settingsRepo.appTheme = AppTheme.LIGHT
@@ -172,6 +174,7 @@ fun SettingsScreen(
                     backgroundColor = OceanColors.Background,
                     primaryColor = OceanColors.Primary,
                     isSelected = currentTheme == AppTheme.OCEAN,
+                    isLightBackground = false,
                     onClick = {
                         currentTheme = AppTheme.OCEAN
                         settingsRepo.appTheme = AppTheme.OCEAN
@@ -179,11 +182,20 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.weight(1f)
                 )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 ThemeOption(
                     name = "Rose",
                     backgroundColor = RosewoodColors.Background,
                     primaryColor = RosewoodColors.Primary,
                     isSelected = currentTheme == AppTheme.ROSEWOOD,
+                    isLightBackground = false,
                     onClick = {
                         currentTheme = AppTheme.ROSEWOOD
                         settingsRepo.appTheme = AppTheme.ROSEWOOD
@@ -196,10 +208,24 @@ fun SettingsScreen(
                     backgroundColor = BlueSkyColors.Background,
                     primaryColor = BlueSkyColors.Primary,
                     isSelected = currentTheme == AppTheme.BLUE_SKY,
+                    isLightBackground = false,
                     onClick = {
                         currentTheme = AppTheme.BLUE_SKY
                         settingsRepo.appTheme = AppTheme.BLUE_SKY
                         onThemeChanged(AppTheme.BLUE_SKY)
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                ThemeOption(
+                    name = "Cloud '26",
+                    backgroundColor = CloudDancerColors.Background,
+                    primaryColor = CloudDancerColors.Primary,
+                    isSelected = currentTheme == AppTheme.CLOUD_DANCER,
+                    isLightBackground = true,
+                    onClick = {
+                        currentTheme = AppTheme.CLOUD_DANCER
+                        settingsRepo.appTheme = AppTheme.CLOUD_DANCER
+                        onThemeChanged(AppTheme.CLOUD_DANCER)
                     },
                     modifier = Modifier.weight(1f)
                 )
@@ -356,6 +382,7 @@ private fun ThemeOption(
     backgroundColor: Color,
     primaryColor: Color,
     isSelected: Boolean,
+    isLightBackground: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -392,9 +419,9 @@ private fun ThemeOption(
                 text = name,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium,
-                color = if (backgroundColor == LightColors.Background) 
-                    LightColors.OnBackground 
-                else 
+                color = if (isLightBackground)
+                    Color(0xFF2C2520)          // Warm dark brown for light backgrounds
+                else
                     Color.White.copy(alpha = 0.9f),
                 modifier = Modifier.align(Alignment.BottomStart)
             )

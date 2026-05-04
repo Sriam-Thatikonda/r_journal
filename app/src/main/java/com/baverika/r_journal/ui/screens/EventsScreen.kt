@@ -137,25 +137,19 @@ fun EventItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon based on type
-            val icon = when (event.type) {
-                EventType.BIRTHDAY -> Icons.Default.Cake
-                EventType.ANNIVERSARY -> Icons.Default.Favorite
-                EventType.MEETING -> Icons.Default.DateRange
-                else -> Icons.Default.Event
-            }
-            val iconColor = when (event.type) {
-                EventType.BIRTHDAY -> Color(0xFFFF6F00) // Orange
-                EventType.ANNIVERSARY -> Color(0xFFE91E63) // Pink
-                EventType.MEETING -> Color(0xFF2196F3) // Blue
-                else -> MaterialTheme.colorScheme.primary
+            // Icon based on type — displayed as a large emoji text
+            val eventEmoji = when (event.type) {
+                EventType.BIRTHDAY -> "🎂"
+                EventType.ANNIVERSARY -> "💍"
+                EventType.MEETING -> "📅"
+                else -> "🎉"
             }
 
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(40.dp)
+            Text(
+                text = eventEmoji,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.size(40.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -305,10 +299,22 @@ fun EventTypeChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val emoji = when (type) {
+        EventType.BIRTHDAY -> "🎂"
+        EventType.ANNIVERSARY -> "💍"
+        EventType.MEETING -> "📅"
+        EventType.CUSTOM -> "🎉"
+    }
+    val label = when (type) {
+        EventType.BIRTHDAY -> "Birthday"
+        EventType.ANNIVERSARY -> "Anniversary"
+        EventType.MEETING -> "Meeting"
+        EventType.CUSTOM -> "Custom"
+    }
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(type.name.lowercase().capitalize()) },
+        label = { Text("$emoji $label") },
         leadingIcon = {
             if (selected) {
                 Icon(

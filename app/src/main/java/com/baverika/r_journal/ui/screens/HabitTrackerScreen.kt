@@ -41,77 +41,63 @@ fun HabitTrackerScreen(
     val dashboardGrids by viewModel.dashboardHabitGrids.collectAsState()
     val yearlyGrids by viewModel.yearlyHabitGrids.collectAsState()
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Habit Dashboard") },
-                actions = {
-                   IconButton(onClick = { navController.navigate("add_habit") }) {
-                       Icon(Icons.Default.Add, contentDescription = "Add Habit")
-                   }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        // Header for 7 Days
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .fillMaxWidth()
+                .padding(start = 120.dp, bottom = 8.dp, top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header for 7 Days
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 120.dp, bottom = 8.dp, top = 8.dp), // Match Name column width + padding
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                 val today = java.time.LocalDate.now()
-                 (0..6).forEach { i ->
-                     val date = today.plusDays(i.toLong())
-                     Column(
-                         horizontalAlignment = Alignment.CenterHorizontally,
-                         modifier = Modifier.width(32.dp)
-                     ) {
-                         Text(
-                             text = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()),
-                             style = MaterialTheme.typography.labelSmall,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                         )
-                         Text(
-                             text = date.dayOfMonth.toString(),
-                             style = MaterialTheme.typography.labelSmall,
-                             fontWeight = FontWeight.Bold
-                         )
-                     }
+             val today = java.time.LocalDate.now()
+             (0..6).forEach { i ->
+                 val date = today.plusDays(i.toLong())
+                 Column(
+                     horizontalAlignment = Alignment.CenterHorizontally,
+                     modifier = Modifier.width(32.dp)
+                 ) {
+                     Text(
+                         text = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()),
+                         style = MaterialTheme.typography.labelSmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                     )
+                     Text(
+                         text = date.dayOfMonth.toString(),
+                         style = MaterialTheme.typography.labelSmall,
+                         fontWeight = FontWeight.Bold
+                     )
                  }
-            }
-            
-            Divider()
+             }
+        }
+        
+        Divider()
 
-            if (dashboardGrids.isEmpty()) {
-                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                     Text("No habits yet. Tap + to add one.")
-                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(dashboardGrids) { grid ->
-                        HabitRow7Day(
-                            grid = grid,
-                            onNameClick = { navController.navigate("habit_year_overview/${grid.habit.id}") },
-                            onEditClick = { habit ->
-                                navController.navigate("add_habit?habitId=${habit.id}")
-                            },
-                            onDeleteClick = { habit ->
-                                viewModel.deleteHabit(habit)
-                            },
-                            onBlockClick = { date, isCompleted ->
-                                viewModel.toggleHabitForDate(grid.habit.id, date, isCompleted)
-                            }
-                        )
-                        Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    }
+        if (dashboardGrids.isEmpty()) {
+             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                 Text("No habits yet. Tap + to add one.")
+             }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(dashboardGrids) { grid ->
+                    HabitRow7Day(
+                        grid = grid,
+                        onNameClick = { navController.navigate("habit_year_overview/${grid.habit.id}") },
+                        onEditClick = { habit ->
+                            navController.navigate("add_habit?habitId=${habit.id}")
+                        },
+                        onDeleteClick = { habit ->
+                            viewModel.deleteHabit(habit)
+                        },
+                        onBlockClick = { date, isCompleted ->
+                            viewModel.toggleHabitForDate(grid.habit.id, date, isCompleted)
+                        }
+                    )
+                    Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 }
             }
         }

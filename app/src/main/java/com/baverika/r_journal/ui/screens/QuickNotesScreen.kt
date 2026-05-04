@@ -42,207 +42,183 @@ fun QuickNotesScreen(
     val layoutType by viewModel.layoutType.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
-    // State to hold the note currently being edited
-    var noteToEdit by remember { mutableStateOf<QuickNote?>(null) }
+    // State to hold the note currently being deleted
     var noteToDelete by remember { mutableStateOf<QuickNote?>(null) }
 
-    // Determine if we are in edit mode
-    val isEditing = noteToEdit != null
+    Box(modifier = Modifier.fillMaxSize()) {
+        // --- Main List Content ---
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Search Bar and Layout Toggle in same row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Search Bar (70% width)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    placeholder = { Text("Search...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    modifier = Modifier.weight(0.7f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                
+                // Layout toggle button
+                IconButton(
+                    onClick = {
+                        val newLayout = if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
+                            QuickNotesPreferences.LAYOUT_LIST
+                        } else {
+                            QuickNotesPreferences.LAYOUT_MASONRY
+                        }
+                        viewModel.setLayoutType(newLayout)
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
+                            Icons.Default.ViewAgenda // List icon
+                        } else {
+                            Icons.Default.GridView // Grid icon
+                        },
+                        contentDescription = "Toggle Layout"
+                    )
+                }
+            }
 
-    Scaffold(
-        // No TopAppBar - direct content
-
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            // --- Main List Content ---
-            if (!isEditing) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Search Bar and Layout Toggle in same row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            if (notes.isEmpty()) {
+                if (searchQuery.isNotEmpty()) {
+                    // Empty search results
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Search Bar (70% width)
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { viewModel.onSearchQueryChange(it) },
-                            placeholder = { Text("Search...") },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                            modifier = Modifier.weight(0.7f),
-                            singleLine = true,
-                            shape = RoundedCornerShape(24.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                focusedBorderColor = MaterialTheme.colorScheme.primary
-                            )
+                        Text(
+                            text = "No notes found",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        
-                        // Layout toggle button
-                        IconButton(
-                            onClick = {
-                                val newLayout = if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
-                                    QuickNotesPreferences.LAYOUT_LIST
-                                } else {
-                                    QuickNotesPreferences.LAYOUT_MASONRY
-                                }
-                                viewModel.setLayoutType(newLayout)
-                            },
-                            modifier = Modifier.size(48.dp)
+                    }
+                } else {
+                    // Empty state (no notes at all)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NoteAdd,
+                            contentDescription = null,
+                            modifier = Modifier.size(120.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text(
+                            text = "No Notes Yet",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Capture quick thoughts and ideas",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = { navController.navigate("new_quick_note") }
                         ) {
-                            Icon(
-                                imageVector = if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
-                                    Icons.Default.ViewAgenda // List icon
-                                } else {
-                                    Icons.Default.GridView // Grid icon
-                                },
-                                contentDescription = "Toggle Layout"
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Create Note")
+                        }
+                    }
+                }
+            } else {
+                // Display notes based on layout type
+                if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
+                    // Masonry (Staggered Grid) Layout
+                    LazyVerticalStaggeredGrid(
+                        columns = StaggeredGridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = 80.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalItemSpacing = 8.dp
+                    ) {
+                        items(notes, key = { it.id }) { note ->
+                            QuickNoteCard(
+                                note = note,
+                                onDelete = { noteToDelete = it },
+                                onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                modifier = Modifier
                             )
                         }
                     }
-
-                    if (notes.isEmpty()) {
-                        if (searchQuery.isNotEmpty()) {
-                            // Empty search results
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No notes found",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            // Empty state (no notes at all)
-                            Column(
+                } else {
+                    // List Layout
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 80.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(notes, key = { it.id }) { note ->
+                            QuickNoteCard(
+                                note = note,
+                                onDelete = { noteToDelete = it },
+                                onClick = { navController.navigate("edit_quick_note/${note.id}") },
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.NoteAdd,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(120.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                                )
-
-                                Spacer(modifier = Modifier.height(24.dp))
-
-                                Text(
-                                    text = "No Notes Yet",
-                                    style = MaterialTheme.typography.headlineMedium
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Text(
-                                    text = "Capture quick thoughts and ideas",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
-                                Spacer(modifier = Modifier.height(24.dp))
-
-                                Button(
-                                    onClick = { navController.navigate("new_quick_note") }
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Create Note")
-                                }
-                            }
-                        }
-                    } else {
-                        // Display notes based on layout type
-                        if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
-                            // Masonry (Staggered Grid) Layout
-                            LazyVerticalStaggeredGrid(
-                                columns = StaggeredGridCells.Fixed(2),
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(
-                                    start = 8.dp,
-                                    end = 8.dp,
-                                    bottom = 80.dp
-                                ),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalItemSpacing = 8.dp
-                            ) {
-                                items(notes, key = { it.id }) { note ->
-                                    QuickNoteCard(
-                                        note = note,
-                                        onDelete = { noteToDelete = it },
-                                        onClick = { noteToEdit = note },
-                                        modifier = Modifier
-                                    )
-                                }
-                            }
-                        } else {
-                            // List Layout
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    bottom = 80.dp
-                                ),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(notes, key = { it.id }) { note ->
-                                    QuickNoteCard(
-                                        note = note,
-                                        onDelete = { noteToDelete = it },
-                                        onClick = { noteToEdit = note },
-                                        modifier = Modifier
-                                    )
-                                }
-                            }
+                            )
                         }
                     }
                 }
             }
-            // --- End Main List Content ---
+        }
+        // --- End Main List Content ---
 
-            // --- Edit Note UI (Interactive like creation screen) ---
-            if (isEditing && noteToEdit != null) {
-                EditNoteScreen(
-                    note = noteToEdit!!,
-                    onSave = { updatedNote ->
-                        viewModel.updateNote(updatedNote)
-                        noteToEdit = null
-                    },
-                    onCancel = { noteToEdit = null }
-                )
-            }
-            // --- End Edit Note UI ---
-
-            if (noteToDelete != null) {
-                AlertDialog(
-                    onDismissRequest = { noteToDelete = null },
-                    title = { Text("Delete Note") },
-                    text = { Text("Are you sure you want to delete this note?") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                noteToDelete?.let { viewModel.deleteNote(it) }
-                                noteToDelete = null
-                            }
-                        ) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+        if (noteToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { noteToDelete = null },
+                title = { Text("Delete Note") },
+                text = { Text("Are you sure you want to delete this note?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            noteToDelete?.let { viewModel.deleteNote(it) }
+                            noteToDelete = null
                         }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { noteToDelete = null }) {
-                            Text("Cancel")
-                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
-                )
-            }
+                },
+                dismissButton = {
+                    TextButton(onClick = { noteToDelete = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

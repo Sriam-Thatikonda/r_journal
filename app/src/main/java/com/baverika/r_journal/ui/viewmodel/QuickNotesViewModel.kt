@@ -59,6 +59,8 @@ class QuickNoteViewModel(
         }
     }
 
+    suspend fun getNoteById(id: String): QuickNote? = repository.getNoteById(id)
+
     fun updateNote(note: QuickNote) {
         viewModelScope.launch {
             repository.updateNote(note)

@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel
 import com.baverika.r_journal.utils.ColorUtils
 
@@ -62,8 +64,18 @@ fun NewQuickNoteScreen(
     viewModel: QuickNoteViewModel,
     navController: NavController
 ) {
+    val currentTheme = LocalAppTheme.current
+
+    // Default note color is theme-aware:
+    // Light themes get a soft neutral so new notes don't clash with the warm/light app background
+    val defaultNoteColor = when (currentTheme) {
+        AppTheme.LIGHT         -> 0xFFE8EAED // Light gray
+        AppTheme.CLOUD_DANCER  -> 0xFFF2F0E9 // Cloud Dancer warm cream
+        else                   -> noteColors.first() // Black for dark themes
+    }
+
     var title by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableLongStateOf(noteColors.first()) }
+    var selectedColor by remember { mutableLongStateOf(defaultNoteColor) }
     
     // Mode Switch State
     var currentItemType by remember { mutableStateOf(ItemType.TEXT) }
@@ -96,9 +108,9 @@ fun NewQuickNoteScreen(
             if (currentItemType == ItemType.TEXT) {
                 // Parse body into items
                 if (noteBody.isNotBlank()) {
-                    listItems = noteBody.lines().map { 
-                        NoteItem(text = it, type = newType) 
-                    }
+                    listItems = noteBody.lines()
+                        .filter { it.isNotBlank() }
+                        .map { NoteItem(text = it, type = newType) }
                 }
                 noteBody = ""
             } else {
@@ -123,14 +135,14 @@ fun NewQuickNoteScreen(
                 listItems
             }
             
-            itemsToSave.joinToString("\n") { item ->
+            itemsToSave.mapIndexed { index, item ->
                 when (item.type) {
                     ItemType.CHECKBOX -> if (item.isChecked) "[x] ${item.text}" else "[ ] ${item.text}"
                     ItemType.BULLET -> "- ${item.text}"
-                    ItemType.NUMBERED -> "${itemsToSave.indexOf(item) + 1}. ${item.text}"
+                    ItemType.NUMBERED -> "${index + 1}. ${item.text}"
                     ItemType.TEXT -> item.text
                 }
-            }
+            }.joinToString("\n")
         }
 
         if (title.isNotBlank() || finalContent.isNotBlank()) {
@@ -228,6 +240,7 @@ fun NewQuickNoteScreen(
                         listItems.forEachIndexed { index, item ->
                             NoteItemRow(
                                 item = item,
+                                itemIndex = index,
                                 textColor = textColor,
                                 secondaryTextColor = secondaryTextColor,
                                 onCheckedChange = { checked ->
@@ -443,6 +456,7 @@ fun TypeButton(
 @Composable
 fun NoteItemRow(
     item: NoteItem,
+    itemIndex: Int,
     textColor: Color,
     secondaryTextColor: Color,
     onCheckedChange: (Boolean) -> Unit,
@@ -466,16 +480,17 @@ fun NoteItemRow(
                 )
             }
             ItemType.BULLET -> {
-                Icon(
-                    imageVector = Icons.Default.Circle,
-                    contentDescription = null,
-                    tint = textColor,
-                    modifier = Modifier.size(8.dp).padding(horizontal = 12.dp)
+                // Bullet dot: correct size + spacing on the Row, not clipped by icon modifier
+                Text(
+                    text = "•",
+                    color = textColor,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
             ItemType.NUMBERED -> {
-                 Text(
-                    text = "•",
+                Text(
+                    text = "${itemIndex + 1}.",
                     color = textColor,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
