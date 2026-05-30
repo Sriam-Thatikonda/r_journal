@@ -44,10 +44,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -391,6 +396,7 @@ fun ChatInputScreen(
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     val listState = rememberLazyListState()
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
     // Voice recording state — declared early so hasUnsavedText can reference it
@@ -402,10 +408,19 @@ fun ChatInputScreen(
 
     var showExitConfirmation by remember { mutableStateOf(false) }
     var messageActionMenuForId by remember { mutableStateOf<String?>(null) }
-    var editTextValue by remember { mutableStateOf("") }
+    var editTextValue by remember { mutableStateOf(TextFieldValue("")) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showOptionsDialog by remember { mutableStateOf(false) }
+
+    val editFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(showEditDialog) {
+        if (showEditDialog) {
+            kotlinx.coroutines.delay(100)
+            editFocusRequester.requestFocus()
+        }
+    }
 
     var showMediaPicker by remember { mutableStateOf(false) }
     var tempImageFile by remember { mutableStateOf<File?>(null) }
@@ -628,7 +643,10 @@ fun ChatInputScreen(
                                     navController = navController,
                                     onLongClick = {
                                         messageActionMenuForId = message.id
-                                        editTextValue = message.content
+                                        editTextValue = TextFieldValue(
+                                            text = message.content,
+                                            selection = TextRange(message.content.length)
+                                        )
                                         showOptionsDialog = true
                                     },
                                     repliedMessage = replied,
@@ -909,23 +927,38 @@ fun ChatInputScreen(
                 Column {
                     androidx.compose.material3.TextButton(
                         onClick = {
+                            val messageToCopy = entry.messages.find { it.id == messageActionMenuForId }
+                            messageToCopy?.let {
+                                clipboardManager.setText(AnnotatedString(it.content))
+                            }
                             showOptionsDialog = false
-                            showEditDialog = true
-                            // messageActionMenuForId remains set
+                            messageActionMenuForId = null
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        M3Text("Edit Message")
+                        M3Text("Copy Message")
                     }
-                    androidx.compose.material3.TextButton(
-                        onClick = {
-                            showOptionsDialog = false
-                            showDeleteDialog = true
-                            // messageActionMenuForId remains set
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        M3Text("Delete Message", color = MaterialTheme.colorScheme.error)
+                    if (isCurrentEntryToday) {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                showOptionsDialog = false
+                                showEditDialog = true
+                                // messageActionMenuForId remains set
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            M3Text("Edit Message")
+                        }
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                showOptionsDialog = false
+                                showDeleteDialog = true
+                                // messageActionMenuForId remains set
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            M3Text("Delete Message", color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             },
@@ -956,14 +989,16 @@ fun ChatInputScreen(
                         value = editTextValue,
                         onValueChange = { editTextValue = it },
                         label = { M3Text("Content") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(editFocusRequester),
                         maxLines = 5
                     )
                 },
                 confirmButton = {
                     androidx.compose.material.TextButton(
                         onClick = {
-                            val trimmed = editTextValue.trim()
+                            val trimmed = editTextValue.text.trim()
                             if (trimmed.isNotBlank()) {
                                 viewModel.editMessage(messageToEdit.id, trimmed)
                             } else {

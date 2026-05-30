@@ -34,8 +34,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.baverika.r_journal.data.local.database.JournalDatabase
-import com.baverika.r_journal.data.remote.RetrofitClient
-import com.baverika.r_journal.data.remote.ServerPrefs
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
@@ -218,9 +216,6 @@ fun MainApp(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // 🔧 state to show/hide server settings dialog
-    var showServerDialog by remember { mutableStateOf(false) }
-
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
@@ -255,9 +250,6 @@ fun MainApp(
                                 restoreState = true
                             }
                             scope.launch { drawerState.close() }
-                        },
-                        onServerSettingsClick = {
-                            showServerDialog = true
                         }
                     )
                 }
@@ -820,9 +812,6 @@ fun MainApp(
                     }
                 }
 
-
-
-
                 if (showBirthdayEasterEgg) {
                     com.baverika.r_journal.ui.components.BirthdayEasterEggOverlay(
                         age = userAge,
@@ -832,28 +821,12 @@ fun MainApp(
             }
         }
     }
-
-    // 🔧 Server settings dialog, triggered from drawer
-    if (showServerDialog) {
-        ServerConfigDialog(
-            onClose = { showServerDialog = false },
-            onSave = { hostPort ->
-                val trimmed = hostPort.trim()
-                if (trimmed.isNotEmpty()) {
-                    ServerPrefs.setHostPort(context, trimmed)
-                    RetrofitClient.setHostPort(trimmed)
-                }
-                showServerDialog = false
-            }
-        )
-    }
 }
 
 @Composable
 fun DrawerContent(
     currentRoute: String?,
-    onScreenSelected: (String) -> Unit,
-    onServerSettingsClick: () -> Unit
+    onScreenSelected: (String) -> Unit
 ) {
     Column {
         // Section: Reference
@@ -937,12 +910,6 @@ fun DrawerContent(
             isSelected = currentRoute == "settings",
             onClick = { onScreenSelected("settings") }
         )
-        DrawerItem(
-            icon = Icons.Filled.Details,
-            label = "Server Details",
-            isSelected = false,
-            onClick = { onServerSettingsClick() }
-        )
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -973,78 +940,4 @@ fun DrawerItem(
     )
 }
 
-@Composable
-fun ServerConfigDialog(
-    onClose: () -> Unit,
-    onSave: (String) -> Unit
-) {
-    val context = LocalContext.current
-    var text by remember {
-        mutableStateOf(ServerPrefs.getHostPort(context))
-    }
-    var isSyncEnabled by remember {
-        mutableStateOf(ServerPrefs.isSyncOnOpenEnabled(context))
-    }
 
-    AlertDialog(
-        onDismissRequest = onClose,
-        title = { Text("Server address") },
-        text = {
-            Column {
-                Text(
-                    "Enter IP:port of your Flask server.\n\n" +
-                            "Examples:\n127.0.0.1:5000 (same phone)\n192.168.x.x:5000 (Wi-Fi / hotspot)",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text("IP:port") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(Modifier.height(16.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Sync on Open",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "Automatically sync with server when opening Today's entry",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = isSyncEnabled,
-                        onCheckedChange = { isSyncEnabled = it }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    // Save sync preference immediately here (since onSave only takes string)
-                    ServerPrefs.setSyncOnOpenEnabled(context, isSyncEnabled)
-                    onSave(text)
-                }
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onClose) {
-                Text("Cancel")
-            }
-        }
-    )
-}
