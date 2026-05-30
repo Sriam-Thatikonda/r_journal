@@ -67,8 +67,12 @@ class JournalViewModel(
 
     // Track if current entry is today
     val isCurrentEntryToday: Boolean
-        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-        get() = JournalEntry.isToday(currentEntry.dateMillis)
+        get() {
+            val calToday = Calendar.getInstance()
+            val calEntry = Calendar.getInstance().apply { timeInMillis = currentEntry.dateMillis }
+            return calToday.get(Calendar.YEAR) == calEntry.get(Calendar.YEAR) &&
+                    calToday.get(Calendar.DAY_OF_YEAR) == calEntry.get(Calendar.DAY_OF_YEAR)
+        }
 
     // Track if mood can be edited (Allowed for all entries now)
     val canEditMood: Boolean
@@ -95,17 +99,6 @@ class JournalViewModel(
                 _isLoading.value = false
             }
 
-            // 2) merge with server (site ➜ app)
-            // This happens silently in background while user sees local data
-            if (com.baverika.r_journal.data.remote.ServerPrefs.isSyncOnOpenEnabled(appContext)) {
-                val merged = repo.syncTodayFromServer(currentEntry)
-                if (merged != null) {
-                    currentEntry = merged
-
-                    Log.d("VM", "Loaded entry messages (MERGED): " +
-                            merged.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
-                }
-            }
         }
     }
 
@@ -253,6 +246,9 @@ class JournalViewModel(
     }
 
     fun editMessage(messageId: String, newContent: String) {
+        // Only allow editing messages if the entry is from today
+        if (!isCurrentEntryToday) return
+
         // Find target message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
 
@@ -288,6 +284,9 @@ class JournalViewModel(
     }
 
     fun deleteMessage(messageId: String) {
+        // Only allow deleting messages if the entry is from today
+        if (!isCurrentEntryToday) return
+
         // Find message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
 

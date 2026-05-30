@@ -5,9 +5,6 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import com.baverika.r_journal.data.local.dao.JournalDao
 import com.baverika.r_journal.data.local.entity.JournalEntry
-import com.baverika.r_journal.data.remote.RetrofitClient
-//import com.baverika.r_journal.data.remote.toDto
-import com.baverika.r_journal.data.remote.toEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.ZoneId
@@ -149,60 +146,7 @@ class JournalRepository(
         }
     }
 
-    // ---------- NEW: sync with Flask API ----------
 
-    suspend fun syncTodayFromServer(local: JournalEntry?): JournalEntry? {
-        return withContext(Dispatchers.IO) {
-            try {
-                val dto = RetrofitClient.getApi().getToday()
-                val remote = dto.toEntity()
-
-                // Base = what we already have locally
-                val base = local ?: remote
-
-                // Merge messages: local(app) + remote(site)
-                // Deduplicate by ID, keeping the one with the latest timestamp (or prefer remote if equal/unknown)
-                val allMessages = (local?.messages ?: emptyList()) + remote.messages
-                val distinctMessages = allMessages
-                    .groupBy { it.id }
-                    .map { (_, duplicates) ->
-                        // Pick the version with the highest timestamp (latest edit)
-                        duplicates.maxByOrNull { it.timestamp }!!
-                    }
-                    .sortedBy { it.timestamp }
-
-                // ✅ Only update messages. Keep local id/mood/tags/imageUris intact.
-                //    dateMillis (the PrimaryKey) handles DB uniqueness; id is a stable UUID.
-                val mergedEntry = base.copy(
-                    messages = distinctMessages
-                    // tags = base.tags
-                    // mood = base.mood
-                    // imageUris = base.imageUris
-                )
-
-                saveEntry(mergedEntry)
-                mergedEntry
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
-        }
-    }
-
-
-//    suspend fun pushTodayToServer(entry: JournalEntry) {
-//        try {
-//            val dto = entry.toDto()
-//            Log.d("JournalRepo", "Pushing to server: ${dto.messages.size} messages")
-//            val savedDto = RetrofitClient.api.saveToday(dto)
-//            val savedEntity = savedDto.toEntity()
-//            saveEntry(savedEntity) // keep DB in sync with whatever server has
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            Log.e("JournalRepo", "pushTodayToServer failed", e)
-//            // You can decide to ignore or bubble up error
-//        }
-//    }
 
     // ---------- Habits ----------
     private val habitDao = com.baverika.r_journal.data.local.database.JournalDatabase.getDatabase(com.baverika.r_journal.RJournalApp.instance).habitDao()
