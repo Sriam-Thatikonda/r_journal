@@ -13,6 +13,10 @@ import com.baverika.r_journal.data.local.entity.*
 import com.baverika.r_journal.quotes.data.QuoteDao
 import com.baverika.r_journal.quotes.data.QuoteEntity
 
+import com.baverika.r_journal.data.ChallengeEntity
+import com.baverika.r_journal.data.ChallengeDao
+import com.baverika.r_journal.utils.ChallengeTypeConverters
+
 @Database(
     entities = [
         JournalEntry::class,
@@ -26,13 +30,16 @@ import com.baverika.r_journal.quotes.data.QuoteEntity
         TaskCategory::class,
         LifeTracker::class,
         LifeTrackerEntry::class,
-        CravingLogEntity::class
+        CravingLogEntity::class,
+        ChallengeEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
-@TypeConverters(Converters::class)
+@TypeConverters(Converters::class, ChallengeTypeConverters::class)
 abstract class JournalDatabase : RoomDatabase() {
+
+    abstract fun challengeDao(): ChallengeDao
 
     abstract fun journalDao(): JournalDao
     abstract fun quickNoteDao(): QuickNoteDao
@@ -280,6 +287,30 @@ abstract class JournalDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `challenges` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `description` TEXT,
+                        `emoji` TEXT,
+                        `totalDays` INTEGER NOT NULL,
+                        `completedDays` INTEGER NOT NULL,
+                        `startDate` TEXT NOT NULL,
+                        `lastCompletedDate` TEXT,
+                        `status` TEXT NOT NULL,
+                        `createdAt` TEXT NOT NULL,
+                        `updatedAt` TEXT NOT NULL,
+                        `reminderEnabled` INTEGER NOT NULL,
+                        `reminderTime` TEXT,
+                        `frequencyType` TEXT NOT NULL,
+                        `linkedJournalEntryId` INTEGER
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): JournalDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -290,7 +321,7 @@ abstract class JournalDatabase : RoomDatabase() {
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                    MIGRATION_13_14
+                    MIGRATION_13_14, MIGRATION_14_15
                 ).build()
                 INSTANCE = instance
                 instance

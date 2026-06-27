@@ -2,8 +2,6 @@
 
 package com.baverika.r_journal.data.local.entity
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.LocalDate
@@ -18,30 +16,34 @@ data class JournalEntry(
     val mood: String? = null,
     val imageUris: List<String> = emptyList()
 ) {
+    // API-26 safe: uses atZone() instead of LocalDate.ofInstant() (API 34+)
     val localDate: LocalDate
-        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-        get() = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(dateMillis), ZoneId.systemDefault())
+        get() = java.time.Instant.ofEpochMilli(dateMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
 
     companion object {
         fun createForToday(): JournalEntry {
             val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
             return JournalEntry(dateMillis = startOfDay)
         }
-        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         fun isToday(dateMillis: Long): Boolean {
-            val entryDate = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(dateMillis), ZoneId.systemDefault())
+            val entryDate = java.time.Instant.ofEpochMilli(dateMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
             return entryDate == LocalDate.now()
         }
     }
 
 
 
-    // ✅ No-arg constructor with explicit defaults
+    // ✅ No-arg constructor with explicit defaults (imageUris included to avoid null)
     constructor() : this(
         id = java.util.UUID.randomUUID().toString(),
         dateMillis = 0L,
         messages = emptyList(),
         tags = emptyList(),
-        mood = null
+        mood = null,
+        imageUris = emptyList()
     )
 }
