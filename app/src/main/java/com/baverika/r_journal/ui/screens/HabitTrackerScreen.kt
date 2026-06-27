@@ -39,7 +39,6 @@ fun HabitTrackerScreen(
     navController: NavController
 ) {
     val dashboardGrids by viewModel.dashboardHabitGrids.collectAsState()
-    val yearlyGrids by viewModel.yearlyHabitGrids.collectAsState()
     
     Column(
         modifier = Modifier
@@ -73,7 +72,7 @@ fun HabitTrackerScreen(
              }
         }
         
-        Divider()
+        HorizontalDivider()
 
         if (dashboardGrids.isEmpty()) {
              Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -97,7 +96,7 @@ fun HabitTrackerScreen(
                             viewModel.toggleHabitForDate(grid.habit.id, date, isCompleted)
                         }
                     )
-                    Divider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 }
             }
         }

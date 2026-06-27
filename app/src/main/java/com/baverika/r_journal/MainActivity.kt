@@ -41,6 +41,7 @@ import com.baverika.r_journal.repository.QuickNoteRepository
 import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.repository.PasswordRepository
 import com.baverika.r_journal.repository.CravingQuestRepository
+import com.baverika.r_journal.repository.ChallengeRepository
 import com.baverika.r_journal.ui.viewmodel.CravingQuestViewModel
 import com.baverika.r_journal.ui.viewmodel.CravingQuestViewModelFactory
 
@@ -87,6 +88,9 @@ class MainActivity : FragmentActivity() {
 
         // Craving Quest repository
         val cravingRepo = CravingQuestRepository(db.cravingLogDao())
+
+        // Challenge Tracker repository
+        val challengeRepo = ChallengeRepository(db.challengeDao())
 
 
         // Biometric Lock State
@@ -157,6 +161,7 @@ class MainActivity : FragmentActivity() {
                         taskRepo = taskRepo,
                         lifeTrackerRepo = lifeTrackerRepo,
                         cravingRepo = cravingRepo,
+                        challengeRepo = challengeRepo,
                         settingsRepo = settingsRepo,
                         initialRoute = initialRoute,
                         onThemeChanged = { newTheme -> currentTheme = newTheme }
@@ -181,6 +186,7 @@ fun MainApp(
     taskRepo: com.baverika.r_journal.repository.TaskRepository,
     lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
     cravingRepo: CravingQuestRepository,
+    challengeRepo: ChallengeRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
     initialRoute: String = "archive",
     onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
@@ -219,7 +225,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest", "challenges"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -271,6 +277,9 @@ fun MainApp(
                     currentRoute == "events" -> "Special Dates"
                     currentRoute == "life_trackers" -> "Life Trackers"
                     currentRoute == "craving_quest" -> "Craving Quest"
+                    currentRoute == "challenges" -> "Challenge Tracker"
+                    currentRoute == "create_challenge" -> "New Challenge"
+                    currentRoute?.startsWith("challenge_detail") == true -> "Challenge Details"
                     currentRoute == "search" -> "Search"
                     currentRoute == "dashboard" -> "Dashboard"
                     currentRoute == "settings" -> "Settings"
@@ -400,6 +409,11 @@ fun MainApp(
                     fabAction = { navController.navigate("add_craving") }
                     fabIcon = Icons.Filled.Add
                     fabDesc = "Log Craving"
+                }
+                "challenges" -> {
+                    fabAction = { navController.navigate("create_challenge") }
+                    fabIcon = Icons.Filled.Add
+                    fabDesc = "New Challenge"
                 }
                 "habits" -> {
                     fabAction = { navController.navigate("add_habit") }
@@ -810,6 +824,40 @@ fun MainApp(
                         )
                         CravingDetailScreen(logId = logId, viewModel = vm, navController = navController)
                     }
+
+                    // Challenge Tracker
+                    composable("challenges") {
+                        val viewModel: com.baverika.r_journal.ui.challenge.viewmodel.ChallengeListViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.challenge.viewmodel.ChallengeViewModelFactory(challengeRepo)
+                        )
+                        com.baverika.r_journal.ui.challenge.screens.ChallengeListScreen(
+                            viewModel = viewModel,
+                            navController = navController
+                        )
+                    }
+
+                    composable("create_challenge") {
+                        val viewModel: com.baverika.r_journal.ui.challenge.viewmodel.CreateChallengeViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.challenge.viewmodel.ChallengeViewModelFactory(challengeRepo)
+                        )
+                        com.baverika.r_journal.ui.challenge.screens.CreateChallengeScreen(
+                            viewModel = viewModel,
+                            navController = navController
+                        )
+                    }
+
+                    composable(
+                        "challenge_detail/{challengeId}",
+                        arguments = listOf(androidx.navigation.navArgument("challengeId") { type = androidx.navigation.NavType.LongType })
+                    ) { backStackEntry ->
+                        val viewModel: com.baverika.r_journal.ui.challenge.viewmodel.ChallengeDetailViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.challenge.viewmodel.ChallengeViewModelFactory(challengeRepo)
+                        )
+                        com.baverika.r_journal.ui.challenge.screens.ChallengeDetailScreen(
+                            viewModel = viewModel,
+                            navController = navController
+                        )
+                    }
                 }
 
                 if (showBirthdayEasterEgg) {
@@ -893,6 +941,12 @@ fun DrawerContent(
             label = "Habits",
             isSelected = currentRoute == "habits",
             onClick = { onScreenSelected("habits") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.Star,
+            label = "Challenge Tracker",
+            isSelected = currentRoute == "challenges",
+            onClick = { onScreenSelected("challenges") }
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

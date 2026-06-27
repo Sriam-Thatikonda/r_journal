@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,7 +50,7 @@ fun JournalArchiveScreen(
         if (allEntries.isEmpty()) {
             // Empty state
             com.baverika.r_journal.ui.components.EmptyState(
-                icon = Icons.Default.MenuBook,
+                icon = Icons.AutoMirrored.Filled.MenuBook,
                 title = "Your Journal Awaits",
                 message = "Start writing your first entry by tapping the + button"
             )
@@ -96,7 +98,7 @@ fun EnhancedJournalCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onClick()
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -186,7 +188,7 @@ fun EnhancedJournalCard(
                 // Message Count (Left)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.Chat,
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
                         contentDescription = null,
                         modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant

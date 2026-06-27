@@ -74,6 +74,36 @@ You can navigate to past entries without breaking rules
 
 Editing & deleting allowed only for today’s messages
 
+✅ Advanced Task Management
+
+Swipe-to-complete or delete tasks with fluid animations.
+
+Filter tasks by status (Active, Completed, Overdue, Today).
+
+Sort tasks by Due Date, Priority, Created Date, or Alphabetically.
+
+Real-time statistics summary (Active, Completed Today, Overdue).
+
+🌱 Habit Tracker
+
+7-Day heatmap grid view for quick tracking.
+
+Context menu to quickly edit or delete habits.
+
+Compact habit tracker widget for immediate toggling.
+
+Tracks yearly overview and daily completion statuses.
+
+📚 Journal Archive
+
+Beautiful grid view of past entries.
+
+Summarized cards displaying mood emojis, message count, and image count.
+
+Event indicators (Birthdays 🎉, Anniversaries 💍) directly on the cards.
+
+Custom thematic backgrounds based on the active App Theme.
+
 🧱 Architecture
 app/
 

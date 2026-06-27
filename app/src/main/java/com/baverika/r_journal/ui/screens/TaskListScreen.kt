@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -145,7 +146,7 @@ fun TaskListScreen(
                     // Sort button
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.Default.Sort, contentDescription = "Sort")
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
                         }
                         SortDropdownMenu(
                             expanded = showSortMenu,
@@ -181,7 +182,6 @@ fun TaskListScreen(
                 currentFilter = currentFilter,
                 selectedCategoryId = selectedCategoryId,
                 selectedPriority = selectedPriority,
-                categories = categories,
                 onFilterSelected = { viewModel.setFilter(it) },
                 onClearFilters = { viewModel.clearFilters() }
             )
@@ -276,58 +276,6 @@ fun TaskListScreen(
     }
 }
 
-/**
- * Search-enabled top bar.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchTopBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClose: () -> Unit
-) {
-    TopAppBar(
-        title = {
-            BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                text = "Search tasks...",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Close search")
-            }
-        },
-        actions = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background
-        )
-    )
-}
 
 /**
  * Sort dropdown menu.
@@ -460,7 +408,6 @@ private fun FilterChipsRow(
     currentFilter: TaskFilter,
     selectedCategoryId: String?,
     selectedPriority: TaskPriority?,
-    categories: List<TaskCategory>,
     onFilterSelected: (TaskFilter) -> Unit,
     onClearFilters: () -> Unit
 ) {
@@ -791,11 +738,12 @@ private fun DueDateChip(
     val formattedDate = remember(dueDate) {
         val calendar = Calendar.getInstance()
         val today = Calendar.getInstance()
+        val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
         calendar.timeInMillis = dueDate
 
         when {
             isSameDay(calendar, today) -> "Today, ${timeFormat.format(Date(dueDate))}"
-            isSameDay(calendar, today.apply { add(Calendar.DAY_OF_YEAR, 1) }) -> "Tomorrow"
+            isSameDay(calendar, tomorrow) -> "Tomorrow"
             else -> dateFormat.format(Date(dueDate))
         }
     }

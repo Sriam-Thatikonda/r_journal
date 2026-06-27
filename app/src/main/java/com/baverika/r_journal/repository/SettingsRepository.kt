@@ -18,15 +18,15 @@ class SettingsRepository(context: Context) {
     }
 
     var birthDay: Int
-        get() = prefs.getInt(KEY_BIRTH_DAY, 14) // Default: User's birthday
+        get() = prefs.getInt(KEY_BIRTH_DAY, 1)
         set(value) = prefs.edit().putInt(KEY_BIRTH_DAY, value).apply()
 
     var birthMonth: Int
-        get() = prefs.getInt(KEY_BIRTH_MONTH, 4) // Default: April
+        get() = prefs.getInt(KEY_BIRTH_MONTH, 1)
         set(value) = prefs.edit().putInt(KEY_BIRTH_MONTH, value).apply()
 
     var birthYear: Int
-        get() = prefs.getInt(KEY_BIRTH_YEAR, 1999) // Default: 1999
+        get() = prefs.getInt(KEY_BIRTH_YEAR, 2000)
         set(value) = prefs.edit().putInt(KEY_BIRTH_YEAR, value).apply()
 
     var lastBirthdayShownYear: Int

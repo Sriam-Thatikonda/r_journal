@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,7 +115,7 @@ fun DashboardScreen(
                 )
 
                 Text(
-                    text = if (currentStreak == 1) "day streak" else "day streak",
+                    text = if (currentStreak == 1) "day streak" else "days streak",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -160,7 +161,7 @@ fun DashboardScreen(
         ) {
             StatCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.MenuBook,
+                icon = Icons.AutoMirrored.Filled.MenuBook,
                 label = "Total Entries",
                 value = "$totalEntries",
                 subtitle = if (totalEntries == 1) "entry" else "entries"
@@ -192,7 +193,7 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CircularProgressIndicator(
-                    progress = completionRate,
+                    progress = { completionRate },
                     modifier = Modifier.size(48.dp),
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)

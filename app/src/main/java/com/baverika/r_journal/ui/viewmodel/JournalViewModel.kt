@@ -95,7 +95,6 @@ class JournalViewModel(
                         local.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
 
             } finally {
-                // ✅ Show local data immediately, don't wait for network
                 _isLoading.value = false
             }
 
@@ -402,11 +401,8 @@ class JournalViewModel(
                 currentEntry = currentEntry.copy(
                     messages = currentEntry.messages.sortedBy { it.timestamp }
                 )
-                Log.d("VM", "Saving entry messages: ${currentEntry.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" }}")
-
             } catch (e: Exception) {
                 e.printStackTrace()
-                // optionally: show snackbar on network error
             }
         }
     }
