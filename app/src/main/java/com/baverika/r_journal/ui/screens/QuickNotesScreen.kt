@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,9 @@ fun QuickNotesScreen(
     val notes by viewModel.allNotes.collectAsState(initial = emptyList())
     val layoutType by viewModel.layoutType.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+
+    val pinnedNotes = notes.filter { it.isPinned }
+    val unpinnedNotes = notes.filter { !it.isPinned }
 
     // State to hold the note currently being deleted
     var noteToDelete by remember { mutableStateOf<QuickNote?>(null) }
@@ -164,10 +168,28 @@ fun QuickNotesScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalItemSpacing = 8.dp
                     ) {
-                        items(notes, key = { it.id }) { note ->
+                        if (pinnedNotes.isNotEmpty()) {
+                            item(span = { androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine }) {
+                                SectionHeader(title = "Pinned")
+                            }
+                            items(pinnedNotes, key = { it.id }) { note ->
+                                QuickNoteCard(
+                                    note = note,
+                                    onDelete = { noteToDelete = it },
+                                    onPin = { viewModel.togglePin(it) },
+                                    onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                    modifier = Modifier
+                                )
+                            }
+                            item(span = { androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine }) {
+                                SectionHeader(title = "Others")
+                            }
+                        }
+                        items(unpinnedNotes, key = { it.id }) { note ->
                             QuickNoteCard(
                                 note = note,
                                 onDelete = { noteToDelete = it },
+                                onPin = { viewModel.togglePin(it) },
                                 onClick = { navController.navigate("edit_quick_note/${note.id}") },
                                 modifier = Modifier
                             )
@@ -184,10 +206,24 @@ fun QuickNotesScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(notes, key = { it.id }) { note ->
+                        if (pinnedNotes.isNotEmpty()) {
+                            item { SectionHeader(title = "Pinned") }
+                            items(pinnedNotes, key = { it.id }) { note ->
+                                QuickNoteCard(
+                                    note = note,
+                                    onDelete = { noteToDelete = it },
+                                    onPin = { viewModel.togglePin(it) },
+                                    onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                    modifier = Modifier
+                                )
+                            }
+                            item { SectionHeader(title = "Others") }
+                        }
+                        items(unpinnedNotes, key = { it.id }) { note ->
                             QuickNoteCard(
                                 note = note,
                                 onDelete = { noteToDelete = it },
+                                onPin = { viewModel.togglePin(it) },
                                 onClick = { navController.navigate("edit_quick_note/${note.id}") },
                                 modifier = Modifier
                             )
@@ -223,6 +259,19 @@ fun QuickNotesScreen(
     }
 }
 
+@Composable
+fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    )
+}
+
 /**
  * Google Keep-style note card with support for:
  * - Variable height
@@ -234,6 +283,7 @@ fun QuickNotesScreen(
 fun QuickNoteCard(
     note: QuickNote,
     onDelete: (QuickNote) -> Unit,
+    onPin: (QuickNote) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -278,6 +328,19 @@ fun QuickNoteCard(
                         color = textColor
                     )
                 }
+                // Pin button
+                IconButton(
+                    onClick = { onPin(note) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (note.isPinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                        contentDescription = if (note.isPinned) "Unpin Note" else "Pin Note",
+                        modifier = Modifier.size(16.dp),
+                        tint = if (note.isPinned) MaterialTheme.colorScheme.primary else secondaryTextColor
+                    )
+                }
+                // Delete button
                 IconButton(
                     onClick = { onDelete(note) },
                     modifier = Modifier.size(32.dp)
