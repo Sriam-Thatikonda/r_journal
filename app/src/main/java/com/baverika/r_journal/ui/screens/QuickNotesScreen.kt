@@ -169,7 +169,7 @@ fun QuickNotesScreen(
                         verticalItemSpacing = 8.dp
                     ) {
                         if (pinnedNotes.isNotEmpty()) {
-                            item(span = { androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine }) {
+                            item(span = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine) {
                                 SectionHeader(title = "Pinned")
                             }
                             items(pinnedNotes, key = { it.id }) { note ->
@@ -181,7 +181,7 @@ fun QuickNotesScreen(
                                     modifier = Modifier
                                 )
                             }
-                            item(span = { androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine }) {
+                            item(span = androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan.FullLine) {
                                 SectionHeader(title = "Others")
                             }
                         }
