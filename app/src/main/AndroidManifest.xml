@@ -99,6 +99,18 @@
                 android:resource="@xml/task_widget_info" />
         </receiver>
 
+        <!-- Challenge Widget -->
+        <receiver
+            android:name=".ui.challenge.widget.ChallengeWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/challenge_widget_info" />
+        </receiver>
+
         <service
             android:name=".tasks.widget.TaskWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"

@@ -72,4 +72,10 @@ class QuickNoteViewModel(
             repository.deleteNote(note)
         }
     }
+
+    fun togglePin(note: QuickNote) {
+        viewModelScope.launch {
+            repository.updateNote(note.copy(isPinned = !note.isPinned))
+        }
+    }
 }

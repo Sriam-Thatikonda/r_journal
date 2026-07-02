@@ -278,6 +278,7 @@ fun MainApp(
                     currentRoute == "life_trackers" -> "Life Trackers"
                     currentRoute == "craving_quest" -> "Craving Quest"
                     currentRoute == "challenges" -> "Challenge Tracker"
+                    currentRoute == "challenge_history" -> "Challenge History"
                     currentRoute == "create_challenge" -> "New Challenge"
                     currentRoute?.startsWith("challenge_detail") == true -> "Challenge Details"
                     currentRoute == "search" -> "Search"
@@ -343,6 +344,15 @@ fun MainApp(
                                     imageVector = if (isBiometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
                                     contentDescription = if (isBiometricEnabled) "Biometric Lock On" else "Biometric Lock Off",
                                     tint = if (isBiometricEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (currentRoute == "challenges") {
+                            IconButton(onClick = { navController.navigate("challenge_history") }) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "Challenge History",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -831,6 +841,16 @@ fun MainApp(
                             factory = com.baverika.r_journal.ui.challenge.viewmodel.ChallengeViewModelFactory(challengeRepo)
                         )
                         com.baverika.r_journal.ui.challenge.screens.ChallengeListScreen(
+                            viewModel = viewModel,
+                            navController = navController
+                        )
+                    }
+
+                    composable("challenge_history") {
+                        val viewModel: com.baverika.r_journal.ui.challenge.viewmodel.ChallengeHistoryViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.challenge.viewmodel.ChallengeViewModelFactory(challengeRepo)
+                        )
+                        com.baverika.r_journal.ui.challenge.screens.ChallengeHistoryScreen(
                             viewModel = viewModel,
                             navController = navController
                         )

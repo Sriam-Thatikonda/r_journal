@@ -11,13 +11,15 @@ data class QuickNote(
     val title: String,
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val color: Long = 0xFF000000 // Default black background
+    val color: Long = 0xFF000000, // Default black background
+    val isPinned: Boolean = false
 ) {
     constructor() : this(
         id = java.util.UUID.randomUUID().toString(),
         title = "",
         content = "",
         timestamp = System.currentTimeMillis(),
-        color = 0xFF000000
+        color = 0xFF000000,
+        isPinned = false
     )
 }

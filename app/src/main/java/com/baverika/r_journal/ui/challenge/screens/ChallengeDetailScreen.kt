@@ -74,12 +74,37 @@ fun ChallengeDetailScreen(
                         Text("Abandon Challenge")
                     }
 
+                    var showDeleteDialog by remember { mutableStateOf(false) }
+
                     Button(
-                        onClick = viewModel::deleteChallenge,
+                        onClick = { showDeleteDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text("Delete Challenge")
+                    }
+
+                    if (showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteDialog = false },
+                            title = { Text("Delete Challenge") },
+                            text = { Text("Are you sure you want to delete this challenge? This action cannot be undone.") },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showDeleteDialog = false
+                                        viewModel.deleteChallenge()
+                                    }
+                                ) {
+                                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
                     }
                 }
             }
