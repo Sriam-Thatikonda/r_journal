@@ -33,6 +33,19 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease -x lintVitalAnalyzeRelease
 
+      - name: Read Version
+        id: version
+        run: |
+          VERSION=$(grep VERSION_NAME_PREFIX app/version.properties | cut -d'=' -f2)
+          BUILD=$(grep BUILD_NUMBER app/version.properties | cut -d'=' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: |
+          mv app/build/outputs/apk/release/app-release.apk \
+           app/build/outputs/apk/release/r_journal-v${{ steps.version.outputs.version }}-build${{ steps.version.outputs.build }}.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -52,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Latest Build
+          name: r_journal v${{ steps.version.outputs.version }} (Build ${{ steps.version.outputs.build }})
           body: |
             Automatically built from the latest commit.
           files: app/build/outputs/apk/release/*.apk
