@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.baverika.r_journal.widget.WidgetUpdateUtils
 
 class ChallengeWidgetProvider : AppWidgetProvider() {
 
@@ -44,6 +45,7 @@ class ChallengeWidgetProvider : AppWidgetProvider() {
                 
                 withContext(Dispatchers.Main) {
                     val views = RemoteViews(context.packageName, R.layout.widget_challenge_tracker)
+                    WidgetUpdateUtils.applyWidgetBackground(context, views, R.id.widget_root)
                     
                     // Hide all challenge containers first
                     for (i in 1..3) {

@@ -31,9 +31,11 @@ import com.baverika.r_journal.utils.ChallengeTypeConverters
         LifeTracker::class,
         LifeTrackerEntry::class,
         CravingLogEntity::class,
-        ChallengeEntity::class
+        ChallengeEntity::class,
+        Tracker::class,
+        TrackerHistory::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false
 )
 @TypeConverters(Converters::class, ChallengeTypeConverters::class)
@@ -50,6 +52,7 @@ abstract class JournalDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun lifeTrackerDao(): LifeTrackerDao
     abstract fun cravingLogDao(): CravingLogDao
+    abstract fun trackerDao(): TrackerDao
 
     companion object {
         @Volatile
@@ -317,6 +320,39 @@ abstract class JournalDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `trackers` (
+                        `id` TEXT NOT NULL PRIMARY KEY,
+                        `title` TEXT NOT NULL,
+                        `emoji` TEXT NOT NULL,
+                        `color` INTEGER NOT NULL,
+                        `goal` INTEGER NOT NULL,
+                        `currentCount` INTEGER NOT NULL,
+                        `incrementStep` INTEGER NOT NULL DEFAULT 1,
+                        `resetFrequency` TEXT NOT NULL,
+                        `createdDate` INTEGER NOT NULL,
+                        `updatedDate` INTEGER NOT NULL,
+                        `archived` INTEGER NOT NULL DEFAULT 0,
+                        `trackerType` TEXT NOT NULL DEFAULT 'COUNTER',
+                        `notes` TEXT
+                    )
+                """.trimIndent())
+                
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `tracker_history` (
+                        `id` TEXT NOT NULL PRIMARY KEY,
+                        `trackerId` TEXT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `value` INTEGER NOT NULL,
+                        FOREIGN KEY(`trackerId`) REFERENCES `trackers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tracker_history_trackerId` ON `tracker_history` (`trackerId`)")
+            }
+        }
+
         fun getDatabase(context: Context): JournalDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -327,7 +363,7 @@ abstract class JournalDatabase : RoomDatabase() {
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                    MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16
+                    MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17
                 ).build()
                 INSTANCE = instance
                 instance

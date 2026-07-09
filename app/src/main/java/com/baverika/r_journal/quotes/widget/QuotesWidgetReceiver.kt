@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.baverika.r_journal.widget.WidgetUpdateUtils
 
 /**
  * AppWidget provider for the Quotes Widget.
@@ -119,6 +120,7 @@ class QuotesWidgetReceiver : AppWidgetProvider() {
 
                     withContext(Dispatchers.Main) {
                         val views = RemoteViews(context.packageName, R.layout.widget_quotes)
+                        WidgetUpdateUtils.applyWidgetBackground(context, views, R.id.widget_root)
 
                         if (quote != null) {
                             // Show quote

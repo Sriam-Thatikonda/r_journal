@@ -15,7 +15,12 @@ class SettingsRepository(context: Context) {
         private const val KEY_BIRTH_YEAR = "birth_year"
         private const val KEY_LAST_BIRTHDAY_SHOWN_YEAR = "last_birthday_shown_year"
         private const val KEY_SPECIAL_MOMENTS_ENABLED = "special_moments_enabled"
+        private const val KEY_WIDGET_OPACITY = "widget_opacity"
     }
+
+    var widgetOpacity: Int
+        get() = prefs.getInt(KEY_WIDGET_OPACITY, 80)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_OPACITY, value).apply()
 
     var birthDay: Int
         get() = prefs.getInt(KEY_BIRTH_DAY, 1)

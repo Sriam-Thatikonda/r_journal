@@ -46,6 +46,7 @@ import com.baverika.r_journal.ui.theme.BlueSkyColors
 import com.baverika.r_journal.ui.theme.CloudDancerColors
 import com.baverika.r_journal.utils.PasswordExportUtils
 import com.baverika.r_journal.BuildConfig
+import com.baverika.r_journal.widget.WidgetUpdateUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +65,7 @@ fun SettingsScreen(
     var birthDay by remember { mutableIntStateOf(settingsRepo.birthDay) }
     var birthMonth by remember { mutableIntStateOf(settingsRepo.birthMonth) }
     var birthYear by remember { mutableIntStateOf(settingsRepo.birthYear) }
+    var widgetOpacity by remember { mutableFloatStateOf(settingsRepo.widgetOpacity.toFloat()) }
     
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
@@ -328,6 +330,52 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
+
+            // --- Widget Customization Section ---
+            Text(
+                text = "Widget Customization",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Widget Background Opacity",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "${widgetOpacity.toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    text = "Set background transparency for widgets",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Slider(
+                    value = widgetOpacity,
+                    onValueChange = {
+                        widgetOpacity = it
+                        settingsRepo.widgetOpacity = it.toInt()
+                    },
+                    valueRange = 0f..100f,
+                    onValueChangeFinished = {
+                        WidgetUpdateUtils.updateAllWidgets(context)
+                    }
+                )
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))

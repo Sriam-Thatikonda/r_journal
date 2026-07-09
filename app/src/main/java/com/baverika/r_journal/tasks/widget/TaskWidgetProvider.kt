@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.baverika.r_journal.widget.WidgetUpdateUtils
 
 /**
  * App Widget Provider for displaying upcoming tasks on the home screen.
@@ -94,6 +95,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_tasks)
+        WidgetUpdateUtils.applyWidgetBackground(context, views, R.id.widget_root)
         
         // Set up list adapter
         val serviceIntent = Intent(context, TaskWidgetService::class.java).apply {

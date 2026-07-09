@@ -47,12 +47,13 @@ class QuickNoteViewModel(
         }
     }
 
-    fun addNote(title: String, content: String, color: Long = 0xFFFFFFFF) {
+    fun addNote(title: String, content: String, color: Long = 0xFFFFFFFF, isPinned: Boolean = false) {
         if (title.isBlank() && content.isBlank()) return
         val note = QuickNote(
             title = title.ifBlank { "Untitled" },
             content = content,
-            color = color
+            color = color,
+            isPinned = isPinned
         )
         viewModelScope.launch {
             repository.insertNote(note)
