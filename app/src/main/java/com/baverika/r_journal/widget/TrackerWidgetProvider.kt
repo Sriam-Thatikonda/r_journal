@@ -31,33 +31,36 @@ class TrackerWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        
+
         if (intent.action == ACTION_INCREMENT_TRACKER) {
             val trackerId = intent.getStringExtra(EXTRA_TRACKER_ID)
             if (trackerId != null) {
-                incrementTracker(context, trackerId)
-            }
-        }
-    }
+                // goAsync() keeps the BroadcastReceiver alive while the coroutine runs,
+                // preventing Android from killing the process before the DB write completes.
+                val pendingResult = goAsync()
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val db = JournalDatabase.getDatabase(context)
+                        val repository = TrackerRepository(db.trackerDao())
 
-    private fun incrementTracker(context: Context, trackerId: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val db = JournalDatabase.getDatabase(context)
-            val repository = TrackerRepository(db.trackerDao())
-            
-            val tracker = repository.getTrackerById(trackerId)
-            if (tracker != null) {
-                repository.incrementTracker(trackerId, tracker.incrementStep)
-            }
-            
-            // Trigger refresh
-            withContext(Dispatchers.Main) {
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-                val appWidgetIds = appWidgetManager.getAppWidgetIds(
-                    ComponentName(context, TrackerWidgetProvider::class.java)
-                )
-                for (id in appWidgetIds) {
-                    updateAppWidget(context, appWidgetManager, id)
+                        val tracker = repository.getTrackerById(trackerId)
+                        if (tracker != null) {
+                            repository.incrementTracker(trackerId, tracker.incrementStep)
+                        }
+
+                        // Refresh all instances of this widget after the DB write
+                        withContext(Dispatchers.Main) {
+                            val appWidgetManager = AppWidgetManager.getInstance(context)
+                            val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                                ComponentName(context, TrackerWidgetProvider::class.java)
+                            )
+                            for (id in appWidgetIds) {
+                                updateAppWidget(context, appWidgetManager, id)
+                            }
+                        }
+                    } finally {
+                        pendingResult.finish()
+                    }
                 }
             }
         }
@@ -75,65 +78,77 @@ class TrackerWidgetProvider : AppWidgetProvider() {
             CoroutineScope(Dispatchers.IO).launch {
                 val db = JournalDatabase.getDatabase(context)
                 val repository = TrackerRepository(db.trackerDao())
-                
-                // Get all trackers (non-archived)
+
                 val trackers = repository.getAllTrackersSync()
-                
+
                 withContext(Dispatchers.Main) {
                     val views = RemoteViews(context.packageName, R.layout.widget_tracker)
                     WidgetUpdateUtils.applyWidgetBackground(context, views, R.id.widget_root)
-                    
-                    // Hide all tracker containers first
+
+                    // Hide all tracker rows first
                     for (i in 1..4) {
-                        val containerId = context.resources.getIdentifier("tracker_${i}_container", "id", context.packageName)
+                        val containerId = context.resources.getIdentifier(
+                            "tracker_${i}_container", "id", context.packageName
+                        )
                         views.setViewVisibility(containerId, View.GONE)
                     }
-                    
+
                     if (trackers.isEmpty()) {
                         views.setViewVisibility(R.id.empty_state, View.VISIBLE)
                     } else {
                         views.setViewVisibility(R.id.empty_state, View.GONE)
-                        
-                        // Show up to 4 trackers
+
                         trackers.take(4).forEachIndexed { index, tracker ->
                             val i = index + 1
-                            val containerId = context.resources.getIdentifier("tracker_${i}_container", "id", context.packageName)
-                            val addBtnId = context.resources.getIdentifier("tracker_${i}_add", "id", context.packageName)
-                            val titleId = context.resources.getIdentifier("tracker_${i}_title", "id", context.packageName)
-                            val progressId = context.resources.getIdentifier("tracker_${i}_progress", "id", context.packageName)
-                            
+                            val containerId = context.resources.getIdentifier(
+                                "tracker_${i}_container", "id", context.packageName
+                            )
+                            val addBtnId = context.resources.getIdentifier(
+                                "tracker_${i}_add", "id", context.packageName
+                            )
+                            val titleId = context.resources.getIdentifier(
+                                "tracker_${i}_title", "id", context.packageName
+                            )
+                            val progressId = context.resources.getIdentifier(
+                                "tracker_${i}_progress", "id", context.packageName
+                            )
+
                             views.setViewVisibility(containerId, View.VISIBLE)
                             views.setTextViewText(titleId, "${tracker.emoji} ${tracker.title}")
                             views.setTextViewText(progressId, "${tracker.currentCount} / ${tracker.goal}")
-                            
-                            // Pending Intent for Increment Button
+
+                            // Unique request code per widget instance + tracker slot position
+                            // prevents PendingIntent collisions when multiple widgets are placed
+                            val requestCode = appWidgetId * 100 + index
                             val incrementIntent = Intent(context, TrackerWidgetProvider::class.java).apply {
                                 action = ACTION_INCREMENT_TRACKER
                                 putExtra(EXTRA_TRACKER_ID, tracker.id)
                             }
                             val pendingIntent = PendingIntent.getBroadcast(
                                 context,
-                                tracker.id.hashCode(),
+                                requestCode,
                                 incrementIntent,
                                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                             )
                             views.setOnClickPendingIntent(addBtnId, pendingIntent)
                         }
                     }
-                    
-                    // Root click opens trackers list in main app
-                    val rootIntent = Intent(context, MainActivity::class.java).apply {
+
+                    // IMPORTANT: Only attach a click listener to widget_title, NOT widget_root.
+                    // Setting a PendingIntent on the root view intercepts ALL touch events inside
+                    // it, including the + buttons — which is what was blocking increment taps.
+                    val titleIntent = Intent(context, MainActivity::class.java).apply {
                         putExtra("navigate_to", "trackers")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                     }
-                    val rootPendingIntent = PendingIntent.getActivity(
+                    val titlePendingIntent = PendingIntent.getActivity(
                         context,
-                        99,
-                        rootIntent,
+                        appWidgetId + 9000,
+                        titleIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
-                    views.setOnClickPendingIntent(R.id.widget_title, rootPendingIntent)
-                    views.setOnClickPendingIntent(R.id.widget_root, rootPendingIntent)
-                    
+                    views.setOnClickPendingIntent(R.id.widget_title, titlePendingIntent)
+
                     appWidgetManager.updateAppWidget(appWidgetId, views)
                 }
             }
