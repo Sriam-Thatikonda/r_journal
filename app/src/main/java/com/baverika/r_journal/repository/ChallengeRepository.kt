@@ -37,6 +37,20 @@ class ChallengeRepository(
         return dao.getChallengeById(id).map { it?.toDomainModel() }
     }
 
+    fun getAllChallengesFlow(): Flow<List<Challenge>> {
+        return dao.getAllChallengesFlow().map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
+
+    suspend fun getAllChallengesSync(): List<ChallengeEntity> = withContext(ioDispatcher) {
+        dao.getAllChallenges()
+    }
+
+    suspend fun insertChallengeEntity(entity: ChallengeEntity) = withContext(ioDispatcher) {
+        dao.insertChallenge(entity)
+    }
+
     suspend fun insertChallenge(challenge: Challenge): Long = withContext(ioDispatcher) {
         dao.insertChallenge(challenge.toEntity())
     }

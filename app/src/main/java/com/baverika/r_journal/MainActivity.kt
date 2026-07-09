@@ -548,9 +548,10 @@ fun MainApp(
                             taskRepo = taskRepo,
                             quoteRepo = quoteRepo,
                             lifeTrackerRepo = lifeTrackerRepo,
-
                             eventRepo = eventRepo,
                             passwordRepo = passwordRepo,
+                            trackerRepo = trackerRepo,
+                            challengeRepo = challengeRepo,
                             context = context
                         )
                     }
@@ -563,9 +564,10 @@ fun MainApp(
                             taskRepo = taskRepo,
                             quoteRepo = quoteRepo,
                             lifeTrackerRepo = lifeTrackerRepo,
-
                             eventRepo = eventRepo,
-                            passwordRepo = passwordRepo
+                            passwordRepo = passwordRepo,
+                            trackerRepo = trackerRepo,
+                            challengeRepo = challengeRepo
                         )
                     }
 

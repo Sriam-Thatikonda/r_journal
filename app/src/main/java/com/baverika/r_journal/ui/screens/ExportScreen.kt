@@ -32,6 +32,8 @@ fun ExportScreen(
 
     eventRepo: com.baverika.r_journal.repository.EventRepository,
     passwordRepo: PasswordRepository,
+    trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
+    challengeRepo: com.baverika.r_journal.repository.ChallengeRepository,
     context: Context
 ) {
     val journals by journalRepo.allEntries.collectAsState(initial = emptyList())
@@ -45,6 +47,8 @@ fun ExportScreen(
     val lifeTrackerEntries by lifeTrackerRepo.allEntries.collectAsState(initial = emptyList())
     val events by eventRepo.allEvents.collectAsState(initial = emptyList())
     val passwords by passwordRepo.allPasswords.collectAsState(initial = emptyList())
+    val trackers by trackerRepo.allTrackersFlow.collectAsState(initial = emptyList())
+    val challenges by challengeRepo.getAllChallengesFlow().collectAsState(initial = emptyList())
 
     val scope = rememberCoroutineScope()
     var isExporting by remember { mutableStateOf(false) }
@@ -79,7 +83,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Exporting ${journals.size} journals, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} trackers, ${events.size} events, and ${passwords.size} passwords",
+                        text = "Exporting ${journals.size} journals, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} life trackers, ${trackers.size} trackers, ${challenges.size} challenges, ${events.size} events, and ${passwords.size} passwords",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -257,7 +261,35 @@ fun ExportScreen(
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
+                                        text = "Life Trackers",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${trackers.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
                                         text = "Trackers",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${challenges.size}",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Challenges",
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 }
@@ -278,11 +310,12 @@ fun ExportScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // ZIP Export Button
                     Button(
                         onClick = {
                             isExporting = true
                             scope.launch {
+                                val trackerHistory = trackerRepo.getAllHistorySync()
+                                val challengeEntities = challengeRepo.getAllChallengesSync()
                                 val (success, message) = ExportUtils.exportAll(
                                     context, 
                                     journals, 
@@ -295,7 +328,10 @@ fun ExportScreen(
                                     lifeTrackers,
                                     lifeTrackerEntries,
                                     events,
-                                    passwords
+                                    passwords,
+                                    trackers,
+                                    trackerHistory,
+                                    challengeEntities
                                 )
                                 isExporting = false
                                 exportSuccess = success

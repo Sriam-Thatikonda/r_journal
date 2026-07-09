@@ -32,6 +32,12 @@ class TrackerRepository(private val dao: TrackerDao) {
 
     suspend fun deleteTracker(tracker: Tracker) = dao.deleteTracker(tracker)
 
+    suspend fun getAllTrackersIncludeArchived(): List<Tracker> = dao.getAllTrackersIncludeArchived()
+
+    suspend fun getAllHistorySync(): List<TrackerHistory> = dao.getAllHistory()
+
+    suspend fun insertHistory(history: TrackerHistory) = dao.insertHistory(history)
+
     fun getHistoryForTracker(trackerId: String): Flow<List<TrackerHistory>> = dao.getHistoryForTracker(trackerId)
 
     suspend fun incrementTracker(trackerId: String, amount: Int): Tracker? {
