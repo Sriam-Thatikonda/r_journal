@@ -10,5 +10,6 @@
     android:initialLayout="@layout/widget_tasks"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:label="@string/task_widget_label"
     android:previewImage="@drawable/widget_preview_tasks"
     android:description="@string/task_widget_description" />

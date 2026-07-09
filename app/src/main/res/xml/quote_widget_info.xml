@@ -10,5 +10,6 @@
     android:initialLayout="@layout/widget_quotes"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:label="@string/quote_widget_label"
     android:description="@string/quote_widget_description"
     android:previewImage="@drawable/ic_launcher_foreground" />
