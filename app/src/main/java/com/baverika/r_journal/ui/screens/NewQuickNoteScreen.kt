@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,6 +77,7 @@ fun NewQuickNoteScreen(
 
     var title by remember { mutableStateOf("") }
     var selectedColor by remember { mutableLongStateOf(defaultNoteColor) }
+    var isPinned by remember { mutableStateOf(false) }
     
     // Mode Switch State
     var currentItemType by remember { mutableStateOf(ItemType.TEXT) }
@@ -149,7 +151,8 @@ fun NewQuickNoteScreen(
             viewModel.addNote(
                 title = title.ifBlank { "Untitled" },
                 content = finalContent,
-                color = selectedColor
+                color = selectedColor,
+                isPinned = isPinned
             )
         }
     }
@@ -194,6 +197,16 @@ fun NewQuickNoteScreen(
                     )
                 }
                 
+                IconButton(
+                    onClick = { isPinned = !isPinned }
+                ) {
+                    Icon(
+                        imageVector = if (isPinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                        contentDescription = if (isPinned) "Unpin Note" else "Pin Note",
+                        tint = if (isPinned) Color.Yellow else textColor
+                    )
+                }
+
                 IconButton(
                     onClick = {
                         saveNote()
@@ -244,8 +257,14 @@ fun NewQuickNoteScreen(
                                 textColor = textColor,
                                 secondaryTextColor = secondaryTextColor,
                                 onCheckedChange = { checked ->
-                                    listItems = listItems.toMutableList().apply {
-                                        this[index] = item.copy(isChecked = checked)
+                                    val updatedItem = item.copy(isChecked = checked)
+                                    val otherItems = listItems.toMutableList().apply { removeAt(index) }
+                                    val unchecked = otherItems.filter { !it.isChecked }
+                                    val checkedList = otherItems.filter { it.isChecked }
+                                    listItems = if (checked) {
+                                        unchecked + listOf(updatedItem) + checkedList
+                                    } else {
+                                        unchecked + listOf(updatedItem) + checkedList
                                     }
                                 },
                                 onTextChange = { newText ->

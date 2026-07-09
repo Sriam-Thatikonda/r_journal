@@ -101,6 +101,7 @@ class HabitWidgetProvider : AppWidgetProvider() {
                 
                 withContext(Dispatchers.Main) {
                     val views = RemoteViews(context.packageName, R.layout.widget_habit_tracker)
+                    WidgetUpdateUtils.applyWidgetBackground(context, views, R.id.widget_root)
                     
                     // Set header
                     views.setTextViewText(R.id.widget_title, "Today's Habits")

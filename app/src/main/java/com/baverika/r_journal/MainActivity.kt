@@ -86,6 +86,9 @@ class MainActivity : FragmentActivity() {
         // Life Tracker repository
         val lifeTrackerRepo = com.baverika.r_journal.repository.LifeTrackerRepository(db.lifeTrackerDao())
 
+        // Trackers repository
+        val trackerRepo = com.baverika.r_journal.repository.TrackerRepository(db.trackerDao())
+
         // Craving Quest repository
         val cravingRepo = CravingQuestRepository(db.cravingLogDao())
 
@@ -160,6 +163,7 @@ class MainActivity : FragmentActivity() {
                         widgetSettingsDataStore = widgetSettingsDataStore,
                         taskRepo = taskRepo,
                         lifeTrackerRepo = lifeTrackerRepo,
+                        trackerRepo = trackerRepo,
                         cravingRepo = cravingRepo,
                         challengeRepo = challengeRepo,
                         settingsRepo = settingsRepo,
@@ -185,6 +189,7 @@ fun MainApp(
     widgetSettingsDataStore: com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore,
     taskRepo: com.baverika.r_journal.repository.TaskRepository,
     lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
+    trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
     cravingRepo: CravingQuestRepository,
     challengeRepo: ChallengeRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
@@ -225,7 +230,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest", "challenges"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest", "challenges", "trackers"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -276,6 +281,10 @@ fun MainApp(
                     currentRoute == "calendar" -> "Calendar"
                     currentRoute == "events" -> "Special Dates"
                     currentRoute == "life_trackers" -> "Life Trackers"
+                    currentRoute == "trackers" -> "Trackers"
+                    currentRoute == "add_tracker" -> "New Tracker"
+                    currentRoute?.startsWith("edit_tracker") == true -> "Edit Tracker"
+                    currentRoute?.startsWith("tracker_details") == true -> "Tracker Details"
                     currentRoute == "craving_quest" -> "Craving Quest"
                     currentRoute == "challenges" -> "Challenge Tracker"
                     currentRoute == "challenge_history" -> "Challenge History"
@@ -767,6 +776,52 @@ fun MainApp(
                         )
                     }
 
+                    // Trackers (Generic counters)
+                    composable("trackers") {
+                        val vm: com.baverika.r_journal.ui.viewmodel.TrackerViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TrackerViewModelFactory(context.applicationContext as Application, trackerRepo)
+                        )
+                        TrackersScreen(
+                            viewModel = vm,
+                            navController = navController
+                        )
+                    }
+
+                    composable("add_tracker") {
+                        val vm: com.baverika.r_journal.ui.viewmodel.TrackerViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TrackerViewModelFactory(context.applicationContext as Application, trackerRepo)
+                        )
+                        AddEditTrackerScreen(
+                            trackerId = null,
+                            viewModel = vm,
+                            navController = navController
+                        )
+                    }
+
+                    composable("edit_tracker/{trackerId}") { backStackEntry ->
+                        val trackerId = backStackEntry.arguments?.getString("trackerId") ?: return@composable
+                        val vm: com.baverika.r_journal.ui.viewmodel.TrackerViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TrackerViewModelFactory(context.applicationContext as Application, trackerRepo)
+                        )
+                        AddEditTrackerScreen(
+                            trackerId = trackerId,
+                            viewModel = vm,
+                            navController = navController
+                        )
+                    }
+
+                    composable("tracker_details/{trackerId}") { backStackEntry ->
+                        val trackerId = backStackEntry.arguments?.getString("trackerId") ?: return@composable
+                        val vm: com.baverika.r_journal.ui.viewmodel.TrackerViewModel = viewModel(
+                            factory = com.baverika.r_journal.ui.viewmodel.TrackerViewModelFactory(context.applicationContext as Application, trackerRepo)
+                        )
+                        TrackerDetailsScreen(
+                            trackerId = trackerId,
+                            viewModel = vm,
+                            navController = navController
+                        )
+                    }
+
                     // Tasks
                     composable("tasks") {
                         val taskViewModel: com.baverika.r_journal.ui.viewmodel.TaskViewModel = viewModel(
@@ -955,6 +1010,12 @@ fun DrawerContent(
             label = "Life Tracker",
             isSelected = currentRoute == "life_trackers",
             onClick = { onScreenSelected("life_trackers") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.AddCircle,
+            label = "Trackers",
+            isSelected = currentRoute == "trackers",
+            onClick = { onScreenSelected("trackers") }
         )
         DrawerItem(
             icon = Icons.Filled.CheckCircle,

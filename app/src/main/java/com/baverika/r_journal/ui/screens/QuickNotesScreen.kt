@@ -33,6 +33,9 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+// Default transparency for widget backgrounds (0.0 fully transparent, 1.0 opaque)
+const val DEFAULT_WIDGET_ALPHA = 0.9f
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun QuickNotesScreen(
@@ -49,7 +52,9 @@ fun QuickNotesScreen(
     // State to hold the note currently being deleted
     var noteToDelete by remember { mutableStateOf<QuickNote?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+    .fillMaxSize()
+    .background(Color.Black)) {
         // --- Main List Content ---
         Column(modifier = Modifier.fillMaxSize()) {
             // Search Bar and Layout Toggle in same row
@@ -264,7 +269,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Color.White,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
             .fillMaxWidth()
@@ -285,11 +290,15 @@ fun QuickNoteCard(
     onDelete: (QuickNote) -> Unit,
     onPin: (QuickNote) -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backgroundAlpha: Float = DEFAULT_WIDGET_ALPHA // Transparency setting for widget background
 ) {
-    val cardColor = Color(note.color)
-    val textColor = ColorUtils.getContrastingTextColor(cardColor)
-    val secondaryTextColor = ColorUtils.getSecondaryTextColor(cardColor)
+    // Use pure black background with configurable transparency
+    val cardColor = Color.Black.copy(alpha = backgroundAlpha)
+    // For black background, use white text for contrast
+    val textColor = Color.White
+    // Secondary text color uses a light gray with some opacity
+    val secondaryTextColor = Color.LightGray.copy(alpha = 0.8f)
     
     Card(
         modifier = modifier
@@ -337,7 +346,7 @@ fun QuickNoteCard(
                         imageVector = if (note.isPinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
                         contentDescription = if (note.isPinned) "Unpin Note" else "Pin Note",
                         modifier = Modifier.size(16.dp),
-                        tint = if (note.isPinned) MaterialTheme.colorScheme.primary else secondaryTextColor
+                        tint = if (note.isPinned) Color.Yellow else secondaryTextColor
                     )
                 }
                 // Delete button
