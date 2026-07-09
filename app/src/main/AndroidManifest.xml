@@ -43,7 +43,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Habit Widget -->
+        <!-- Habit Tracker Widget -->
         <receiver
             android:name=".widget.HabitWidgetProvider"
             android:exported="true">
@@ -61,7 +61,7 @@
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 
-        <!-- Quote Widget -->
+        <!-- Daily Quote Widget -->
         <receiver
             android:name=".quotes.widget.QuotesWidgetReceiver"
             android:exported="true">
@@ -85,7 +85,7 @@
 
 
 
-        <!-- Task Widget -->
+        <!-- Task List Widget -->
         <receiver
             android:name=".tasks.widget.TaskWidgetProvider"
             android:exported="true">
@@ -99,7 +99,20 @@
                 android:resource="@xml/task_widget_info" />
         </receiver>
 
-        <!-- Challenge Widget -->
+        <!-- Counter Tracker Widget -->
+        <receiver
+            android:name=".widget.TrackerWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.baverika.r_journal.ACTION_INCREMENT_TRACKER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tracker_widget_info" />
+        </receiver>
+
+        <!-- Challenge Progress Widget -->
         <receiver
             android:name=".ui.challenge.widget.ChallengeWidgetProvider"
             android:exported="true">

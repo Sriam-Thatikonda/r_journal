@@ -7,9 +7,9 @@
     android:targetCellWidth="3"
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
-    android:initialLayout="@layout/widget_challenge_tracker"
+    android:initialLayout="@layout/widget_tracker"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:label="@string/challenge_widget_label"
-    android:description="@string/challenge_widget_description"
+    android:label="@string/tracker_widget_label"
+    android:description="@string/tracker_widget_description"
     android:previewImage="@drawable/ic_launcher_foreground" />

@@ -102,9 +102,16 @@
     <string name="cd_attached_image">Attached image</string>
     <string name="cd_remove_image">Remove image</string>
 
-    <!-- Widget -->
-    <string name="widget_description">Track your daily habits</string>
-    <string name="quote_widget_description">Display motivational quotes</string>
+    <!-- Widget labels and descriptions (shown in the Android widget picker) -->
+    <string name="habit_widget_label">Habit Tracker</string>
+    <string name="habit_widget_description">Toggle your daily habits right from the home screen</string>
+    <string name="quote_widget_label">Daily Quote</string>
+    <string name="quote_widget_description">Display a motivational quote on your home screen</string>
+    <string name="task_widget_label">Task List</string>
+    <string name="tracker_widget_label">Counter Tracker</string>
+    <string name="tracker_widget_description">Increment and monitor your personal counters</string>
+    <string name="challenge_widget_label">Challenge Progress</string>
+    <string name="challenge_widget_description">See your active challenge progress at a glance</string>
     
     <!-- Motivational Quotes -->
     <string name="quotes_title">Motivational Quotes</string>

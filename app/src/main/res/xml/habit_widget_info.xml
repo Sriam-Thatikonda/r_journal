@@ -10,5 +10,6 @@
     android:initialLayout="@layout/widget_habit_tracker"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:description="@string/widget_description"
+    android:label="@string/habit_widget_label"
+    android:description="@string/habit_widget_description"
     android:previewImage="@drawable/ic_launcher_foreground" />
