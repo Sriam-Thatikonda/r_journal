@@ -46,6 +46,12 @@ interface ChallengeDao {
     @Query("SELECT * FROM challenges WHERE id = :id")
     fun getChallengeById(id: Long): Flow<ChallengeEntity?>
 
+    @Query("SELECT * FROM challenges ORDER BY createdAt DESC")
+    fun getAllChallengesFlow(): Flow<List<ChallengeEntity>>
+
+    @Query("SELECT * FROM challenges")
+    suspend fun getAllChallenges(): List<ChallengeEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChallenge(entity: ChallengeEntity): Long
 

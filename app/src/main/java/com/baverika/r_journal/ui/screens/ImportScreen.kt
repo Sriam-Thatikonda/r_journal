@@ -35,7 +35,9 @@ fun ImportScreen(
     quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
     lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
     eventRepo: com.baverika.r_journal.repository.EventRepository,
-    passwordRepo: PasswordRepository
+    passwordRepo: PasswordRepository,
+    trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
+    challengeRepo: com.baverika.r_journal.repository.ChallengeRepository
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -68,6 +70,8 @@ fun ImportScreen(
                 lifeTrackerRepo = lifeTrackerRepo,
                 eventRepo = eventRepo,
                 passwordRepo = passwordRepo,
+                trackerRepo = trackerRepo,
+                challengeRepo = challengeRepo,
                 coroutineScope = scope
             ) { success, message ->
                 isImporting = false

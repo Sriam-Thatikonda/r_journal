@@ -41,6 +41,9 @@ interface TrackerDao {
     @Query("SELECT * FROM tracker_history WHERE trackerId = :trackerId ORDER BY date DESC")
     fun getHistoryForTracker(trackerId: String): Flow<List<TrackerHistory>>
 
+    @Query("SELECT * FROM tracker_history")
+    suspend fun getAllHistory(): List<TrackerHistory>
+
     @Query("SELECT * FROM tracker_history WHERE trackerId = :trackerId AND date = :date LIMIT 1")
     suspend fun getHistoryForTrackerAndDate(trackerId: String, date: String): TrackerHistory?
 }

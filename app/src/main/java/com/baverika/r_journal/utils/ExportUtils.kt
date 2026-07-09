@@ -11,9 +11,14 @@ import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.local.entity.Password
 import java.io.File
 import java.io.FileInputStream
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.google.gson.JsonSerializer
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonPrimitive
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -35,9 +40,11 @@ object ExportUtils {
         quotes: List<com.baverika.r_journal.quotes.data.QuoteEntity>,
         lifeTrackers: List<com.baverika.r_journal.data.local.entity.LifeTracker>,
         lifeTrackerEntries: List<com.baverika.r_journal.data.local.entity.LifeTrackerEntry>,
-
         events: List<com.baverika.r_journal.data.local.entity.Event>,
-        passwords: List<Password>
+        passwords: List<Password>,
+        trackers: List<com.baverika.r_journal.data.local.entity.Tracker>,
+        trackerHistory: List<com.baverika.r_journal.data.local.entity.TrackerHistory>,
+        challenges: List<com.baverika.r_journal.data.ChallengeEntity>
     ): Pair<Boolean, String?> {
         return try {
             // 1. Determine export directory
@@ -52,7 +59,27 @@ object ExportUtils {
             val zipFileName = "r_journal_export_$timestamp.zip"
             val zipFile = File(exportDir, zipFileName)
 
-            val gson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
+            val gson = com.google.gson.GsonBuilder()
+                .registerTypeAdapter(LocalDate::class.java, JsonSerializer<LocalDate> { src, _, _ ->
+                    JsonPrimitive(src.toString())
+                })
+                .registerTypeAdapter(LocalDate::class.java, JsonDeserializer<LocalDate> { json, _, _ ->
+                    LocalDate.parse(json.asString)
+                })
+                .registerTypeAdapter(LocalDateTime::class.java, JsonSerializer<LocalDateTime> { src, _, _ ->
+                    JsonPrimitive(src.toString())
+                })
+                .registerTypeAdapter(LocalDateTime::class.java, JsonDeserializer<LocalDateTime> { json, _, _ ->
+                    LocalDateTime.parse(json.asString)
+                })
+                .registerTypeAdapter(LocalTime::class.java, JsonSerializer<LocalTime> { src, _, _ ->
+                    JsonPrimitive(src.toString())
+                })
+                .registerTypeAdapter(LocalTime::class.java, JsonDeserializer<LocalTime> { json, _, _ ->
+                    LocalTime.parse(json.asString)
+                })
+                .setPrettyPrinting()
+                .create()
 
             // 3. Create ZIP and write content
             ZipOutputStream(zipFile.outputStream()).use { zos ->
@@ -191,6 +218,27 @@ object ExportUtils {
                     }
                 }
 
+                // Export Trackers (JSON)
+                if (trackers.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/trackers.json"))
+                    zos.write(gson.toJson(trackers).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Tracker History (JSON)
+                if (trackerHistory.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/tracker_history.json"))
+                    zos.write(gson.toJson(trackerHistory).toByteArray())
+                    zos.closeEntry()
+                }
+
+                // Export Challenges (JSON)
+                if (challenges.isNotEmpty()) {
+                    zos.putNextEntry(ZipEntry("data/challenges.json"))
+                    zos.write(gson.toJson(challenges).toByteArray())
+                    zos.closeEntry()
+                }
+
                 // Add a README file
                 val readme = buildReadme(
                     journals.size, 
@@ -199,9 +247,11 @@ object ExportUtils {
                     habits.size, 
                     quotes.size,
                     lifeTrackers.size,
-
                     events.size,
-                    passwords.size
+                    passwords.size,
+                    trackers.size,
+                    trackerHistory.size,
+                    challenges.size
                 )
                 zos.putNextEntry(ZipEntry("README.txt"))
                 zos.write(readme.toByteArray())
@@ -282,10 +332,12 @@ object ExportUtils {
         taskCount: Int, 
         habitCount: Int, 
         quoteCount: Int,
-        trackerCount: Int,
-
+        lifeTrackerCount: Int,
         eventCount: Int,
-        passwordCount: Int
+        passwordCount: Int,
+        trackerCount: Int,
+        trackerHistoryCount: Int,
+        challengeCount: Int
     ): String {
         return """
             R-Journal Export
@@ -299,8 +351,10 @@ object ExportUtils {
             - $taskCount tasks
             - $habitCount habits
             - $quoteCount quotes
-            - $trackerCount life trackers
-
+            - $lifeTrackerCount life trackers
+            - $trackerCount trackers
+            - $trackerHistoryCount tracker history records
+            - $challengeCount challenges
             - $eventCount special dates/events
             - $passwordCount passwords (CAUTION: Exported unencrypted inside this archive)
             
@@ -314,7 +368,9 @@ object ExportUtils {
               quotes.json           - All quotes in JSON format
               life_trackers.json    - All life trackers in JSON format
               life_tracker_entries.json - All life tracker entries in JSON format
-
+              trackers.json         - All trackers in JSON format
+              tracker_history.json  - All tracker history records in JSON format
+              challenges.json       - All challenges in JSON format
               events.json           - All special dates/events in JSON format
               passwords.json        - All saved passwords in JSON format
             /images

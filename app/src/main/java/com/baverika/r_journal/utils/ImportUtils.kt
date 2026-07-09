@@ -36,9 +36,10 @@ object ImportUtils {
         taskRepo: com.baverika.r_journal.repository.TaskRepository,
         quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
         lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
-
         eventRepo: com.baverika.r_journal.repository.EventRepository,
         passwordRepo: PasswordRepository,
+        trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
+        challengeRepo: com.baverika.r_journal.repository.ChallengeRepository,
         coroutineScope: CoroutineScope,
         onResult: (Boolean, String) -> Unit
     ) {
@@ -56,9 +57,10 @@ object ImportUtils {
                     taskRepo, 
                     quoteRepo, 
                     lifeTrackerRepo, 
-
                     eventRepo,
                     passwordRepo,
+                    trackerRepo,
+                    challengeRepo,
                     onResult
                 )
             } catch (e: Exception) {
@@ -77,9 +79,10 @@ object ImportUtils {
         taskRepo: com.baverika.r_journal.repository.TaskRepository,
         quoteRepo: com.baverika.r_journal.quotes.data.QuoteRepository,
         lifeTrackerRepo: com.baverika.r_journal.repository.LifeTrackerRepository,
-
         eventRepo: com.baverika.r_journal.repository.EventRepository,
         passwordRepo: PasswordRepository,
+        trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
+        challengeRepo: com.baverika.r_journal.repository.ChallengeRepository,
         onResult: (Boolean, String) -> Unit
     ) {
         try {
@@ -90,14 +93,34 @@ object ImportUtils {
             var habitCount = 0
             var quoteCount = 0
             var trackerCount = 0
-
             var eventCount = 0
             var passwordCount = 0
+            var countersCount = 0
+            var challengeCount = 0
 
             // Temporary storage for image files
             val tempImagesDir = File(context.cacheDir, "import_temp_images").apply { mkdirs() }
             val imageMap = mutableMapOf<String, File>() // Map of ZIP path to temp file
-            val gson = com.google.gson.Gson()
+            val gson = com.google.gson.GsonBuilder()
+                .registerTypeAdapter(LocalDate::class.java, com.google.gson.JsonSerializer<LocalDate> { src, _, _ ->
+                    com.google.gson.JsonPrimitive(src.toString())
+                })
+                .registerTypeAdapter(LocalDate::class.java, com.google.gson.JsonDeserializer<LocalDate> { json, _, _ ->
+                    LocalDate.parse(json.asString)
+                })
+                .registerTypeAdapter(LocalDateTime::class.java, com.google.gson.JsonSerializer<LocalDateTime> { src, _, _ ->
+                    com.google.gson.JsonPrimitive(src.toString())
+                })
+                .registerTypeAdapter(LocalDateTime::class.java, com.google.gson.JsonDeserializer<LocalDateTime> { json, _, _ ->
+                    LocalDateTime.parse(json.asString)
+                })
+                .registerTypeAdapter(LocalTime::class.java, com.google.gson.JsonSerializer<LocalTime> { src, _, _ ->
+                    com.google.gson.JsonPrimitive(src.toString())
+                })
+                .registerTypeAdapter(LocalTime::class.java, com.google.gson.JsonDeserializer<LocalTime> { json, _, _ ->
+                    LocalTime.parse(json.asString)
+                })
+                .create()
 
             ZipInputStream(inputStream).use { zis ->
                 var zipEntry = zis.nextEntry
@@ -247,13 +270,38 @@ object ImportUtils {
                 } catch (e: Exception) { e.printStackTrace() }
             }
 
+            // 10. Trackers (parent of tracker_history)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("trackers.json") }?.let { (_, content) ->
+                try {
+                    val trackers = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.Tracker>::class.java)
+                    trackers.forEach { trackerRepo.insertTracker(it) }
+                    countersCount = trackers.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 11. Tracker History (depends on trackers — must come AFTER trackers are inserted)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("tracker_history.json") }?.let { (_, content) ->
+                try {
+                    val history = gson.fromJson(content, Array<com.baverika.r_journal.data.local.entity.TrackerHistory>::class.java)
+                    history.forEach { trackerRepo.insertHistory(it) }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
+            // 12. Challenges (no FK dependencies)
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("challenges.json") }?.let { (_, content) ->
+                try {
+                    val challenges = gson.fromJson(content, Array<com.baverika.r_journal.data.ChallengeEntity>::class.java)
+                    challenges.forEach { challengeRepo.insertChallengeEntity(it) }
+                    challengeCount = challenges.size
+                } catch (e: Exception) { e.printStackTrace() }
+            }
 
             // Clean up temp files
             tempImagesDir.deleteRecursively()
 
             onResult(
                 true,
-                "Imported: $journalCount journals, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount trackers, $eventCount events, $passwordCount passwords"
+                "Imported: $journalCount journals, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount life trackers, $countersCount trackers, $challengeCount challenges, $eventCount events, $passwordCount passwords"
             )
         } catch (e: Exception) {
             e.printStackTrace()
