@@ -218,9 +218,22 @@ fun NewQuickNoteScreen(
                 }
             }
 
+            // Date/Timestamp indicator
+            val formattedCreatedDate = remember {
+                java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy • h:mm a"))
+            }
+
+            Text(
+                text = "Created $formattedCreatedDate",
+                style = MaterialTheme.typography.labelSmall,
+                color = secondaryTextColor.copy(alpha = 0.6f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+            )
+
             // --- CONTENT AREA ---
             // Space between Title and Content
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
             Column(
                 modifier = Modifier

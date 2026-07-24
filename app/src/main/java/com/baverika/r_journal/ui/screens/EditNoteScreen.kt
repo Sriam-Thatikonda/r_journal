@@ -224,8 +224,23 @@ fun EditNoteScreen(
                 }
             }
 
+            // Date/Timestamp indicator
+            val formattedNoteDate = remember(currentNote.timestamp) {
+                val date = java.time.Instant.ofEpochMilli(currentNote.timestamp)
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDateTime()
+                date.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy • h:mm a"))
+            }
+
+            Text(
+                text = "Edited $formattedNoteDate",
+                style = MaterialTheme.typography.labelSmall,
+                color = secondaryTextColor.copy(alpha = 0.6f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+            )
+
             // Content Area - Spacer added
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Column(
                 modifier = Modifier
