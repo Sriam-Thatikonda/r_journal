@@ -293,7 +293,16 @@ fun MainApp(
                     currentRoute == "search" -> "Search"
                     currentRoute == "dashboard" -> "Dashboard"
                     currentRoute == "settings" -> "Settings"
-                    currentRoute?.startsWith("chat_input") == true -> "Journal Entry"
+                    currentRoute?.startsWith("chat_input") == true -> {
+                        val backStackEntry = navController.currentBackStackEntry
+                        if (backStackEntry != null) {
+                            val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
+                                viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
+                            val entry = journalViewModel.currentEntry
+                            val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
+                            if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
+                        } else "Journal Entry"
+                    }
                     currentRoute?.startsWith("edit_quick_note") == true -> "Edit Note"
                     currentRoute == "new_quick_note" -> "New Note"
                     currentRoute?.startsWith("habit_year_overview") == true -> "Habit Overview"
@@ -572,9 +581,9 @@ fun MainApp(
                     }
 
                     // Chat input for today's entry
-                    composable("chat_input") {
+                    composable("chat_input") { backStackEntry ->
                         val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
-                            viewModel(factory = JournalViewModelFactory(journalRepo, eventRepo, context))
+                            viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
 
                         LaunchedEffect(Unit) {
                             journalViewModel.loadTodaysEntry()
@@ -591,7 +600,7 @@ fun MainApp(
                         val entryId = backStackEntry.arguments?.getString("entryId")
                         if (entryId != null) {
                             val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
-                                viewModel(factory = JournalViewModelFactory(journalRepo, eventRepo, context))
+                                viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
 
                             LaunchedEffect(entryId) {
                                 journalViewModel.loadEntryForEditing(entryId)
