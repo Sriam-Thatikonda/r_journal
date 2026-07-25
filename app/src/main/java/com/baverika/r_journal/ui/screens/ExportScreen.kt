@@ -49,6 +49,10 @@ fun ExportScreen(
     val passwords by passwordRepo.allPasswords.collectAsState(initial = emptyList())
     val trackers by trackerRepo.allTrackersFlow.collectAsState(initial = emptyList())
     val challenges by challengeRepo.getAllChallengesFlow().collectAsState(initial = emptyList())
+    val mineEntryState by produceState<com.baverika.r_journal.data.local.entity.JournalEntry?>(initialValue = null) {
+        value = journalRepo.getEntryById("mine")
+    }
+    val mineMessageCount = mineEntryState?.messages?.size ?: 0
 
     val scope = rememberCoroutineScope()
     var isExporting by remember { mutableStateOf(false) }
@@ -83,7 +87,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Exporting ${journals.size} journals, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} life trackers, ${trackers.size} trackers, ${challenges.size} challenges, ${events.size} events, and ${passwords.size} passwords",
+                        text = "Exporting ${journals.size} journals, $mineMessageCount mine entries, ${notes.size} notes, ${tasks.size} tasks, ${habits.size} habits, ${quotes.size} quotes, ${lifeTrackers.size} life trackers, ${trackers.size} trackers, ${challenges.size} challenges, ${events.size} events, and ${passwords.size} passwords",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -284,6 +288,17 @@ fun ExportScreen(
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
+                                        text = "$mineMessageCount",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "Mine",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
                                         text = "${challenges.size}",
                                         style = MaterialTheme.typography.headlineSmall,
                                         color = MaterialTheme.colorScheme.primary
@@ -316,6 +331,7 @@ fun ExportScreen(
                             scope.launch {
                                 val trackerHistory = trackerRepo.getAllHistorySync()
                                 val challengeEntities = challengeRepo.getAllChallengesSync()
+                                val mineEntry = journalRepo.getEntryById("mine")
                                 val (success, message) = ExportUtils.exportAll(
                                     context, 
                                     journals, 
@@ -331,7 +347,8 @@ fun ExportScreen(
                                     passwords,
                                     trackers,
                                     trackerHistory,
-                                    challengeEntities
+                                    challengeEntities,
+                                    mineEntry
                                 )
                                 isExporting = false
                                 exportSuccess = success
@@ -352,7 +369,8 @@ fun ExportScreen(
                         onClick = {
                             isExporting = true
                             scope.launch {
-                                val (success, message) = PdfExportUtils.exportToPdf(context, journals, notes)
+                                val mineEntry = journalRepo.getEntryById("mine")
+                                val (success, message) = PdfExportUtils.exportToPdf(context, journals, notes, mineEntry)
                                 isExporting = false
                                 exportSuccess = success
                                 exportMessage = message

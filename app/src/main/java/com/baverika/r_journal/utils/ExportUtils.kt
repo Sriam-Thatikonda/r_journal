@@ -32,7 +32,7 @@ object ExportUtils {
     fun exportAll(
         context: Context,
         journals: List<JournalEntry>,
-        quickNotes: List<QuickNote>,
+        notes: List<QuickNote>,
         taskCategories: List<com.baverika.r_journal.data.local.entity.TaskCategory>,
         tasks: List<com.baverika.r_journal.data.local.entity.Task>,
         habits: List<com.baverika.r_journal.data.local.entity.Habit>,
@@ -44,7 +44,8 @@ object ExportUtils {
         passwords: List<Password>,
         trackers: List<com.baverika.r_journal.data.local.entity.Tracker>,
         trackerHistory: List<com.baverika.r_journal.data.local.entity.TrackerHistory>,
-        challenges: List<com.baverika.r_journal.data.ChallengeEntity>
+        challenges: List<com.baverika.r_journal.data.ChallengeEntity>,
+        mineEntry: JournalEntry? = null
     ): Pair<Boolean, String?> {
         return try {
             // 1. Determine export directory
@@ -131,8 +132,43 @@ object ExportUtils {
                     }
                 }
 
+                // Export Mine Journal (JSON)
+                mineEntry?.let { mine ->
+                    if (mine.messages.isNotEmpty()) {
+                        zos.putNextEntry(ZipEntry("data/mine_journal.json"))
+                        zos.write(gson.toJson(mine).toByteArray())
+                        zos.closeEntry()
+
+                        mine.messages.forEach { message ->
+                            message.imageUri?.let { imagePath ->
+                                val imageFile = File(imagePath)
+                                if (imageFile.exists()) {
+                                    try {
+                                        val imageFileName = "images/mine/${imageFile.name}"
+                                        zos.putNextEntry(ZipEntry(imageFileName))
+                                        FileInputStream(imageFile).use { fis -> fis.copyTo(zos) }
+                                        zos.closeEntry()
+                                    } catch (e: Exception) { e.printStackTrace() }
+                                }
+                            }
+
+                            message.voiceNoteUri?.let { voicePath ->
+                                val voiceFile = File(voicePath)
+                                if (voiceFile.exists()) {
+                                    try {
+                                        val voiceFileName = "voice_notes/mine/${voiceFile.name}"
+                                        zos.putNextEntry(ZipEntry(voiceFileName))
+                                        FileInputStream(voiceFile).use { fis -> fis.copyTo(zos) }
+                                        zos.closeEntry()
+                                    } catch (e: Exception) { e.printStackTrace() }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Export quick notes
-                quickNotes.forEach { note ->
+                notes.forEach { note ->
                     val fileName = "data/quick_notes/note_${note.id.take(8)}.md"
                     val content = buildQuickNoteMarkdown(note)
                     zos.putNextEntry(ZipEntry(fileName))
@@ -242,7 +278,7 @@ object ExportUtils {
                 // Add a README file
                 val readme = buildReadme(
                     journals.size, 
-                    quickNotes.size, 
+                    notes.size, 
                     tasks.size, 
                     habits.size, 
                     quotes.size,

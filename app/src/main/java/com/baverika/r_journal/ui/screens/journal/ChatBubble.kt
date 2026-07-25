@@ -53,7 +53,7 @@ fun ChatBubble(
     val isUser = message.role == "user"
     val timestamp = LocalDateTime
         .ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("h:mm a"))
+        .format(DateTimeFormatter.ofPattern("MMM d, yyyy • h:mm a"))
 
     AnimatedVisibility(
         visible = true,
@@ -89,34 +89,36 @@ fun ChatBubble(
                 // quoted reply (if any)
                 repliedMessage?.let { original ->
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp),
+                        shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp, topStart = 0.dp, bottomStart = 0.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                             .fillMaxWidth(0.82f)
                             .clickable { onQuoteClick?.invoke() }
                     ) {
-                        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.padding(start = 0.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .width(4.dp)
-                                    .height(40.dp)
-                                    .background(
-                                        if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                                        shape = RoundedCornerShape(2.dp)
-                                    )
+                                    .width(3.dp)
+                                    .fillMaxHeight()
+                                    .heightIn(min = 36.dp)
+                                    .background(MaterialTheme.colorScheme.primary)
                             )
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = if (original.role == "user") "You" else original.role.replaceFirstChar { it.uppercaseChar() },
+                                    text = if (original.role == "user") "Replying to you" else original.role.replaceFirstChar { it.uppercaseChar() },
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
                                     text = original.content.ifBlank { "[Image]" },
                                     style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 2
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                             }
                         }

@@ -146,6 +146,14 @@ class JournalRepository(
         }
     }
 
+    suspend fun getOrCreateMineEntry(): JournalEntry {
+        return journalDao.getEntryById("mine") ?: run {
+            val mineEntry = JournalEntry(dateMillis = -1L, id = "mine")
+            journalDao.insertEntry(mineEntry)
+            mineEntry
+        }
+    }
+
 
 
     // ---------- Habits ----------

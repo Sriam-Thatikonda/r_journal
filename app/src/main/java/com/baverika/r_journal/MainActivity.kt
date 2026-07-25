@@ -6,6 +6,8 @@ import android.app.Application
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 //import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Note
@@ -229,7 +231,7 @@ fun MainApp(
 
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
-        "archive", "quick_notes", "search", "dashboard",
+        "archive", "chat_input/mine", "quick_notes", "search", "dashboard",
         "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest", "challenges", "trackers"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
@@ -299,8 +301,12 @@ fun MainApp(
                             val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
                                 viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
                             val entry = journalViewModel.currentEntry
-                            val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
-                            if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
+                            if (entry.id == "mine") {
+                                "Mine"
+                            } else {
+                                val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
+                                if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
+                            }
                         } else "Journal Entry"
                     }
                     currentRoute?.startsWith("edit_quick_note") == true -> "Edit Note"
@@ -606,10 +612,17 @@ fun MainApp(
                                 journalViewModel.loadEntryForEditing(entryId)
                             }
 
-                            ChatInputScreen(
-                                viewModel = journalViewModel,
-                                navController = navController
-                            )
+                            if (entryId == "mine") {
+                                MineScreen(
+                                    viewModel = journalViewModel,
+                                    navController = navController
+                                )
+                            } else {
+                                ChatInputScreen(
+                                    viewModel = journalViewModel,
+                                    navController = navController
+                                )
+                            }
                         } else {
                             // Invalid entry ID, go back to archive
                             LaunchedEffect(Unit) {
@@ -962,7 +975,11 @@ fun DrawerContent(
     currentRoute: String?,
     onScreenSelected: (String) -> Unit
 ) {
-    Column {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
         // Section: Reference
         Text(
             text = "Reference",
@@ -1043,6 +1060,22 @@ fun DrawerContent(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+        // Section: Personal
+        Text(
+            text = "Personal",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
+        )
+        DrawerItem(
+            icon = Icons.Filled.FolderSpecial,
+            label = "Mine",
+            isSelected = currentRoute == "chat_input/mine",
+            onClick = { onScreenSelected("chat_input/mine") }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
         // Section: System
         Text(
             text = "System",
@@ -1057,7 +1090,7 @@ fun DrawerContent(
             onClick = { onScreenSelected("settings") }
         )
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "v${BuildConfig.VERSION_NAME}",

@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface JournalDao {
-    @Query("SELECT * FROM journal_entries ORDER BY dateMillis DESC")
+    @Query("SELECT * FROM journal_entries WHERE id != 'mine' AND dateMillis >= 0 ORDER BY dateMillis DESC")
     fun getAllEntries(): Flow<List<JournalEntry>>
 
     @Query("SELECT * FROM journal_entries WHERE dateMillis = :startOfDayMillis LIMIT 1")
@@ -21,13 +21,9 @@ interface JournalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: JournalEntry)
 
-    // ✅ Ensure your search query is correct
-    // Example using json_each (requires API 32+ or fallback logic)
-    // If json_each doesn't work, use FTS or basic LIKE queries.
-    // In JournalDao.kt - Simple LIKE search (less powerful, more compatible)
-    @Query("SELECT * FROM journal_entries WHERE " +
+    @Query("SELECT * FROM journal_entries WHERE id != 'mine' AND dateMillis >= 0 AND (" +
             "messages LIKE '%' || :query || '%' " +
-            "OR tags LIKE '%' || :query || '%' " +
+            "OR tags LIKE '%' || :query || '%') " +
             "ORDER BY dateMillis DESC")
     fun searchEntries(query: String): Flow<List<JournalEntry>>
 
