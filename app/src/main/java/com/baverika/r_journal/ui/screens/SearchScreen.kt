@@ -17,7 +17,8 @@ import com.baverika.r_journal.ui.viewmodel.SearchViewModel
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -29,6 +30,12 @@ fun SearchScreen(
     val query by viewModel.query.collectAsState()
     val results by viewModel.searchResults.collectAsState()
 
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(
             value = query,
@@ -37,7 +44,9 @@ fun SearchScreen(
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = "Search")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
         )
 
         Spacer(modifier = Modifier.height(16.dp))

@@ -1,6 +1,9 @@
 package com.baverika.r_journal.ui.screens.journal
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -17,22 +20,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.EventType
 
+enum class BannerSeverity {
+    NEUTRAL,
+    POSITIVE,
+    WARNING
+}
+
 @Composable
-fun EventBanner(event: Event) {
+fun EventBanner(
+    event: Event,
+    severity: BannerSeverity = BannerSeverity.NEUTRAL
+) {
     var isVisible by remember { mutableStateOf(true) }
 
     if (isVisible) {
-        val backgroundColor = when (event.type) {
-            EventType.BIRTHDAY -> Color(0xFFFFD700).copy(alpha = 0.2f) // Gold
-            EventType.ANNIVERSARY -> Color(0xFFFF69B4).copy(alpha = 0.2f) // Pink
-            EventType.MEETING -> Color(0xFF2196F3).copy(alpha = 0.2f) // Blue
-            EventType.CUSTOM -> MaterialTheme.colorScheme.surfaceVariant
+        val containerColor = when (severity) {
+            BannerSeverity.WARNING -> MaterialTheme.colorScheme.errorContainer
+            BannerSeverity.NEUTRAL, BannerSeverity.POSITIVE -> MaterialTheme.colorScheme.tertiaryContainer
+        }
+
+        val contentColor = when (severity) {
+            BannerSeverity.WARNING -> MaterialTheme.colorScheme.onErrorContainer
+            BannerSeverity.NEUTRAL, BannerSeverity.POSITIVE -> MaterialTheme.colorScheme.onTertiaryContainer
         }
 
         val icon = when (event.type) {
@@ -42,13 +56,11 @@ fun EventBanner(event: Event) {
             EventType.CUSTOM -> "🎉"
         }
 
-        val contentColor = MaterialTheme.colorScheme.onSurface
-
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = backgroundColor),
+            colors = CardDefaults.cardColors(containerColor = containerColor),
             shape = RoundedCornerShape(8.dp)
         ) {
             Row(

@@ -101,7 +101,24 @@ class JournalViewModel(
         }
     }
 
+    fun loadMineEntry() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val entry = repo.getOrCreateMineEntry()
+                currentEntry = entry
+                _currentDateMillis.value = entry.dateMillis
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     fun loadEntryForEditing(entryId: String) {
+        if (entryId == "mine") {
+            loadMineEntry()
+            return
+        }
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -245,14 +262,8 @@ class JournalViewModel(
     }
 
     fun editMessage(messageId: String, newContent: String) {
-        // Only allow editing messages if the entry is from today
-        if (!isCurrentEntryToday) return
-
         // Find target message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
-
-        // Only allow editing messages from the current entry's date
-        if (!isMessageFromCurrentEntryDate(message)) return
 
         if (newContent.isBlank()) {
             // If new content empty -> delete
@@ -283,14 +294,8 @@ class JournalViewModel(
     }
 
     fun deleteMessage(messageId: String) {
-        // Only allow deleting messages if the entry is from today
-        if (!isCurrentEntryToday) return
-
         // Find message
         val message = currentEntry.messages.find { it.id == messageId } ?: return
-
-        // Only allow deleting messages from the current entry's date
-        if (!isMessageFromCurrentEntryDate(message)) return
 
         // Remove the message
         val filteredMessages = currentEntry.messages.filterNot { it.id == messageId }

@@ -1,7 +1,5 @@
 package com.baverika.r_journal.ui.screens.journal
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -14,12 +12,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,12 +28,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.baverika.r_journal.data.local.entity.ChatMessage
 import com.baverika.r_journal.ui.components.RecordingIndicator
@@ -66,7 +60,6 @@ fun InputBar(
     onRemoveImage: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isEnabled = (textFieldValue.text.isNotBlank() || selectedImageUris.isNotEmpty()) && !isRecording
 
     Surface(
         tonalElevation = 3.dp,
@@ -75,29 +68,39 @@ fun InputBar(
         Column {
             // Reply preview
             replyToMessage?.let { replying ->
-                Card(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 4.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                    shape = RoundedCornerShape(12.dp)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp, topStart = 0.dp, bottomStart = 0.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(start = 0.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(4.dp)
-                                .height(36.dp)
-                                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(2.dp))
+                                .width(3.dp)
+                                //.fillMaxHeight()
+                                .heightIn(min = 36.dp)
+                                .background(MaterialTheme.colorScheme.primary)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Replying", style = MaterialTheme.typography.labelSmall)
-                            Text(text = replying.content.ifBlank { "[Image]" }, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                            Text(
+                                text = "Replying to you",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = replying.content.ifBlank { "[Image]" },
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
                         }
                         IconButton(onClick = onCancelReply) {
                             Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel reply")
@@ -205,7 +208,7 @@ fun InputBar(
                 Spacer(Modifier.width(6.dp))
 
                 // Dynamic Mic vs Send button swap (WhatsApp / Telegram style)
-                val hasContent = isEnabled
+                val hasContent = textFieldValue.text.isNotBlank() || selectedImageUris.isNotEmpty()
                 AnimatedContent(
                     targetState = hasContent,
                     transitionSpec = {
@@ -230,7 +233,7 @@ fun InputBar(
                                 )
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Send,
+                                imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = "Send",
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(20.dp)

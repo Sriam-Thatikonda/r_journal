@@ -8,6 +8,7 @@ sealed class Screen {
     object QuickNotes : Screen()
     object Search : Screen()
     object Dashboard : Screen()
+    object Mine : Screen()
     object Export : Screen()
     object Import : Screen()
 }

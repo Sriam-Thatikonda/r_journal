@@ -23,7 +23,8 @@ object PdfExportUtils {
     fun exportToPdf(
         context: Context,
         journals: List<JournalEntry>,
-        quickNotes: List<QuickNote>
+        quickNotes: List<QuickNote>,
+        mineEntry: JournalEntry? = null
     ): Pair<Boolean, String?> {
         val document = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size in points (approx)
@@ -113,6 +114,43 @@ object PdfExportUtils {
                     // Divider
                     val linePaint = Paint().apply { color = Color.LTGRAY; strokeWidth = 1f }
                     canvas.drawLine(margin, yPosition - 15f, pageInfo.pageWidth - margin, yPosition - 15f, linePaint)
+                }
+            }
+
+            // --- Mine Stream ---
+            mineEntry?.let { mine ->
+                if (mine.messages.isNotEmpty()) {
+                    if (yPosition > pageInfo.pageHeight - 200) {
+                        document.finishPage(page)
+                        page = document.startPage(pageInfo)
+                        canvas = page.canvas
+                        yPosition = margin
+                    } else {
+                        yPosition += 40f
+                    }
+
+                    canvas.drawText("Mine Stream", margin, yPosition, headerPaint)
+                    yPosition += 30f
+
+                    mine.messages.forEach { msg ->
+                        val timeStr = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(msg.timestamp), ZoneId.systemDefault())
+                            .format(DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm"))
+                        val contentText = "[$timeStr] ${msg.content}"
+                        val contentLayout = StaticLayout.Builder.obtain(contentText, 0, contentText.length, bodyPaint, contentWidth.toInt())
+                            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                            .build()
+
+                        val entryHeight = contentLayout.height + 20f
+                        if (yPosition + entryHeight > pageInfo.pageHeight - margin) {
+                            document.finishPage(page)
+                            page = document.startPage(pageInfo)
+                            canvas = page.canvas
+                            yPosition = margin
+                        }
+
+                        contentLayout.draw(canvas, margin, yPosition)
+                        yPosition += contentLayout.height + 15f
+                    }
                 }
             }
             

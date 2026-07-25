@@ -296,6 +296,44 @@ object ImportUtils {
                 } catch (e: Exception) { e.printStackTrace() }
             }
 
+            // 13. Mine Journal
+            jsonPayloads.entries.firstOrNull { it.key.endsWith("mine_journal.json") }?.let { (_, content) ->
+                try {
+                    val mineEntry = gson.fromJson(content, JournalEntry::class.java)
+                    val imageStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+                    val voiceStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+
+                    val restoredMessages = mineEntry.messages.map { msg ->
+                        var newImageUri = msg.imageUri
+                        var newVoiceUri = msg.voiceNoteUri
+
+                        msg.imageUri?.let { imagePath ->
+                            val imageName = File(imagePath).name
+                            val zipImagePath = "images/mine/$imageName"
+                            imageMap[zipImagePath]?.let { tempImageFile ->
+                                val permanentFile = File(imageStorageDir, imageName)
+                                tempImageFile.copyTo(permanentFile, overwrite = true)
+                                newImageUri = permanentFile.absolutePath
+                            }
+                        }
+
+                        msg.voiceNoteUri?.let { voicePath ->
+                            val voiceName = File(voicePath).name
+                            val zipVoicePath = "voice_notes/mine/$voiceName"
+                            imageMap[zipVoicePath]?.let { tempVoiceFile ->
+                                val permanentFile = File(voiceStorageDir, voiceName)
+                                tempVoiceFile.copyTo(permanentFile, overwrite = true)
+                                newVoiceUri = permanentFile.absolutePath
+                            }
+                        }
+
+                        msg.copy(imageUri = newImageUri, voiceNoteUri = newVoiceUri)
+                    }
+
+                    journalRepo.upsertEntry(mineEntry.copy(messages = restoredMessages))
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+
             // Clean up temp files
             tempImagesDir.deleteRecursively()
 
