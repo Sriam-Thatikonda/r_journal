@@ -45,24 +45,23 @@ object ImportUtils {
     ) {
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val inputStream: InputStream = context.contentResolver.openInputStream(uri)
-                    ?: throw Exception("Could not open input stream for URI: $uri")
-
-                importFromInputStream(
-                    context, 
-                    inputStream, 
-                    uri, 
-                    journalRepo, 
-                    quickNoteRepo, 
-                    taskRepo, 
-                    quoteRepo, 
-                    lifeTrackerRepo, 
-                    eventRepo,
-                    passwordRepo,
-                    trackerRepo,
-                    challengeRepo,
-                    onResult
-                )
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    importFromInputStream(
+                        context, 
+                        inputStream, 
+                        uri, 
+                        journalRepo, 
+                        quickNoteRepo, 
+                        taskRepo, 
+                        quoteRepo, 
+                        lifeTrackerRepo, 
+                        eventRepo,
+                        passwordRepo,
+                        trackerRepo,
+                        challengeRepo,
+                        onResult
+                    )
+                } ?: throw Exception("Could not open input stream for URI: $uri")
             } catch (e: Exception) {
                 e.printStackTrace()
                 onResult(false, "Failed to open file: ${e.message}")

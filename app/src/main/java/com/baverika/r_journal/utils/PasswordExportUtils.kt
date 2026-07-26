@@ -50,7 +50,7 @@ object PasswordExportUtils {
                     ExportablePassword(
                         siteName = password.siteName,
                         username = password.username,
-                        passwordValue = password.passwordValue,
+                        passwordValue = SecurityUtils.decrypt(password.passwordValue),
                         createdAt = password.createdAt,
                         updatedAt = password.updatedAt
                     )
@@ -88,10 +88,13 @@ object PasswordExportUtils {
             var importedCount = 0
             
             exportData.passwords.forEach { exportable ->
+                // Decrypt if it was previously exported encrypted, or return raw plaintext
+                val plainTextValue = SecurityUtils.decrypt(exportable.passwordValue)
+                val encryptedValue = SecurityUtils.encrypt(plainTextValue)
                 val password = Password(
                     siteName = exportable.siteName,
                     username = exportable.username,
-                    passwordValue = exportable.passwordValue,
+                    passwordValue = encryptedValue,
                     createdAt = exportable.createdAt,
                     updatedAt = exportable.updatedAt
                 )
