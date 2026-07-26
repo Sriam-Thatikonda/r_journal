@@ -11,9 +11,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,8 +29,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.baverika.r_journal.data.local.entity.Tracker
+import com.baverika.r_journal.data.local.entity.TrackerHistory
 import com.baverika.r_journal.ui.viewmodel.TrackerViewModel
 import com.baverika.r_journal.utils.ColorUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +45,9 @@ fun TrackerDetailsScreen(
 ) {
     val trackerFlow = remember(trackerId) { viewModel.getTrackerByIdFlow(trackerId) }
     val trackerState by trackerFlow.collectAsState(initial = null)
+
+    val historyFlow = remember(trackerId) { viewModel.getHistoryForTracker(trackerId) }
+    val historyList by historyFlow.collectAsState(initial = emptyList())
 
     val currentTracker = trackerState
 
@@ -50,6 +61,9 @@ fun TrackerDetailsScreen(
     val backgroundColor = Color(currentTracker.color)
     val textColor = ColorUtils.getContrastingTextColor(backgroundColor)
     val secondaryTextColor = ColorUtils.getSecondaryTextColor(backgroundColor)
+
+    val dateFormatter = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+    val timeFormatter = remember { SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()) }
 
     Scaffold(
         topBar = {
@@ -77,7 +91,7 @@ fun TrackerDetailsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Large Emoji display
             Box(
@@ -118,6 +132,8 @@ fun TrackerDetailsScreen(
             } else {
                 0f
             }
+            val progressPercent = (progress * 100).toInt()
+
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
@@ -207,56 +223,109 @@ fun TrackerDetailsScreen(
                 }
             }
 
-            // Future Placeholders
-            Column(
+            // ── Live Statistics Section ──
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                colors = CardDefaults.cardColors(containerColor = textColor.copy(alpha = 0.08f)),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = textColor.copy(alpha = 0.05f)),
-                    shape = RoundedCornerShape(12.dp)
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "History",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = secondaryTextColor
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            "TODO: Future Feature",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = secondaryTextColor.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = textColor.copy(alpha = 0.05f)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.BarChart, contentDescription = null, tint = textColor)
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             "Statistics",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = secondaryTextColor
+                            color = textColor
                         )
-                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Goal Completion", style = MaterialTheme.typography.bodyMedium, color = secondaryTextColor)
+                        Text("$progressPercent%", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = textColor)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Created Date", style = MaterialTheme.typography.bodyMedium, color = secondaryTextColor)
+                        Text(dateFormatter.format(Date(currentTracker.createdDate)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = textColor)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Last Updated", style = MaterialTheme.typography.bodyMedium, color = secondaryTextColor)
+                        Text(timeFormatter.format(Date(currentTracker.updatedDate)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = textColor)
+                    }
+
+                    if (historyList.isNotEmpty()) {
+                        val totalRecorded = historyList.sumOf { it.value }
+                        val avgRecorded = (totalRecorded.toFloat() / historyList.size).toInt()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Historical Average", style = MaterialTheme.typography.bodyMedium, color = secondaryTextColor)
+                            Text("$avgRecorded / reset period", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = textColor)
+                        }
+                    }
+                }
+            }
+
+            // ── History Logs Section ──
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = textColor.copy(alpha = 0.08f)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.History, contentDescription = null, tint = textColor)
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "TODO: Future Feature",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = secondaryTextColor.copy(alpha = 0.7f)
+                            "History Logs",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor
                         )
+                    }
+
+                    if (historyList.isEmpty()) {
+                        Text(
+                            text = "No recorded history yet.\nCompleted values will log automatically when the reset schedule triggers.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = secondaryTextColor.copy(alpha = 0.8f)
+                        )
+                    } else {
+                        historyList.take(5).forEach { history ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(history.date, style = MaterialTheme.typography.bodyMedium, color = textColor)
+                                Text("Count: ${history.value}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = textColor)
+                            }
+                        }
                     }
                 }
             }
