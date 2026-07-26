@@ -53,7 +53,7 @@ fun ChatBubble(
     val isUser = message.role == "user"
     val timestamp = LocalDateTime
         .ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("MMM d, yyyy • h:mm a"))
+        .format(DateTimeFormatter.ofPattern("h:mm a"))
 
     AnimatedVisibility(
         visible = true,
