@@ -1,367 +1,134 @@
-**R-Journal** — Your Personal Daily Journal (Android, Jetpack Compose)
+# R-Journal — Personal Daily Journal & Life Suite (Android, Jetpack Compose)
 
-R-Journal is a modern journaling app built entirely with Jetpack Compose, designed for fast writing, clean UI, local privacy, and native Android features.
+**R-Journal** is a modern, privacy-focused personal journal and productivity suite built entirely with **Jetpack Compose**, **Kotlin**, and **Android Room Database**. Designed with local-first privacy, fluid micro-animations, and a WhatsApp-inspired messaging interface, R-Journal helps you log thoughts, track habits, manage tasks, monitor life challenges, track cravings, manage events, and securely store credentials.
 
-It includes a WhatsApp-style chat interface, mood tracking, reply system, image attachments, and complete offline storage using Room Database.
+---
 
-🚀 Features
-📝 Chat-Style Journal Entries
+## 🌟 Comprehensive Feature Set
 
-Each day is a self-contained chat thread.
-Write entries like conversations — simpler, faster, more natural.
+### 📝 Chat-Style Daily Journal
+* **Conversational Interface**: Log daily entries like conversations—simpler, faster, and more intuitive.
+* **Rich Attachments**: Support for text, gallery images, camera photos, and voice notes.
+* **Swipe-to-Reply**: Swipe any message right to reply with inline quote previews.
+* **Tap-to-Scroll & Highlight**: Tap a reply preview to smoothly auto-scroll back to the original message with animated highlight borders.
+* **Voice Notes**: Record and play back audio notes with inline duration tracking.
+* **Smart Day Detection**: Messages added retroactively or past midnight are tagged cleanly while preserving historical data integrity.
+* **Calendar & Search**: Calendar view for past journals and app-wide search across journal messages.
 
-📎 Send Messages with:
+### 🌟 "Mine" Isolated Thoughts Stream
+* **Distraction-Free Stream**: A dedicated, date-independent persistent stream (`MineScreen`) for instant notes, voice memos, and quick thoughts.
+* **WhatsApp-Style Date Dividers**: Dynamic date headers separate entries chronologically.
+* **Complete Isolation**: Mine entries are kept separate from daily archive logs while remaining fully supported during backup, export, and PDF generation.
 
-Text
+### 📌 Quick Notes Manager
+* **Categorized Notes**: Create, edit, and organize standalone markdown-supported quick notes.
+* **Pin & Archive**: Pin important notes to top and archive completed notes.
 
-Images (Camera / Gallery)
+### 🏆 Challenge Tracker & Statistics
+* **Goal Challenges**: Set multi-day habits and challenges with custom icons and daily targets.
+* **Summary Dashboard**: Overview bar tracking active challenges, completed today count, and average progress percentage.
+* **Detailed Performance Analytics**: Track completion gauge (`%`), days completed vs remaining, last activity date, and daily reminder schedules.
+* **Challenge History**: Archive completed or abandoned challenges for long-term review.
 
-Mixed content
+### 📊 Life Trackers & Counter History
+* **Custom Metric Counters**: Track water intake, pushups, books read, or custom goals with configurable increment steps.
+* **Scheduled Resets**: Support for Daily, Weekly, or manual reset frequencies.
+* **History Logs & Metrics**: Automatically logs previous period totals into history logs for trend analysis.
 
-Automatic compression & private storage
+### 🎯 Craving Quest (Impulse Control)
+* **Urge Logging**: Track cravings, triggers, and intensity ratings to build impulse control.
+* **Streak & Milestones**: Monitor abstinence streaks and review craving history logs over time.
 
-💬 Swipe-to-Reply (WhatsApp style)
+### 📅 Events & Countdowns
+* **Event Tracker**: Track birthdays, anniversaries, and key milestones with countdown timers.
+* **Archive Displays**: Event indicators displayed directly on daily journal archive cards.
 
-Swipe any message right to reply
+### 🔐 Password Manager & Security Vault
+* **Hardware Encryption**: Passwords encrypted using Android KeyStore AES (`AES/GCM/NoPadding`).
+* **Password Generator**: Built-in strong passphrase generator with custom character set options.
+* **Portable Export / Import**: Safely export standalone password backups with automatic key normalization on restore.
+* **Biometric Guard**: Lock the application using Android Biometric Prompt (Fingerprint / Face Unlock).
 
-Shows reply preview above the input box
+### ✅ Advanced Task Management
+* **Task Lists & Categories**: Organize tasks into color-coded categories with priorities (High, Medium, Low).
+* **Filtering & Sorting**: Filter active, completed, overdue, or today's tasks; sort by due date, priority, or title.
+* **Home Screen Widget**: Dedicated Android widget to manage tasks directly from your home screen.
 
-Reply metadata is saved in Room
+### 🌱 Habit Tracker & Year in Pixels
+* **Habit Heatmap**: 7-Day grid heatmap view for quick habit checking.
+* **Year in Pixels**: Visual annual mood and habit tracking grid for yearly reflection.
 
-Replies remain after restarting the app
+### 💬 Daily Quotes & Widgets
+* **Daily Inspiration**: Curated motivational quotes refreshed daily.
+* **Home Screen Quote Widget**: Configurable Glance app widget for daily quotes.
 
-🔗 Tap Reply → Scroll to Original
+### 📦 Data Portability & PDF Export
+* **Full ZIP Backup / Restore**: Export & import all app data (Journal entries, Mine stream, tasks, habits, passwords, trackers, challenges, craving logs, events, quotes, images, and voice notes).
+* **PDF Export**: Generate formatted PDF documents including daily journals, mood logs, and the Mine stream.
+* **Local Database Backup**: Quick SQLite database snapshot backup and restoration.
 
-Tap on reply preview inside a bubble
+---
 
-Auto-scrolls to the original message
+## 🏛️ Architecture & Tech Stack
 
-Message briefly highlights with a border
-
-Smooth animations with Compose
-
-😊 Mood Picker
-
-Select up to 3 moods for the day
-
-Emoji-based UI
-
-Animated scale bounce effect
-
-Mood syncs with entry tags
-
-🖼️ Full Image Viewer
-
-Tap on any image
-
-Opens full-screen image viewer
-
-Local-only (no internet required)
-
-🔒 Secure Local Storage
-
-All data saved in Room DB
-
-Custom JSON Converters preserve reply metadata
-
-Private image storage under Android/data/.../files/Pictures
-
-🌙 Smart Day Detection
-
-Messages added after midnight are marked “Added later”
-
-You can navigate to past entries without breaking rules
-
-Editing & deleting allowed only for today’s messages
-
-✅ Advanced Task Management
-
-Swipe-to-complete or delete tasks with fluid animations.
-
-Filter tasks by status (Active, Completed, Overdue, Today).
-
-Sort tasks by Due Date, Priority, Created Date, or Alphabetically.
-
-Real-time statistics summary (Active, Completed Today, Overdue).
-
-🌱 Habit Tracker
-
-7-Day heatmap grid view for quick tracking.
-
-Context menu to quickly edit or delete habits.
-
-Compact habit tracker widget for immediate toggling.
-
-Tracks yearly overview and daily completion statuses.
-
-📚 Journal Archive
-
-Beautiful grid view of past entries.
-
-Summarized cards displaying mood emojis, message count, and image count.
-
-Event indicators (Birthdays 🎉, Anniversaries 💍) directly on the cards.
-
-Custom thematic backgrounds based on the active App Theme.
-
-🧱 Architecture
-app/
-
-│
-
+```text
+d:\r_journal\app\src\main\java\com\baverika\r_journal\
 ├── data/
-
 │   ├── local/
-
-│   │   ├── entity/
-
-│   │   │   ├── ChatMessage.kt
-
-│   │   │   └── JournalEntry.kt
-
-│   │   ├── converters/Converters.kt
-
-│   │   └── JournalDatabase.kt
-
-│   └── repository/JournalRepository.kt
-
-|
-
+│   │   ├── dao/           # Room Data Access Objects
+│   │   ├── database/      # JournalDatabase configuration
+│   │   ├── entity/        # Room Database Entities
+│   │   └── security/      # KeyStore & Security utilities
+│   └── repository/        # Data Repositories
+├── quotes/                # Motivational Quotes module & Glance Widget
 ├── ui/
-
-│   ├── screens/ChatInputScreen.kt
-
-│   ├── screens/ImageViewerScreen.kt
-
-│   ├── components/ChatBubble.kt
-
-│   └── components/CompactMoodPicker.kt
-
-│
-
-└── viewmodel/JournalViewModel.kt
-
-
-Core Technologies
-
-Kotlin
-
-Jetpack Compose (Material3)
-
-Room Database
-
-Compose Navigation
-
-Coil (Image loading)
-
-SwipeToDismiss (Material 1 inside M3 UI)
-
-Coroutines + StateFlow
-
-FileProvider for image access
-
-🏛️ Data Model
-ChatMessage.kt
-```kotlin
-data class ChatMessage(
-    val id: String = UUID.randomUUID().toString(),
-    val role: String = "user",
-    val content: String = "",
-    val timestamp: Long = System.currentTimeMillis(),
-    val imageUri: String? = null,
-    val replyToMessageId: String? = null,
-    val replyPreview: String? = null
-)```    
-```
-JournalEntry.kt
-
-One entry per day.
-
-Stores a list of messages + mood tags.
-
-💾 Room Storage
-✔️ Custom JSON Converters
-
-Your updated Converters.kt preserves all ChatMessage fields, including:
-
-replyToMessageId
-
-replyPreview
-
-imageUri
-
-This ensures reply chains survive app restarts.
-
-🧠 ViewModel Logic (JournalViewModel)
-
-Main responsibilities:
-
-Load today’s entry
-
-Load past entries
-
-Add messages with/without images
-
-Swipe-to-reply integration
-
-Highlight target message on quote tap
-
-Edit & delete rules only for today
-
-Mood picker logic
-
-Auto-sorting messages before saving
-
-It exposes UI-ready state via:
-
-- currentEntry
-
-- isLoading: StateFlow<Boolean>
-
-- isMessageAddedLater(message)
-
-- isCurrentEntryToday
-
-- canEditMood
-
-🖌️ UI Design
-✔️ Modern Material 3
-
-Rounded bubbles
-
-Soft shadows
-
-Smooth animations
-
-✔️ WhatsApp-like Interaction Model
-
-Swipe to reply
-
-Tap reply preview → auto-scroll
-
-Animated highlight
-
-Long-press → Edit/Delete
-
-Fade-in message animations
-
-✔️ Optimized Layout
-
-LazyColumn with stable keys
-
-Auto-scroll to bottom on new message
-
-Handles image height, full-width text wrapping
-
-📸 Images & Media
-
-Images are:
-
-Compressed on save (max dimension = 1024px)
-
-Stored privately
-
-Previewed inline
-
-Openable in full screen
-
-🔁 Reply System (How It Works)
-When swiping a message:
-```kotlin
-replyToMessage = message
-```
-When sending a message:
-```kotlin
-viewModel.addMessageWithImage(
-    text,
-    imageUri?.toString(),
-    replyTo = replyToMessage
-)
-```
-ViewModel stores:
-
-- replyToMessageId
-
-- replyPreview
-
-UI displays:
-
-A preview bubble above input box
-
-A quoted bubble inside messages
-
-Scroll-to-original on tap
-
-👇 Highlight Logic
-
-When a reply quote is tapped:
-```kotlin
-highlightedMessageId = originalMessage.id
-delay(1500)
-highlightedMessageId = null
+│   ├── challenge/         # Challenge Tracker screens & ViewModels
+│   ├── components/        # Reusable UI components & ChatBubbles
+│   ├── screens/           # Jetpack Compose Screens
+│   ├── theme/             # Material3 Theme & Color tokens
+│   └── viewmodel/         # Android ViewModels
+├── utils/                 # Export, Import, PDF, and Security Utilities
+├── widget/                # Home Screen Widgets (Task, Habit, Tracker Providers)
+└── MainActivity.kt        # App Entry Point & Navigation Host
 ```
 
-Then:
-```kotlin
-isHighlighted = (message.id == highlightedMessageId)
-```
+### Core Technologies
+* **Language**: Kotlin 1.9+
+* **UI Framework**: Jetpack Compose with Material 3
+* **Database**: Room Database (SQLite) with custom JSON type converters
+* **Architecture**: MVVM with Repository Pattern, StateFlow & Coroutines
+* **Image Loading**: Coil
+* **Security**: Android KeyStore System (AES/GCM) & Biometric Prompt API
+* **Exporting**: Gson & Android PdfDocument API
 
-In ChatBubble, border changes automatically.
+---
 
-📦 Build & Run
-1. Clone repo
-git clone https://github.com/yourname/r_journal.git
+## 💾 Security & Privacy
 
-2. Open in Android Studio Flamingo+/Koala+
-3. Build + Run on device/emulator
+1. **100% Local Storage**: All data, images, voice notes, and credentials reside strictly on device.
+2. **Encrypted Passwords**: Passwords stored in Room DB are encrypted using AES/GCM keys stored in the hardware-backed Android KeyStore.
+3. **Biometric Guard**: Biometric authentication restricts access to sensitive screens and app startup.
 
-Minimum SDK recommended: 26+
+---
 
-🧪 Testing Checklist
+## 🛠️ Build & Setup
 
-Text message sending
+### Prerequisites
+* Android Studio (Koala / Ladybug or newer recommended)
+* JDK 17+
+* Android SDK (API Level 26 / Android 8.0 Minimum)
 
-Attach from gallery
+### Steps
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/SSRam1919/r_journal.git
+   ```
+2. Open the project in Android Studio.
+3. Sync Gradle project files.
+4. Run on a physical Android device or emulator (`API 26+`).
 
-Take photo
+---
 
-Swipe-to-reply
+## 📄 License & Credits
 
-Reply preview
-
-Scroll to original
-
-Highlight disappears after timeout
-
-Past entries lock editing
-
-Mood picker selection limit (3)
-
-Saved entry persists after relaunch
-
-Image viewer opens correctly
-
-🌐 Optional: Server Sync (If enabled)
-
-Auto-merge today's entry from your local Flask server
-
-Sends updated messages on save
-
-Handles offline mode gracefully
-
-📌 Next Planned Features
-
-Dark Mode (Nothing Phone 2 optimized)
-
-Export entry as PDF
-
-Daily reminders
-
-Emoji reactions
-
-Cloud sync (optional toggle)
-
-❤️ Credits
-
-Developed by Ram Thatikonda
-Built for fast, secure, personal journaling — powered by Kotlin + Compose.
+Developed by **Ram Thatikonda**. Built for fast, secure, personal daily journaling—powered by Kotlin & Jetpack Compose.
