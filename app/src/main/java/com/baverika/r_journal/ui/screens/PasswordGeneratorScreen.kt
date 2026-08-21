@@ -21,7 +21,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
@@ -35,11 +34,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -48,11 +48,11 @@ import androidx.compose.ui.unit.sp
 import com.baverika.r_journal.data.local.entity.Password
 import com.baverika.r_journal.data.local.entity.PasswordType
 import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
+import com.baverika.r_journal.ui.viewmodel.SortOrder
 import com.baverika.r_journal.utils.PassphraseGenerator
 import com.baverika.r_journal.utils.SecurityUtils
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -61,10 +61,11 @@ fun PasswordGeneratorScreen(
 ) {
     val passwords by viewModel.passwords.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
 
     var siteName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
-    
+
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -76,6 +77,13 @@ fun PasswordGeneratorScreen(
     var isGeneratorExpanded by remember { mutableStateOf(true) }
     var isSavedExpanded by remember { mutableStateOf(true) }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    // 1. Auto-collapse generator when searching
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotBlank()) {
+            isGeneratorExpanded = false
+        }
+    }
 
     // Initial load and regeneration logic
     LaunchedEffect(numberLength, isPinMode) {
@@ -119,7 +127,7 @@ fun PasswordGeneratorScreen(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                 )
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Mode Toggle (Segmented Control)
@@ -147,7 +155,9 @@ fun PasswordGeneratorScreen(
                     onToggle = { isGeneratorExpanded = !isGeneratorExpanded },
                     collapsedContent = {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -183,7 +193,17 @@ fun PasswordGeneratorScreen(
                             )
                         }
 
-                        // Password Display Card with Internal Picker
+                        // 2. Validation Hint
+                        if (siteName.isBlank() || username.isBlank()) {
+                            Text(
+                                text = "Fill in site and username above to enable saving",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+
+                        // Password Display Card with Internal Picker & Strength Bar
                         UnifiedGeneratorCard(
                             password = generatedPassword,
                             isVisible = isPasswordVisible,
@@ -202,7 +222,7 @@ fun PasswordGeneratorScreen(
                             },
                             isPinMode = isPinMode,
                             currentLength = numberLength,
-                            onLengthChange = { 
+                            onLengthChange = {
                                 if (numberLength != it) {
                                     numberLength = it
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -221,6 +241,8 @@ fun PasswordGeneratorScreen(
                                     username = ""
                                     generatedPassword = if (isPinMode) PassphraseGenerator.generatePin(numberLength) else PassphraseGenerator.generate(numberLength)
                                     Toast.makeText(context, "Saved to Vault", Toast.LENGTH_SHORT).show()
+                                    // 6. Collapse generator after saving
+                                    isGeneratorExpanded = false
                                 }
                             },
                             modifier = Modifier
@@ -242,7 +264,7 @@ fun PasswordGeneratorScreen(
                 }
             }
 
-            // Saved Passwords Section
+            // Saved Passwords Section Header & Sorting
             item {
                 CollapsibleSection(
                     title = "Saved Passwords (${passwords.size})",
@@ -266,11 +288,21 @@ fun PasswordGeneratorScreen(
                 }
             }
 
+            if (isSavedExpanded && passwords.isNotEmpty()) {
+                item {
+                    SortControlsRow(
+                        sortOrder = sortOrder,
+                        onSortChange = { viewModel.onSortOrderChanged(it) }
+                    )
+                }
+            }
+
             if (isSavedExpanded) {
                 items(passwords, key = { it.id }) { password ->
                     PasswordListItem(
                         password = password,
-                        onDelete = { viewModel.deletePassword(password) }
+                        onDelete = { viewModel.deletePassword(password) },
+                        onUpdate = { viewModel.updatePassword(it) }
                     )
                 }
             }
@@ -379,7 +411,7 @@ fun CollapsibleSection(
         ) {
             content()
         }
-        
+
         if (!isExpanded) {
             collapsedContent()
         }
@@ -411,6 +443,58 @@ fun ModernInput(
     )
 }
 
+// 9. Password Strength Bar Component
+@Composable
+private fun PasswordStrengthBar(
+    isPinMode: Boolean,
+    currentLength: Int
+) {
+    val (score, label, color) = remember(isPinMode, currentLength) {
+        if (isPinMode) {
+            when {
+                currentLength < 6 -> Triple(1, "Weak", Color(0xFFE53935))
+                currentLength < 8 -> Triple(2, "Fair", Color(0xFFFB8C00))
+                currentLength < 12 -> Triple(3, "Strong", Color(0xFF43A047))
+                else -> Triple(4, "Very Strong", Color(0xFF1E88E5))
+            }
+        } else {
+            when {
+                currentLength <= 2 -> Triple(1, "Weak", Color(0xFFE53935))
+                currentLength == 3 -> Triple(2, "Fair", Color(0xFFFB8C00))
+                currentLength == 4 -> Triple(3, "Strong", Color(0xFF43A047))
+                else -> Triple(4, "Very Strong", Color(0xFF1E88E5))
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(0.85f),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            for (i in 1..4) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(if (i <= score) color else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                )
+            }
+        }
+        Text(
+            text = "Strength: $label",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun UnifiedGeneratorCard(
@@ -424,7 +508,7 @@ fun UnifiedGeneratorCard(
     onLengthChange: (Int) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -450,10 +534,10 @@ fun UnifiedGeneratorCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                
+
                 val range = if (isPinMode) 4..16 else 2..6
                 val items = range.toList()
-                
+
                 VerticalWheelPicker(
                     items = items,
                     initialIndex = items.indexOf(currentLength).coerceAtLeast(0),
@@ -478,11 +562,13 @@ fun UnifiedGeneratorCard(
                         }
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Password Text
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -497,6 +583,9 @@ fun UnifiedGeneratorCard(
                         modifier = Modifier.animateContentSize()
                     )
                 }
+
+                // 9. Strength Bar
+                PasswordStrengthBar(isPinMode = isPinMode, currentLength = currentLength)
 
                 // Action Buttons Row
                 Row(
@@ -516,7 +605,7 @@ fun UnifiedGeneratorCard(
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Regenerate", modifier = Modifier.size(20.dp))
                     }
-                    
+
                     // Copy
                     Button(
                         onClick = onCopy,
@@ -544,7 +633,7 @@ fun UnifiedGeneratorCard(
                         )
                     }
                 }
-                
+
                 Text(
                     "Tap to copy • Long press to reveal",
                     style = MaterialTheme.typography.labelSmall,
@@ -567,7 +656,7 @@ fun VerticalWheelPicker(
 ) {
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val snapBehavior = rememberSnapFlingBehavior(lazyListState = listState)
-    
+
     // Track scroll and update value
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
@@ -622,7 +711,7 @@ fun VerticalWheelPicker(
                 items(items.size) { index ->
                     val isSelected = listState.firstVisibleItemIndex == index
                     val item = items[index]
-                    
+
                     Box(
                         modifier = Modifier
                             .height(itemHeight)
@@ -633,11 +722,13 @@ fun VerticalWheelPicker(
                             text = item.toString(),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                            color = if (isSelected) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
+                            color = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                            modifier = Modifier.scale(if (isSelected) 1.2f else 0.9f).animateContentSize()
+                            modifier = Modifier
+                                .scale(if (isSelected) 1.2f else 0.9f)
+                                .animateContentSize()
                         )
                     }
                 }
@@ -647,15 +738,77 @@ fun VerticalWheelPicker(
 }
 
 @Composable
+private fun SortControlsRow(
+    sortOrder: SortOrder,
+    onSortChange: (SortOrder) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val label = when (sortOrder) {
+        SortOrder.NEWEST_FIRST   -> "Newest first"
+        SortOrder.NAME_A_Z       -> "Name A–Z"
+        SortOrder.NAME_Z_A       -> "Name Z–A"
+        SortOrder.TYPE_PIN_FIRST -> "PINs first"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box {
+            TextButton(
+                onClick = { expanded = true },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Default.Sort, contentDescription = "Sort", modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(label, style = MaterialTheme.typography.labelMedium)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                listOf(
+                    SortOrder.NAME_A_Z to "Name A–Z",
+                    SortOrder.NAME_Z_A to "Name Z–A",
+                    SortOrder.NEWEST_FIRST to "Newest first",
+                    SortOrder.TYPE_PIN_FIRST to "PINs first"
+                ).forEach { (order, orderLabel) ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                orderLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (order == sortOrder) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        onClick = {
+                            onSortChange(order)
+                            expanded = false
+                        },
+                        leadingIcon = if (order == sortOrder) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PasswordListItem(
     password: Password,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUpdate: (Password) -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
-    
+    val haptic = LocalHapticFeedback.current
+
     val decryptedPassword = remember(password.passwordValue) {
         SecurityUtils.decrypt(password.passwordValue)
     }
@@ -681,6 +834,80 @@ private fun PasswordListItem(
         )
     }
 
+    // 10. Edit Dialog
+    if (showEditDialog) {
+        var editSite by remember { mutableStateOf(password.siteName) }
+        var editUsername by remember { mutableStateOf(password.username) }
+        var editPassword by remember { mutableStateOf(decryptedPassword) }
+        var editPwVisible by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Edit Entry") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = editSite,
+                        onValueChange = { editSite = it },
+                        label = { Text("Site / App") },
+                        leadingIcon = { Icon(Icons.Default.Public, null, modifier = Modifier.size(20.dp)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editUsername,
+                        onValueChange = { editUsername = it },
+                        label = { Text("Username") },
+                        leadingIcon = { Icon(Icons.Default.Person, null, modifier = Modifier.size(20.dp)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editPassword,
+                        onValueChange = { editPassword = it },
+                        label = { Text("Password") },
+                        leadingIcon = { Icon(Icons.Default.Lock, null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = {
+                            IconButton(onClick = { editPwVisible = !editPwVisible }) {
+                                Icon(
+                                    if (editPwVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        },
+                        visualTransformation = if (editPwVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = editSite.isNotBlank() && editUsername.isNotBlank() && editPassword.isNotBlank(),
+                    onClick = {
+                        onUpdate(
+                            password.copy(
+                                siteName = editSite.trim(),
+                                username = editUsername.trim(),
+                                passwordValue = SecurityUtils.encrypt(editPassword),
+                                updatedAt = System.currentTimeMillis()
+                            )
+                        )
+                        showEditDialog = false
+                    }
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -698,13 +925,39 @@ private fun PasswordListItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Info
+                // Info + 7. Type Badge
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = password.siteName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = password.siteName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Surface(
+                            color = if (password.type == PasswordType.PIN)
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            else
+                                MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (password.type == PasswordType.PIN) "PIN" else "PASS",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (password.type == PasswordType.PIN)
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                     Text(
                         text = password.username,
                         style = MaterialTheme.typography.bodySmall,
@@ -713,7 +966,21 @@ private fun PasswordListItem(
                 }
 
                 // Actions
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                    // Copy username
+                    IconButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(password.username))
+                        Toast.makeText(context, "Username copied!", Toast.LENGTH_SHORT).show()
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }) {
+                        Icon(
+                            Icons.Default.AlternateEmail,
+                            contentDescription = "Copy username",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    // Toggle visibility
                     IconButton(onClick = { isVisible = !isVisible }) {
                         Icon(
                             if (isVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -722,18 +989,40 @@ private fun PasswordListItem(
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                    // Copy password
                     IconButton(onClick = {
                         clipboardManager.setText(AnnotatedString(decryptedPassword))
-                        Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Password copied!", Toast.LENGTH_SHORT).show()
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy password",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
+                    // 10. Edit
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    // Delete
                     IconButton(onClick = { showDeleteConfirmation = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
-            
+
             AnimatedVisibility(
                 visible = isVisible,
                 enter = fadeIn() + expandVertically(),
