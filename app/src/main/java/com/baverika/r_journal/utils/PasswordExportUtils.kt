@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import com.baverika.r_journal.data.local.entity.Password
+import com.baverika.r_journal.data.local.entity.PasswordType
 import com.baverika.r_journal.repository.PasswordRepository
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -51,6 +52,7 @@ object PasswordExportUtils {
                         siteName = password.siteName,
                         username = password.username,
                         passwordValue = SecurityUtils.decrypt(password.passwordValue),
+                        type = password.type,
                         createdAt = password.createdAt,
                         updatedAt = password.updatedAt
                     )
@@ -88,13 +90,13 @@ object PasswordExportUtils {
             var importedCount = 0
             
             exportData.passwords.forEach { exportable ->
-                // Decrypt if it was previously exported encrypted, or return raw plaintext
-                val plainTextValue = SecurityUtils.decrypt(exportable.passwordValue)
-                val encryptedValue = SecurityUtils.encrypt(plainTextValue)
+                // Exported data is plaintext — encrypt it for secure storage
+                val encryptedValue = SecurityUtils.encrypt(exportable.passwordValue)
                 val password = Password(
                     siteName = exportable.siteName,
                     username = exportable.username,
                     passwordValue = encryptedValue,
+                    type = exportable.type,
                     createdAt = exportable.createdAt,
                     updatedAt = exportable.updatedAt
                 )
@@ -122,6 +124,7 @@ data class ExportablePassword(
     val siteName: String,
     val username: String,
     val passwordValue: String,
+    val type: PasswordType = PasswordType.PASSWORD,
     val createdAt: Long,
     val updatedAt: Long
 )

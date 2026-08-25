@@ -166,9 +166,13 @@ fun LifeTrackersScreen(
                 }
             }
             if (trackers.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No trackers yet. Add one!", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                com.baverika.r_journal.ui.components.EmptyState(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    title = "No Trackers Yet",
+                    message = "Create trackers for life events, activities, and logs.",
+                    actionLabel = "Add Tracker",
+                    onActionClick = { showAddDialog = true }
+                )
             } else if (filteredTrackers.isEmpty()) {
                  Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No matching trackers found.", style = MaterialTheme.typography.bodyLarge)
@@ -458,8 +462,13 @@ fun TrackerDialog(
                 }
 
                 Text("Color", style = MaterialTheme.typography.labelLarge)
-                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    colors.take(5).forEach { colorHex ->
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    colors.forEach { colorHex ->
                         Box(
                             modifier = Modifier
                                 .size(32.dp)

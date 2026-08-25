@@ -16,6 +16,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.baverika.r_journal.worker.TaskReminderWorker
 
 /**
  * Filter options for task list.
@@ -430,12 +431,20 @@ class TaskViewModel(
     }
     
     private fun scheduleTaskReminder(task: Task) {
-        // TODO: Implement using WorkManager
-        // This will be implemented in the notification worker
+        val reminderTime = task.reminderTime ?: return
+        TaskReminderWorker.scheduleReminder(
+            context = getApplication(),
+            taskId = task.id,
+            taskTitle = task.title,
+            reminderTimeMillis = reminderTime
+        )
     }
     
     private fun cancelTaskReminder(taskId: String) {
-        // TODO: Cancel scheduled notification
+        TaskReminderWorker.cancelReminder(
+            context = getApplication(),
+            taskId = taskId
+        )
     }
     
     fun clearError() {

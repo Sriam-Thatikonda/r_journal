@@ -53,8 +53,8 @@ fun QuickNotesScreen(
     var noteToDelete by remember { mutableStateOf<QuickNote?>(null) }
 
     Box(modifier = Modifier
-    .fillMaxSize()
-    .background(Color.Black)) {
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)) {
         // --- Main List Content ---
         Column(modifier = Modifier.fillMaxSize()) {
             // Search Bar and Layout Toggle in same row
@@ -269,7 +269,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelMedium,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
             .fillMaxWidth()
@@ -293,12 +293,13 @@ fun QuickNoteCard(
     modifier: Modifier = Modifier,
     backgroundAlpha: Float = DEFAULT_WIDGET_ALPHA // Transparency setting for widget background
 ) {
-    // Use pure black background with configurable transparency
-    val cardColor = Color.Black.copy(alpha = backgroundAlpha)
-    // For black background, use white text for contrast
-    val textColor = Color.White
-    // Secondary text color uses a light gray with some opacity
-    val secondaryTextColor = Color.LightGray.copy(alpha = 0.8f)
+    val cardColor = if (note.color != 0L) {
+        Color(note.color).copy(alpha = backgroundAlpha)
+    } else {
+        MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+    }
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
     
     Card(
         modifier = modifier
@@ -306,7 +307,7 @@ fun QuickNoteCard(
             .padding(4.dp)
             .border(
                 width = 1.dp,
-                color = Color(0xFF808080), // Grey border
+                color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable { onClick() },

@@ -51,8 +51,10 @@ import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
 import com.baverika.r_journal.ui.viewmodel.SortOrder
 import com.baverika.r_journal.utils.PassphraseGenerator
 import com.baverika.r_journal.utils.SecurityUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -78,10 +80,12 @@ fun PasswordGeneratorScreen(
     var isSavedExpanded by remember { mutableStateOf(true) }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
-    // 1. Auto-collapse generator when searching
+    // 1. Auto-collapse generator when searching, restore when cleared
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
             isGeneratorExpanded = false
+        } else {
+            isGeneratorExpanded = true
         }
     }
 
@@ -808,9 +812,18 @@ private fun PasswordListItem(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
 
     val decryptedPassword = remember(password.passwordValue) {
         SecurityUtils.decrypt(password.passwordValue)
+    }
+
+    // Auto-hide password after 10 seconds
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            delay(10_000L)
+            isVisible = false
+        }
     }
 
     if (showDeleteConfirmation) {
@@ -989,11 +1002,15 @@ private fun PasswordListItem(
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    // Copy password
+                    // Copy password (auto-clears clipboard after 30s)
                     IconButton(onClick = {
                         clipboardManager.setText(AnnotatedString(decryptedPassword))
                         Toast.makeText(context, "Password copied!", Toast.LENGTH_SHORT).show()
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        coroutineScope.launch {
+                            delay(30_000L)
+                            clipboardManager.setText(AnnotatedString(""))
+                        }
                     }) {
                         Icon(
                             Icons.Default.ContentCopy,

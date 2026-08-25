@@ -89,7 +89,6 @@ class ChallengeRepository(
     }
     
     fun getWidgetData(): Flow<List<ChallengeWidgetData>> {
-        // TODO: Bind to GlanceAppWidget here
         return dao.getAllActiveChallenges().map { entities ->
             entities.map { entity ->
                 val progressPercentage = (entity.completedDays.toFloat() / entity.totalDays).coerceIn(0f, 1f)

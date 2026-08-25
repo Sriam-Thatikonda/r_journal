@@ -32,6 +32,9 @@ import com.baverika.r_journal.ui.viewmodel.HabitUiState
 import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import java.time.format.DateTimeFormatter
 
+import com.baverika.r_journal.ui.components.EmptyState
+import androidx.compose.material.icons.filled.TrackChanges
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HabitTrackerScreen(
@@ -75,9 +78,13 @@ fun HabitTrackerScreen(
         HorizontalDivider()
 
         if (dashboardGrids.isEmpty()) {
-             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                 Text("No habits yet. Tap + to add one.")
-             }
+             EmptyState(
+                 icon = Icons.Default.TrackChanges,
+                 title = "No Habits Yet",
+                 message = "Track daily routines and build consistency.",
+                 actionLabel = "Add Habit",
+                 onActionClick = { navController.navigate("add_habit") }
+             )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize()

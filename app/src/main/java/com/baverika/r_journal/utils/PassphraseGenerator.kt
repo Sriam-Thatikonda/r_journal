@@ -1,7 +1,7 @@
 package com.baverika.r_journal.utils
 
+import java.security.SecureRandom
 import java.util.Locale
-import kotlin.random.Random
 
 object PassphraseGenerator {
 
@@ -31,16 +31,21 @@ object PassphraseGenerator {
     
     private val SPECIAL_CHARS = listOf('#', '@', '&', '$')
 
+    private val secureRandom = SecureRandom()
+
+    /** Securely pick a random element from a list. */
+    private fun <T> List<T>.secureRandom(): T = this[secureRandom.nextInt(this.size)]
+
     /**
      * Generates a passphrase using format: CapitalizedAdjective + CapitalizedNounOrAbstract + Number
      * @param numberLength The number of digits for the suffix (2 to 6).
      */
     fun generate(numberLength: Int = 4): String {
-        val adj = ADJECTIVES.random().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        val adj = ADJECTIVES.secureRandom().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
         // 50/50 chance for Noun or Abstract
-        val useNoun = Random.nextBoolean()
-        val secondWordRaw = if (useNoun) NOUNS.random() else ABSTRACTS.random()
+        val useNoun = secureRandom.nextBoolean()
+        val secondWordRaw = if (useNoun) NOUNS.secureRandom() else ABSTRACTS.secureRandom()
         val secondWord = secondWordRaw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
         // Generate number based on length (2..6)
@@ -50,10 +55,9 @@ object PassphraseGenerator {
         val min = Math.pow(10.0, (safeLength - 1).toDouble()).toInt()
         val max = Math.pow(10.0, safeLength.toDouble()).toInt() - 1
         
-        // Random.nextInt(min, max) excludes max, so max + 1
-        val number = Random.nextInt(min, max + 1)
+        val number = min + secureRandom.nextInt(max - min + 1)
         
-        val specialChar = SPECIAL_CHARS.random()
+        val specialChar = SPECIAL_CHARS.secureRandom()
 
         return "$adj$secondWord$specialChar$number"
     }
@@ -64,7 +68,7 @@ object PassphraseGenerator {
      */
     fun generatePin(length: Int): String {
         return (1..length)
-            .map { (0..9).random() }
+            .map { secureRandom.nextInt(10) }
             .joinToString("")
     }
 }
