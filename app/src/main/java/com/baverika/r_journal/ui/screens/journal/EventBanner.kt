@@ -1,29 +1,21 @@
 package com.baverika.r_journal.ui.screens.journal
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.data.local.entity.Event
-import com.baverika.r_journal.data.local.entity.EventType
+import com.baverika.r_journal.ui.viewmodel.EventDisplayItem
 
 enum class BannerSeverity {
     NEUTRAL,
@@ -33,56 +25,100 @@ enum class BannerSeverity {
 
 @Composable
 fun EventBanner(
-    event: Event,
+    item: EventDisplayItem,
     severity: BannerSeverity = BannerSeverity.NEUTRAL
 ) {
+    val event = item.event
     var isVisible by remember { mutableStateOf(true) }
 
     if (isVisible) {
-        val containerColor = when (severity) {
-            BannerSeverity.WARNING -> MaterialTheme.colorScheme.errorContainer
-            BannerSeverity.NEUTRAL, BannerSeverity.POSITIVE -> MaterialTheme.colorScheme.tertiaryContainer
+        val containerColor = if (item.isTomorrow) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            when (severity) {
+                BannerSeverity.WARNING -> MaterialTheme.colorScheme.errorContainer
+                BannerSeverity.NEUTRAL, BannerSeverity.POSITIVE -> MaterialTheme.colorScheme.tertiaryContainer
+            }
         }
 
-        val contentColor = when (severity) {
-            BannerSeverity.WARNING -> MaterialTheme.colorScheme.onErrorContainer
-            BannerSeverity.NEUTRAL, BannerSeverity.POSITIVE -> MaterialTheme.colorScheme.onTertiaryContainer
+        val contentColor = if (item.isTomorrow) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            when (severity) {
+                BannerSeverity.WARNING -> MaterialTheme.colorScheme.onErrorContainer
+                BannerSeverity.NEUTRAL, BannerSeverity.POSITIVE -> MaterialTheme.colorScheme.onTertiaryContainer
+            }
         }
 
-        val icon = when (event.type) {
-            EventType.BIRTHDAY -> "🎂"
-            EventType.ANNIVERSARY -> "💍"
-            EventType.MEETING -> "📅"
-            EventType.CUSTOM -> "🎉"
-        }
+        val labelTag = if (item.isTomorrow) "TOMORROW" else "TODAY"
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             colors = CardDefaults.cardColors(containerColor = containerColor),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(12.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = icon,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = 8.dp)
+                Icon(
+                    imageVector = if (item.isTomorrow) Icons.Default.NotificationsActive else Icons.Default.Event,
+                    contentDescription = "Event",
+                    tint = contentColor,
+                    modifier = Modifier.size(20.dp)
                 )
 
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = contentColor.copy(alpha = 0.15f),
+                            modifier = Modifier.padding(end = 6.dp)
+                        ) {
+                            Text(
+                                text = labelTag,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        if (item.isTomorrow) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Added to tasks",
+                                    tint = contentColor.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "Added to Tasks",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = contentColor.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = event.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
                 IconButton(
                     onClick = { isVisible = false },
@@ -98,4 +134,16 @@ fun EventBanner(
             }
         }
     }
+}
+
+// Backwards-compatible overload for raw Event object
+@Composable
+fun EventBanner(
+    event: Event,
+    severity: BannerSeverity = BannerSeverity.NEUTRAL
+) {
+    EventBanner(
+        item = EventDisplayItem(event = event, isToday = true, isTomorrow = false),
+        severity = severity
+    )
 }

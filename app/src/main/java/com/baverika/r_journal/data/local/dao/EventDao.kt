@@ -9,6 +9,9 @@ interface EventDao {
     @Query("SELECT * FROM events")
     fun getAllEvents(): Flow<List<Event>>
 
+    @Query("SELECT * FROM events")
+    suspend fun getAllEventsList(): List<Event>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvent(event: Event)
 

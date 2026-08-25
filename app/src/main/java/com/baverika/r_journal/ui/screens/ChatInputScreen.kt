@@ -91,7 +91,7 @@ fun ChatInputScreen(
     val selectedMoods = viewModel.getSelectedMoods()
     val canEditMood = viewModel.canEditMood
     val isCurrentEntryToday = viewModel.isCurrentEntryToday
-    val todaysEvents by viewModel.todaysEvents.collectAsState()
+    val eventBanners by viewModel.eventBanners.collectAsState()
 
     // ── Local UI State ──
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -273,9 +273,9 @@ fun ChatInputScreen(
             }
 
             // ── Header Section ──
-            if (todaysEvents.isNotEmpty()) {
-                todaysEvents.forEach { event ->
-                    EventBanner(event = event)
+            if (eventBanners.isNotEmpty()) {
+                eventBanners.forEach { item ->
+                    EventBanner(item = item)
                 }
             }
 

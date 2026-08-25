@@ -3,35 +3,35 @@ package com.baverika.r_journal.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================
-// THEME: MIDNIGHT (Dark - Default)
-// Deep dark theme with teal/green accents
+// THEME: MIDNIGHT (Dark - Pitch Black OLED)
+// True pitch black theme with subtle dark charcoal supporting layers
 // ============================================
 object MidnightColors {
-    val Primary = Color(0xFF8FBFA8)
-    val OnPrimary = Color(0xFF073B34)
-    val PrimaryContainer = Color(0xFF2D5A4E)
-    val OnPrimaryContainer = Color(0xFFB8E6D4)
+    val Primary = Color(0xFFE0E0E0)
+    val OnPrimary = Color(0xFF121212)
+    val PrimaryContainer = Color(0xFF1C1C1C)
+    val OnPrimaryContainer = Color(0xFFE6E6E6)
 
-    val Secondary = Color(0xFFE0CDA9)
-    val OnSecondary = Color(0xFF3A2E1D)
-    val SecondaryContainer = Color(0xFF4A4458)
-    val OnSecondaryContainer = Color(0xFFE8DEF8)
+    val Secondary = Color(0xFFC4C4C4)
+    val OnSecondary = Color(0xFF1A1A1A)
+    val SecondaryContainer = Color(0xFF181818)
+    val OnSecondaryContainer = Color(0xFFCCCCCC)
 
-    val Tertiary = Color(0xFFEFB8C8)
-    val OnTertiary = Color(0xFF492532)
-    val TertiaryContainer = Color(0xFF633B48)
-    val OnTertiaryContainer = Color(0xFFFFD8E4)
+    val Tertiary = Color(0xFFA6A6A6)
+    val OnTertiary = Color(0xFF1A1A1A)
+    val TertiaryContainer = Color(0xFF1F1F1F)
+    val OnTertiaryContainer = Color(0xFFE0E0E0)
 
-    val Background = Color.Black
-    val OnBackground = Color(0xFFE6E1D8)
-    val Surface = Color(0xFF0D0D0D)
-    val OnSurface = Color(0xFFCAC4D0)
-    val SurfaceVariant = Color(0xFF1A1A1A)
-    val OnSurfaceVariant = Color(0xFFCAC4D0)
+    val Background = Color(0xFF000000)
+    val OnBackground = Color(0xFFEDEDED)
+    val Surface = Color(0xFF0A0A0A)
+    val OnSurface = Color(0xFFE3E3E3)
+    val SurfaceVariant = Color(0xFF141414)
+    val OnSurfaceVariant = Color(0xFFB0B0B0)
 
     val Error = Color(0xFFF2B8B5)
     val OnError = Color(0xFF601410)
-    val Outline = Color(0xFF5A5A5A)
+    val Outline = Color(0xFF2B2B2B)
 }
 
 // ============================================
