@@ -527,6 +527,7 @@ fun MainApp(
                         )
                         DashboardScreen(
                             journalRepo = journalRepo,
+                            taskRepo = taskRepo,
                             habitViewModel = habitViewModel,
                             onYearInPixelsClick = { navController.navigate("year_in_pixels") }
                         )
@@ -754,6 +755,8 @@ fun MainApp(
                         SettingsScreen(
                             settingsRepo = settingsRepo,
                             passwordRepo = passwordRepo,
+                            journalRepo = journalRepo,
+                            taskRepo = taskRepo,
                             navController = navController,
                             onThemeChanged = onThemeChanged
                         )

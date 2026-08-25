@@ -22,10 +22,16 @@ import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 import java.time.ZoneId
 
+import androidx.compose.foundation.clickable
+import com.baverika.r_journal.repository.TaskRepository
+import com.baverika.r_journal.utils.MilestoneCalculator
+import com.baverika.r_journal.ui.components.MilestoneCardDialog
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     journalRepo: JournalRepository,
+    taskRepo: TaskRepository,
     habitViewModel: HabitViewModel,
     onYearInPixelsClick: () -> Unit
 ) {
@@ -34,13 +40,22 @@ fun DashboardScreen(
     var longestStreak by remember { mutableStateOf(0) }
     var thisMonthCount by remember { mutableStateOf(0) }
 
+    var showMilestoneDialog by remember { mutableStateOf(false) }
+
+    val entries by journalRepo.allEntries.collectAsState(initial = emptyList())
+    val tasks by taskRepo.allTasks.collectAsState(initial = emptyList())
+
+    val milestoneStats = remember(entries, tasks) {
+        MilestoneCalculator.calculatePastYearStats(entries, tasks)
+    }
+
     // Collect Streak Stats
     LaunchedEffect(Unit) {
-        journalRepo.allEntries.collectLatest { entries ->
-            totalEntries = entries.size
+        journalRepo.allEntries.collectLatest { journalEntries ->
+            totalEntries = journalEntries.size
 
             // Calculate dates list
-            val entryDates = entries.map { entry ->
+            val entryDates = journalEntries.map { entry ->
                 java.time.Instant.ofEpochMilli(entry.dateMillis)
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
@@ -51,7 +66,7 @@ fun DashboardScreen(
 
             // Count this month
             val now = LocalDate.now()
-            thisMonthCount = entries.count { entry ->
+            thisMonthCount = journalEntries.count { entry ->
                 val date = java.time.Instant.ofEpochMilli(entry.dateMillis)
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
@@ -81,8 +96,55 @@ fun DashboardScreen(
         Text(
             "Dashboard",
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        // 1-Year Milestone Banner
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+                .clickable { showMilestoneDialog = true },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(14.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "🎉", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "1-Year Milestone Card",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    Text(
+                        text = "Tap to view your 365-day story & personal statistics",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
+
+        if (showMilestoneDialog) {
+            MilestoneCardDialog(
+                stats = milestoneStats,
+                onDismiss = { showMilestoneDialog = false }
+            )
+        }
 
         // --- Streak Section ---
         

@@ -48,16 +48,33 @@ import com.baverika.r_journal.BuildConfig
 import com.baverika.r_journal.widget.WidgetUpdateUtils
 import kotlinx.coroutines.launch
 
+import com.baverika.r_journal.repository.JournalRepository
+import com.baverika.r_journal.repository.TaskRepository
+import com.baverika.r_journal.utils.MilestoneCalculator
+import com.baverika.r_journal.ui.components.MilestoneCardDialog
+import androidx.compose.material.icons.filled.EmojiEvents
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settingsRepo: SettingsRepository,
     passwordRepo: PasswordRepository,
+    journalRepo: JournalRepository,
+    taskRepo: TaskRepository,
     navController: NavController,
     onThemeChanged: (AppTheme) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    var showMilestoneDialog by remember { mutableStateOf(false) }
+
+    val entries by journalRepo.allEntries.collectAsState(initial = emptyList())
+    val tasks by taskRepo.allTasks.collectAsState(initial = emptyList())
+
+    val milestoneStats = remember(entries, tasks) {
+        MilestoneCalculator.calculatePastYearStats(entries, tasks)
+    }
 
     var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
     var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
@@ -393,6 +410,30 @@ fun SettingsScreen(
                 subtitle = "$birthDay/${birthMonth}/$birthYear",
                 onClick = { datePickerDialog.show() }
             )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
+
+            // --- Milestones & Analytics Section ---
+            Text(
+                text = "Milestones & Analytics",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            SettingsItem(
+                icon = Icons.Default.EmojiEvents,
+                title = "1-Year Milestone Card",
+                subtitle = "View your 365-day story & personal statistics",
+                onClick = { showMilestoneDialog = true }
+            )
+
+            if (showMilestoneDialog) {
+                MilestoneCardDialog(
+                    stats = milestoneStats,
+                    onDismiss = { showMilestoneDialog = false }
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
