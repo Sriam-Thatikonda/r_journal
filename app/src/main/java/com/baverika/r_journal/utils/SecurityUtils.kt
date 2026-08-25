@@ -58,6 +58,7 @@ object SecurityUtils {
             return Base64.encodeToString(combined, Base64.DEFAULT)
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.e("SecurityUtils", "CRITICAL: Encryption failed, storing plaintext!", e)
             return data // Fallback to storing plaintext if encryption fails (should not happen)
         }
     }

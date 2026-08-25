@@ -120,21 +120,19 @@ fun DashboardScreen(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
-                if (currentStreak > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Keep it going!",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (currentStreak > 0) "Keep it going!" else "Start your streak today!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
             }
         }
 
-        // Stats grid
+        // Stats grid (3 columns)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatCard(
                 modifier = Modifier.weight(1f),
@@ -151,14 +149,7 @@ fun DashboardScreen(
                 value = "$thisMonthCount",
                 subtitle = if (thisMonthCount == 1) "entry" else "entries"
             )
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.AutoMirrored.Filled.MenuBook,
@@ -166,9 +157,6 @@ fun DashboardScreen(
                 value = "$totalEntries",
                 subtitle = if (totalEntries == 1) "entry" else "entries"
             )
-            
-            // Spacer for alignment if needed, or another stat
-             Spacer(modifier = Modifier.weight(1f))
         }
 
         // --- Habits Section ---

@@ -3,8 +3,10 @@ package com.baverika.r_journal.ui.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +64,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MineScreen(
@@ -536,6 +539,7 @@ fun DateSeparator(dateText: String) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 fun formatWhatsAppDateHeader(timestamp: Long): String {
     val messageDate = Instant.ofEpochMilli(timestamp)
         .atZone(ZoneId.systemDefault())

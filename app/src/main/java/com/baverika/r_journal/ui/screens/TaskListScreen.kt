@@ -690,27 +690,33 @@ private fun TaskCheckbox(
 
     Box(
         modifier = Modifier
-            .size(28.dp)
-            .clip(CircleShape)
-            .background(
-                if (isCompleted) priorityColor else Color.Transparent
-            )
-            .border(
-                width = 2.dp,
-                color = priorityColor,
-                shape = CircleShape
-            )
+            .size(36.dp)
             .clickable(onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Check,
-            contentDescription = null,
-            tint = Color.White,
+        Box(
             modifier = Modifier
-                .size(18.dp)
-                .scale(checkScale)
-        )
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isCompleted) priorityColor else Color.Transparent
+                )
+                .border(
+                    width = 2.dp,
+                    color = priorityColor,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier
+                    .size(16.dp)
+                    .scale(checkScale)
+            )
+        }
     }
 }
 

@@ -56,7 +56,7 @@ fun ChallengeListScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
-                    val today = remember { LocalDate.now() }
+                    val today = LocalDate.now()
                     val completedTodayCount = state.activeChallenges.count { it.lastCompletedDate == today }
                     val avgProgressPercent = (state.activeChallenges.map { 
                         (it.completedDays.toFloat() / it.totalDays).coerceIn(0f, 1f) 
