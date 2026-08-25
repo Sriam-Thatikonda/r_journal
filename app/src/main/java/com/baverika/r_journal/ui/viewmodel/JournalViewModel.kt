@@ -17,11 +17,13 @@ import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
+import com.baverika.r_journal.utils.EventTaskGenerator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -32,6 +34,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.*
 
+data class EventDisplayItem(
+    val event: Event,
+    val isToday: Boolean,
+    val isTomorrow: Boolean
+)
+
 class JournalViewModel(
     private val repo: JournalRepository,
     private val eventRepo: EventRepository,
@@ -40,6 +48,11 @@ class JournalViewModel(
 
     // Use application context to avoid memory leaks
     private val appContext = context.applicationContext
+
+    private val taskRepo by lazy {
+        val db = com.baverika.r_journal.data.local.database.JournalDatabase.getDatabase(appContext)
+        com.baverika.r_journal.repository.TaskRepository(db.taskDao())
+    }
 
     // State for the currently loaded/active entry
     var currentEntry by mutableStateOf(JournalEntry.createForToday())
@@ -52,17 +65,43 @@ class JournalViewModel(
     // Tracks the date of the currently displayed entry, used to filter events reactively
     private val _currentDateMillis = MutableStateFlow(currentEntry.dateMillis)
 
-    // Events for the current entry's date — reactive, no coroutine leak
-    val todaysEvents: StateFlow<List<Event>> = combine(
+    // Event banners (Today & 1 Day Ahead) — reactive, auto-generates tasks
+    val eventBanners: StateFlow<List<EventDisplayItem>> = combine(
         _currentDateMillis,
         eventRepo.allEvents
     ) { dateMillis, events ->
-        val date = Instant.ofEpochMilli(dateMillis)
+        val entryDate = Instant.ofEpochMilli(dateMillis)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
-        events.filter { event ->
-            event.day == date.dayOfMonth && event.month == date.monthValue
+        val tomorrowDate = entryDate.plusDays(1)
+
+        // Auto-create tasks 1 day in advance
+        viewModelScope.launch {
+            EventTaskGenerator.ensureEventTasksCreated(events, taskRepo, appContext)
         }
+
+        val items = mutableListOf<EventDisplayItem>()
+
+        fun isEventOnDate(event: Event, targetDate: LocalDate): Boolean {
+            val isDirectMatch = (event.day == targetDate.dayOfMonth && event.month == targetDate.monthValue)
+            val isLeapMatch = (event.month == 2 && event.day == 29 && !targetDate.isLeapYear && targetDate.monthValue == 2 && targetDate.dayOfMonth == 28)
+            return isDirectMatch || isLeapMatch
+        }
+
+        // 1. Events happening today (on entryDate)
+        events.filter { isEventOnDate(it, entryDate) }
+            .forEach { items.add(EventDisplayItem(it, isToday = true, isTomorrow = false)) }
+
+        // 2. Events happening tomorrow (1 day ahead)
+        events.filter { isEventOnDate(it, tomorrowDate) }
+            .forEach { items.add(EventDisplayItem(it, isToday = false, isTomorrow = true)) }
+
+        items
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Backwards compatibility for todaysEvents
+    val todaysEvents: StateFlow<List<Event>> = eventBanners.map { list ->
+        list.filter { it.isToday }.map { it.event }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Track if current entry is today

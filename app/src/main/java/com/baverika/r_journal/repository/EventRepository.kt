@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 class EventRepository(private val eventDao: EventDao) {
     val allEvents: Flow<List<Event>> = eventDao.getAllEvents()
 
+    suspend fun getAllEventsList(): List<Event> = eventDao.getAllEventsList()
+
     suspend fun insertEvent(event: Event) {
         eventDao.insertEvent(event)
     }

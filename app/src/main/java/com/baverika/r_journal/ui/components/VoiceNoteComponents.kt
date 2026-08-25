@@ -93,13 +93,13 @@ fun VoiceNotePlayer(
     )
     
     val backgroundColor = if (isUserMessage) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.surfaceVariant
     }
     
     val iconTint = if (isUserMessage) {
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.onPrimaryContainer
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }

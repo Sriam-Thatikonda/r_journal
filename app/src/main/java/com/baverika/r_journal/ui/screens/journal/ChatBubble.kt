@@ -196,8 +196,8 @@ fun ChatBubble(
                 // text bubble with inline/bottom-end timestamp (WhatsApp / Telegram style)
                 if (message.content.isNotBlank()) {
                     val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-                    val textColor = if (isBlueSky) Color.White else if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                    val timeColor = if (isBlueSky) Color.White.copy(alpha = 0.7f) else if (isUser) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                    val textColor = if (isBlueSky) Color.White else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    val timeColor = if (isBlueSky) Color.White.copy(alpha = 0.7f) else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
 
                     Surface(
                         shape = RoundedCornerShape(
@@ -206,7 +206,7 @@ fun ChatBubble(
                             bottomStart = if (isUser) 16.dp else 4.dp,
                             bottomEnd = if (isUser) 4.dp else 16.dp
                         ),
-                        color = if (isBlueSky) Color.Black.copy(alpha = 0.6f) else if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (isBlueSky) Color.Black.copy(alpha = 0.6f) else if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         Column(
