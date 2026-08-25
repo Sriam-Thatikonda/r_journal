@@ -108,8 +108,10 @@
     <string name="quote_widget_label">Daily Quote</string>
     <string name="quote_widget_description">Display a motivational quote on your home screen</string>
     <string name="task_widget_label">Task List</string>
-    <string name="tracker_widget_label">Counter Tracker</string>
-    <string name="tracker_widget_description">Increment and monitor your personal counters</string>
+    <string name="tracker_widget_label">Counter Tracker (List)</string>
+    <string name="tracker_widget_description">Increment and monitor your personal counters in a list view</string>
+    <string name="single_tracker_widget_label">Individual Tracker Widget</string>
+    <string name="single_tracker_widget_description">A dedicated widget for a single tracker. Tap anywhere on the widget to update count.</string>
     <string name="challenge_widget_label">Challenge Progress</string>
     <string name="challenge_widget_description">See your active challenge progress at a glance</string>
     

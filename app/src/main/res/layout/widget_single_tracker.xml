@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center"
+    android:background="@drawable/widget_background_pure_black">
+
+    <!-- Category Label Context -->
+    <TextView
+        android:id="@+id/widget_category_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:text="INDIVIDUAL TRACKER"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:textColor="#B0BEC5"
+        android:letterSpacing="0.08"
+        android:gravity="center" />
+
+    <!-- Tracker Name & Emoji on Top -->
+    <TextView
+        android:id="@+id/tracker_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tracker"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- Count / Goal in Center -->
+    <TextView
+        android:id="@+id/tracker_count_goal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="6dp"
+        android:text="0 / 10"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:textColor="#81C784"
+        android:gravity="center" />
+
+    <!-- Tap hint -->
+    <TextView
+        android:id="@+id/tracker_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap anywhere +1"
+        android:textSize="11sp"
+        android:textColor="#9E9E9E"
+        android:gravity="center" />
+
+</LinearLayout>

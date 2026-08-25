@@ -124,6 +124,29 @@
                 android:resource="@xml/challenge_widget_info" />
         </receiver>
 
+        <!-- Single Tracker Widget Configuration Activity -->
+        <activity
+            android:name=".widget.TrackerWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.R_journal">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Single Tracker Widget Provider -->
+        <receiver
+            android:name=".widget.TrackerSingleWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.baverika.r_journal.ACTION_INCREMENT_SINGLE_TRACKER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tracker_single_widget_info" />
+        </receiver>
+
         <service
             android:name=".tasks.widget.TaskWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"

@@ -57,5 +57,13 @@ object WidgetUpdateUtils {
         for (id in trackerIds) {
             TrackerWidgetProvider.updateAppWidget(context, appWidgetManager, id)
         }
+
+        // 6. Single Tracker Widget
+        val singleTrackerIds = appWidgetManager.getAppWidgetIds(
+            ComponentName(context, TrackerSingleWidgetProvider::class.java)
+        )
+        for (id in singleTrackerIds) {
+            TrackerSingleWidgetProvider.updateAppWidget(context, appWidgetManager, id)
+        }
     }
 }

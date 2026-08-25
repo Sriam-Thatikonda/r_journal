@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="90dp"
+    android:minResizeHeight="90dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_single_tracker"
+    android:configure="com.baverika.r_journal.widget.TrackerWidgetConfigureActivity"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:label="@string/single_tracker_widget_label"
+    android:description="@string/single_tracker_widget_description"
+    android:previewImage="@drawable/ic_launcher_foreground" />

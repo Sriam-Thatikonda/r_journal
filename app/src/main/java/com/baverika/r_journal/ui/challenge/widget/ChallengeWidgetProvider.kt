@@ -32,6 +32,20 @@ class ChallengeWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        fun requestUpdate(context: Context) {
+            try {
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val ids = appWidgetManager.getAppWidgetIds(
+                    ComponentName(context, ChallengeWidgetProvider::class.java)
+                )
+                for (id in ids) {
+                    updateAppWidget(context, appWidgetManager, id)
+                }
+            } catch (e: Exception) {
+                // Ignore if context invalid
+            }
+        }
+
         fun updateAppWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,

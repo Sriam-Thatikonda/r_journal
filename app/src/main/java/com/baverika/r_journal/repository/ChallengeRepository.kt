@@ -49,18 +49,23 @@ class ChallengeRepository(
 
     suspend fun insertChallengeEntity(entity: ChallengeEntity) = withContext(ioDispatcher) {
         dao.insertChallenge(entity)
+        com.baverika.r_journal.ui.challenge.widget.ChallengeWidgetProvider.requestUpdate(com.baverika.r_journal.RJournalApp.instance)
     }
 
     suspend fun insertChallenge(challenge: Challenge): Long = withContext(ioDispatcher) {
-        dao.insertChallenge(challenge.toEntity())
+        val id = dao.insertChallenge(challenge.toEntity())
+        com.baverika.r_journal.ui.challenge.widget.ChallengeWidgetProvider.requestUpdate(com.baverika.r_journal.RJournalApp.instance)
+        id
     }
 
     suspend fun updateChallenge(challenge: Challenge) = withContext(ioDispatcher) {
         dao.updateChallenge(challenge.toEntity())
+        com.baverika.r_journal.ui.challenge.widget.ChallengeWidgetProvider.requestUpdate(com.baverika.r_journal.RJournalApp.instance)
     }
     
     suspend fun deleteChallenge(challenge: Challenge) = withContext(ioDispatcher) {
         dao.deleteChallenge(challenge.toEntity())
+        com.baverika.r_journal.ui.challenge.widget.ChallengeWidgetProvider.requestUpdate(com.baverika.r_journal.RJournalApp.instance)
     }
 
     suspend fun markTodayComplete(challengeId: Long) = withContext(ioDispatcher) {
@@ -86,6 +91,7 @@ class ChallengeRepository(
         )
         
         dao.updateChallenge(updatedEntity)
+        com.baverika.r_journal.ui.challenge.widget.ChallengeWidgetProvider.requestUpdate(com.baverika.r_journal.RJournalApp.instance)
     }
     
     fun getWidgetData(): Flow<List<ChallengeWidgetData>> {
