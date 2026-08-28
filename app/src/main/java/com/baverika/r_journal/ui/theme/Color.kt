@@ -7,31 +7,31 @@ import androidx.compose.ui.graphics.Color
 // True pitch black theme with subtle dark charcoal supporting layers
 // ============================================
 object MidnightColors {
-    val Primary = Color(0xFFE0E0E0)
-    val OnPrimary = Color(0xFF121212)
-    val PrimaryContainer = Color(0xFF1C1C1C)
-    val OnPrimaryContainer = Color(0xFFE6E6E6)
+    val Primary = Color(0xFFD6D6D6)          // Near white / soft light grey
+    val OnPrimary = Color(0xFF0A0A0A)        // Pitch black-adjacent dark grey
+    val PrimaryContainer = Color(0xFF222222) // Dark charcoal
+    val OnPrimaryContainer = Color(0xFFD6D6D6) // Near white / soft light grey
 
-    val Secondary = Color(0xFFC4C4C4)
-    val OnSecondary = Color(0xFF1A1A1A)
+    val Secondary = Color(0xFFB0B0B0)        // Muted medium-light grey
+    val OnSecondary = Color(0xFF0A0A0A)
     val SecondaryContainer = Color(0xFF181818)
     val OnSecondaryContainer = Color(0xFFCCCCCC)
 
-    val Tertiary = Color(0xFFA6A6A6)
-    val OnTertiary = Color(0xFF1A1A1A)
-    val TertiaryContainer = Color(0xFF1F1F1F)
-    val OnTertiaryContainer = Color(0xFFE0E0E0)
+    val Tertiary = Color(0xFF888888)         // Medium grey
+    val OnTertiary = Color(0xFF0A0A0A)
+    val TertiaryContainer = Color(0xFF1C1C1C)
+    val OnTertiaryContainer = Color(0xFFB0B0B0)
 
-    val Background = Color(0xFF000000)
-    val OnBackground = Color(0xFFEDEDED)
-    val Surface = Color(0xFF0A0A0A)
-    val OnSurface = Color(0xFFE3E3E3)
-    val SurfaceVariant = Color(0xFF141414)
-    val OnSurfaceVariant = Color(0xFFB0B0B0)
+    val Background = Color(0xFF000000)       // Pitch black OLED
+    val OnBackground = Color(0xFFD6D6D6)     // Near white / soft light grey
+    val Surface = Color(0xFF0C0C0C)          // Slightly lighter dark grey for contrast
+    val OnSurface = Color(0xFFD6D6D6)        // Near white / soft light grey
+    val SurfaceVariant = Color(0xFF161616)   // Medium-dark grey for cards/containers
+    val OnSurfaceVariant = Color(0xFF9E9E9E) // Muted text / placeholders
 
-    val Error = Color(0xFFF2B8B5)
-    val OnError = Color(0xFF601410)
-    val Outline = Color(0xFF2B2B2B)
+    val Error = Color(0xFFE5A3A3)            // Muted, desaturated red for errors to fit monochrome aesthetic
+    val OnError = Color(0xFF4E0010)
+    val Outline = Color(0xFF2C2C2C)          // Divider and border line grey
 }
 
 // ============================================
