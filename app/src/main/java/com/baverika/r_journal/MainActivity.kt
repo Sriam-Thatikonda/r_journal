@@ -457,11 +457,11 @@ fun MainApp(
                                 }
                             },
                             actions = {
-                                if (currentRoute == "archive" || currentRoute == "quick_notes" || currentRoute == "tasks" || currentRoute == "trackers") {
-                                    IconButton(onClick = { isSearchActive = true }) {
+                                if (currentRoute != "search") {
+                                    IconButton(onClick = { navController.navigate("search") }) {
                                         Icon(
                                             imageVector = Icons.Default.Search,
-                                            contentDescription = "Search",
+                                            contentDescription = "Global Search",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -1269,6 +1269,12 @@ fun DrawerContent(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
+        )
+        DrawerItem(
+            icon = Icons.Filled.Search,
+            label = "Global Search",
+            isSelected = currentRoute == "search",
+            onClick = { onScreenSelected("search") }
         )
         DrawerItem(
             icon = Icons.Filled.VpnKey,
