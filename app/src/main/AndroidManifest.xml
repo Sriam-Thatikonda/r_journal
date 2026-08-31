@@ -46,6 +46,7 @@
         <!-- Habit Tracker Widget -->
         <receiver
             android:name=".widget.HabitWidgetProvider"
+            android:label="@string/habit_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -64,6 +65,7 @@
         <!-- Daily Quote Widget -->
         <receiver
             android:name=".quotes.widget.QuotesWidgetReceiver"
+            android:label="@string/quote_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -88,6 +90,7 @@
         <!-- Task List Widget -->
         <receiver
             android:name=".tasks.widget.TaskWidgetProvider"
+            android:label="@string/task_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -102,6 +105,7 @@
         <!-- Counter Tracker Widget -->
         <receiver
             android:name=".widget.TrackerWidgetProvider"
+            android:label="@string/tracker_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -115,6 +119,7 @@
         <!-- Challenge Progress Widget -->
         <receiver
             android:name=".ui.challenge.widget.ChallengeWidgetProvider"
+            android:label="@string/challenge_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -137,6 +142,7 @@
         <!-- Single Tracker Widget Provider -->
         <receiver
             android:name=".widget.TrackerSingleWidgetProvider"
+            android:label="@string/single_tracker_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -159,7 +159,7 @@ fun ChatBubble(
                             ) {
                                 Text(
                                     text = timestamp,
-                                    color = Color.White,
+                                    color = Color(0xFFD6D6D6),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontSize = androidx.compose.ui.unit.TextUnit(10f, androidx.compose.ui.unit.TextUnitType.Sp),
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -195,9 +195,11 @@ fun ChatBubble(
 
                 // text bubble with inline/bottom-end timestamp (WhatsApp / Telegram style)
                 if (message.content.isNotBlank()) {
-                    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-                    val textColor = if (isBlueSky) Color.White else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                    val timeColor = if (isBlueSky) Color.White.copy(alpha = 0.7f) else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                    val currentTheme = LocalAppTheme.current
+                    val isBlueSky = currentTheme == AppTheme.BLUE_SKY
+                    val isMidnight = currentTheme == AppTheme.MIDNIGHT
+                    val textColor = if (isBlueSky) Color(0xFFD6D6D6) else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                    val timeColor = if (isBlueSky) Color(0xFFD6D6D6).copy(alpha = 0.7f) else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
 
                     Surface(
                         shape = RoundedCornerShape(
@@ -207,6 +209,7 @@ fun ChatBubble(
                             bottomEnd = if (isUser) 4.dp else 16.dp
                         ),
                         color = if (isBlueSky) Color.Black.copy(alpha = 0.6f) else if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (isMidnight) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)) else null,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         Column(

@@ -179,10 +179,11 @@ fun HabitRow7Day(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val appTheme = com.baverika.r_journal.ui.theme.LocalAppTheme.current
             grid.days.forEach { dayState ->
                 HeatmapBlock(
                     state = dayState,
-                    color = Color(grid.habit.color),
+                    color = com.baverika.r_journal.ui.theme.getEffectiveColor(Color(grid.habit.color), appTheme),
                     isLarge = true, // Larger blocks for touch focus
                     onClick = {
                         if (dayState.status != HabitViewModel.HabitStatus.DISABLED) {
@@ -281,7 +282,8 @@ fun CompactHabitItem(
     onToggle: (Boolean) -> Unit
 ) {
     val habit = habitState.habit
-    val color = Color(habit.color)
+    val appTheme = com.baverika.r_journal.ui.theme.LocalAppTheme.current
+    val color = com.baverika.r_journal.ui.theme.getEffectiveColor(Color(habit.color), appTheme)
     val isCompleted = habitState.isCompleted
 
     Surface(

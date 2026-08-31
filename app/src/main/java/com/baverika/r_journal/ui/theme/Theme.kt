@@ -1,16 +1,35 @@
 package com.baverika.r_journal.ui.theme
 
+import android.app.Activity
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 
 // Composition local for current theme
 val LocalAppTheme = staticCompositionLocalOf { AppTheme.MIDNIGHT }
+
+/**
+ * Helper to convert vibrant colors into sleek monochromatic grayscale shades when Midnight theme is active.
+ */
+fun getEffectiveColor(color: Color, theme: AppTheme): Color {
+    return if (theme == AppTheme.MIDNIGHT) {
+        val brightness = (color.red * 0.299f + color.green * 0.587f + color.blue * 0.114f)
+        val gray = 0.55f + (brightness * 0.33f)
+        Color(gray, gray, gray, color.alpha)
+    } else {
+        color
+    }
+}
 
 /**
  * Color scheme for Midnight theme (Dark)
@@ -211,6 +230,21 @@ fun RJournalTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = getColorScheme(theme)
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                window.statusBarColor = colorScheme.background.toArgb()
+                window.navigationBarColor = colorScheme.background.toArgb()
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                val isLight = theme == AppTheme.LIGHT || theme == AppTheme.CLOUD_DANCER
+                insetsController.isAppearanceLightStatusBars = isLight
+                insetsController.isAppearanceLightNavigationBars = isLight
+            }
+        }
+    }
 
     CompositionLocalProvider(LocalAppTheme provides theme) {
         MaterialTheme(
