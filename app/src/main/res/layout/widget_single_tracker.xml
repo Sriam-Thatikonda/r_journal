@@ -4,18 +4,22 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:gravity="center"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:gravity="center_horizontal"
     android:background="@drawable/widget_background_pure_black">
 
-    <!-- Category Label Context -->
+    <!-- Category Label Context (Top Heading) -->
     <TextView
         android:id="@+id/widget_category_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
         android:layout_marginBottom="4dp"
         android:text="INDIVIDUAL TRACKER"
-        android:textSize="9sp"
+        android:textSize="9.5sp"
         android:textStyle="bold"
         android:textColor="#B0BEC5"
         android:letterSpacing="0.08"
@@ -26,36 +30,33 @@
         android:id="@+id/tracker_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
         android:text="Tracker"
-        android:textSize="15sp"
+        android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="#FFFFFF"
         android:gravity="center"
         android:maxLines="1"
         android:ellipsize="end" />
 
-    <!-- Count / Goal in Center -->
-    <TextView
-        android:id="@+id/tracker_count_goal"
+    <!-- Count / Goal Centered in Remaining Space -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="6dp"
-        android:text="0 / 10"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:gravity="center" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
 
-    <!-- Tap hint
-    <TextView
-        android:id="@+id/tracker_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Tap anywhere +1"
-        android:textSize="11sp"
-        android:textColor="#9E9E9E"
-        android:gravity="center" />
-    -->
+        <TextView
+            android:id="@+id/tracker_count_goal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0 / 10"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:gravity="center" />
+    </LinearLayout>
 
 </LinearLayout>
