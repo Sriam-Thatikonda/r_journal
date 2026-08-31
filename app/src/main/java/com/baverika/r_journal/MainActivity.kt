@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
@@ -461,10 +463,16 @@ fun MainApp(
                                     Box(
                                         modifier = Modifier
                                             .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .combinedClickable(
-                                                onClick = { isSearchActive = true },
-                                                onDoubleClick = { navController.navigate("search") }
-                                            )
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onTap = {
+                                                        isSearchActive = true
+                                                    },
+                                                    onDoubleTap = {
+                                                        navController.navigate("search")
+                                                    }
+                                                )
+                                            }
                                             .padding(12.dp)
                                     ) {
                                         Icon(
