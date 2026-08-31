@@ -2,12 +2,16 @@ package com.baverika.r_journal.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -33,12 +37,15 @@ fun MilestoneCardDialog(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header Banner
@@ -76,8 +83,10 @@ fun MilestoneCardDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 val formattedWords = NumberFormat.getNumberInstance(Locale.getDefault()).format(stats.totalWordsWritten)
+                val formattedImages = NumberFormat.getNumberInstance(Locale.getDefault()).format(stats.totalImagesAttached)
+                val formattedAudio = NumberFormat.getNumberInstance(Locale.getDefault()).format(stats.totalAudioNotesRecorded)
 
-                // 5 Metric Items
+                // 7 Metric Items
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -90,9 +99,23 @@ fun MilestoneCardDialog(
                     )
 
                     MilestoneMetricRow(
+                        icon = Icons.Default.Image,
+                        iconTint = Color(0xFF4FC3F7),
+                        title = "Photos & Images Saved",
+                        value = "$formattedImages ${if (stats.totalImagesAttached == 1) "photo" else "photos"}"
+                    )
+
+                    MilestoneMetricRow(
+                        icon = Icons.Default.Mic,
+                        iconTint = Color(0xFFFF8A65),
+                        title = "Voice Notes Recorded",
+                        value = "$formattedAudio ${if (stats.totalAudioNotesRecorded == 1) "voice note" else "voice notes"}"
+                    )
+
+                    MilestoneMetricRow(
                         icon = Icons.Default.DateRange,
                         iconTint = Color(0xFFFFB74D),
-                        title = "Most Active Day",
+                        title = "Most Active Writing Day",
                         value = stats.mostActiveDay
                     )
 

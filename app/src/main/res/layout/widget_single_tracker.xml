@@ -44,10 +44,10 @@
         android:text="0 / 10"
         android:textSize="26sp"
         android:textStyle="bold"
-        android:textColor="#81C784"
+        android:textColor="#FFFFFF"
         android:gravity="center" />
 
-    <!-- Tap hint -->
+    <!-- Tap hint
     <TextView
         android:id="@+id/tracker_hint"
         android:layout_width="match_parent"
@@ -56,5 +56,6 @@
         android:textSize="11sp"
         android:textColor="#9E9E9E"
         android:gravity="center" />
+    -->
 
 </LinearLayout>

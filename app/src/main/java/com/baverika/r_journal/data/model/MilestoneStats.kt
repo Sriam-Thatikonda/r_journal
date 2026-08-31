@@ -6,5 +6,7 @@ data class MilestoneStats(
     val totalTasksCompleted: Int = 0,
     val topMood: String = "None yet",
     val totalDaysJournaled: Int = 0,
-    val totalDaysInPeriod: Int = 365
+    val totalDaysInPeriod: Int = 365,
+    val totalImagesAttached: Int = 0,
+    val totalAudioNotesRecorded: Int = 0
 )

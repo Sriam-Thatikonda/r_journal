@@ -457,11 +457,19 @@ fun MainApp(
                                 }
                             },
                             actions = {
-                                if (currentRoute != "search") {
-                                    IconButton(onClick = { navController.navigate("search") }) {
+                                if (currentRoute == "archive" || currentRoute == "quick_notes" || currentRoute == "tasks" || currentRoute == "trackers") {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .combinedClickable(
+                                                onClick = { isSearchActive = true },
+                                                onDoubleClick = { navController.navigate("search") }
+                                            )
+                                            .padding(12.dp)
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Default.Search,
-                                            contentDescription = "Global Search",
+                                            contentDescription = "Search (Double tap for Global Search)",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -1269,12 +1277,6 @@ fun DrawerContent(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
-        )
-        DrawerItem(
-            icon = Icons.Filled.Search,
-            label = "Global Search",
-            isSelected = currentRoute == "search",
-            onClick = { onScreenSelected("search") }
         )
         DrawerItem(
             icon = Icons.Filled.VpnKey,
