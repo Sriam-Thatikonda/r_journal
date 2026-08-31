@@ -29,10 +29,10 @@ import com.baverika.r_journal.utils.ColorUtils
 @Composable
 fun TrackersScreen(
     viewModel: TrackerViewModel,
-    navController: NavController
+    navController: NavController,
+    searchQuery: String = ""
 ) {
     val trackers by viewModel.trackers.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf<Tracker?>(null) }
 
     val filteredTrackers = remember(trackers, searchQuery) {
@@ -58,25 +58,6 @@ fun TrackersScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Search trackers...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp),
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear")
-                        }
-                    }
-                }
-            )
 
             if (trackers.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -117,59 +117,28 @@ fun TaskListScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isSearchActive) {
-                    // Search Bar
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.setSearchQuery(it) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(searchFocusRequester),
-                        placeholder = { Text("Search tasks...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            IconButton(onClick = {
-                                viewModel.setSearchQuery("")
-                                isSearchActive = false
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = "Close")
-                            }
+                Text(
+                    text = "Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Sort button
+                Box {
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                    }
+                    SortDropdownMenu(
+                        expanded = showSortMenu,
+                        currentSort = currentSort,
+                        onSortSelected = {
+                            viewModel.setSort(it)
+                            showSortMenu = false
                         },
-                        shape = RoundedCornerShape(24.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                        )
+                        onDismiss = { showSortMenu = false }
                     )
-                } else {
-                    Text(
-                        text = "Summary",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // Search button
-                    IconButton(onClick = { isSearchActive = true }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-
-                    // Sort button
-                    Box {
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
-                        }
-                        SortDropdownMenu(
-                            expanded = showSortMenu,
-                            currentSort = currentSort,
-                            onSortSelected = {
-                                viewModel.setSort(it)
-                                showSortMenu = false
-                            },
-                            onDismiss = { showSortMenu = false }
-                        )
-                    }
+                }
 
                     // Filter button
                     IconButton(onClick = { showFilterSheet = true }) {
@@ -184,7 +153,6 @@ fun TaskListScreen(
                         }
                     }
                 }
-            }
 
             // Statistics Summary Card
             TaskStatsSummary(stats = taskStats)
@@ -886,7 +854,7 @@ private fun EmptyTasksState(
 /**
  * Filter bottom sheet.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun FilterBottomSheet(
     categories: List<TaskCategory>,
@@ -955,10 +923,12 @@ private fun FilterBottomSheet(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(categories) { category ->
+                categories.forEach { category ->
                     FilterChip(
                         selected = selectedCategoryId == category.id,
                         onClick = {

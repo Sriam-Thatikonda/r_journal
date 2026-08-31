@@ -16,6 +16,23 @@ class SettingsRepository(context: Context) {
         private const val KEY_LAST_BIRTHDAY_SHOWN_YEAR = "last_birthday_shown_year"
         private const val KEY_SPECIAL_MOMENTS_ENABLED = "special_moments_enabled"
         private const val KEY_WIDGET_OPACITY = "widget_opacity"
+        private const val KEY_LAST_BACKUP_TIMESTAMP = "last_backup_timestamp"
+        private const val KEY_BACKUP_REMINDER_DAYS = "backup_reminder_days"
+    }
+
+    var lastBackupTimestamp: Long
+        get() = prefs.getLong(KEY_LAST_BACKUP_TIMESTAMP, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_BACKUP_TIMESTAMP, value).apply()
+
+    var backupReminderDays: Int
+        get() = prefs.getInt(KEY_BACKUP_REMINDER_DAYS, 7)
+        set(value) = prefs.edit().putInt(KEY_BACKUP_REMINDER_DAYS, value).apply()
+
+    fun isBackupOverdue(): Boolean {
+        if (backupReminderDays <= 0) return false
+        val now = System.currentTimeMillis()
+        val intervalMs = backupReminderDays * 24 * 60 * 60 * 1000L
+        return (now - lastBackupTimestamp) > intervalMs
     }
 
     var widgetOpacity: Int

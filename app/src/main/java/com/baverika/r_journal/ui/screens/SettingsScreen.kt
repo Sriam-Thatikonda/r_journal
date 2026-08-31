@@ -277,23 +277,96 @@ fun SettingsScreen(
 
             // --- Data Management Section ---
             Text(
-                text = "Data Management",
+                text = "Data Management & Backups",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
+            var backupDays by remember { mutableIntStateOf(settingsRepo.backupReminderDays) }
+
+            if (settingsRepo.isBackupOverdue()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Upload,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Backup Due",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "It has been over $backupDays days since your last backup.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                settingsRepo.lastBackupTimestamp = System.currentTimeMillis()
+                                navController.navigate("export")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Export")
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Auto Backup Reminder", style = MaterialTheme.typography.bodyLarge)
+                    Text("Remind when database backup is due", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(7, 14, 30, 0).forEach { days ->
+                        FilterChip(
+                            selected = backupDays == days,
+                            onClick = {
+                                backupDays = days
+                                settingsRepo.backupReminderDays = days
+                            },
+                            label = { Text(if (days == 0) "Off" else "${days}d") }
+                        )
+                    }
+                }
+            }
+
             SettingsItem(
                 icon = Icons.Default.Upload,
                 title = "Export Data",
-                subtitle = "Backup journals and notes",
-                onClick = { navController.navigate("export") }
+                subtitle = "Backup journals, notes, tasks and settings",
+                onClick = {
+                    settingsRepo.lastBackupTimestamp = System.currentTimeMillis()
+                    navController.navigate("export")
+                }
             )
 
             SettingsItem(
                 icon = Icons.Default.Download,
                 title = "Import Data",
-                subtitle = "Restore from backup",
+                subtitle = "Restore from JSON backup file",
                 onClick = { navController.navigate("import") }
             )
 

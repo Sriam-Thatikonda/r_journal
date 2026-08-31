@@ -5,8 +5,13 @@ package com.baverika.r_journal
 import android.app.Application
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.verticalScroll
 //import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -23,6 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -271,117 +281,256 @@ fun MainApp(
         drawerState = drawerState,
         gesturesEnabled = isDrawerGestureEnabled
     ) {
+        @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+        var isSearchActive by remember { mutableStateOf(false) }
+        var topBarSearchQuery by remember { mutableStateOf("") }
+
+        LaunchedEffect(currentRoute) {
+            isSearchActive = false
+            topBarSearchQuery = ""
+        }
+
+        val searchFocusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+
+        LaunchedEffect(isSearchActive) {
+            if (isSearchActive) {
+                searchFocusRequester.requestFocus()
+                keyboardController?.show()
+            }
+        }
+
         Scaffold(
             topBar = {
-                val screenTitle = when {
-                    currentRoute == "archive" -> "R-Journal"
-                    currentRoute == "quick_notes" -> "Quick Notes"
-                    currentRoute == "tasks" -> "Tasks"
-                    currentRoute == "habits" -> "Habit Tracker"
-                    currentRoute == "password_generator" -> "Password Generator"
-                    currentRoute == "quotes" -> "Motivational Quotes"
-                    currentRoute == "calendar" -> "Calendar"
-                    currentRoute == "events" -> "Special Dates"
-                    currentRoute == "life_trackers" -> "Life Trackers"
-                    currentRoute == "trackers" -> "Trackers"
-                    currentRoute == "add_tracker" -> "New Tracker"
-                    currentRoute?.startsWith("edit_tracker") == true -> "Edit Tracker"
-                    currentRoute?.startsWith("tracker_details") == true -> "Tracker Details"
-                    currentRoute == "craving_quest" -> "Craving Quest"
-                    currentRoute == "challenges" -> "Challenge Tracker"
-                    currentRoute == "challenge_history" -> "Challenge History"
-                    currentRoute == "create_challenge" -> "New Challenge"
-                    currentRoute?.startsWith("challenge_detail") == true -> "Challenge Details"
-                    currentRoute == "search" -> "Search"
-                    currentRoute == "dashboard" -> "Dashboard"
-                    currentRoute == "settings" -> "Settings"
-                    currentRoute?.startsWith("chat_input") == true -> {
-                        val backStackEntry = navController.currentBackStackEntry
-                        if (backStackEntry != null) {
-                            val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
-                                viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
-                            val entry = journalViewModel.currentEntry
-                            if (entry.id == "mine") {
-                                "Mine"
-                            } else {
-                                val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
-                                if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
-                            }
-                        } else "Journal Entry"
-                    }
-                    currentRoute?.startsWith("edit_quick_note") == true -> "Edit Note"
-                    currentRoute == "new_quick_note" -> "New Note"
-                    currentRoute?.startsWith("habit_year_overview") == true -> "Habit Overview"
-                    currentRoute?.startsWith("habit_detail") == true -> "Habit Details"
-                    currentRoute?.startsWith("add_habit") == true -> "Habit"
-                    currentRoute?.startsWith("tracker_detail") == true -> "Tracker Details"
-                    currentRoute?.startsWith("edit_task") == true -> "Edit Task"
-                    currentRoute == "add_task" -> "New Task"
-                    currentRoute == "add_craving" -> "Log Craving"
-                    currentRoute?.startsWith("craving_detail") == true -> "Craving Details"
-                    else -> "R-Journal"
-                }
-
-                val showBackButton = currentRoute != "archive"
-
-                TopAppBar(
-                    title = { 
-                        Text(
-                            text = screenTitle,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        ) 
-                    },
-                    navigationIcon = {
-                        if (showBackButton) {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                            }
-                        } else {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, contentDescription = "Menu")
-                            }
-                        }
-                    },
-                    actions = {
-                        if (currentRoute == "archive") {
-                            // Search Icon
-                            IconButton(onClick = { navController.navigate("search") }) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search Journals",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            // Biometric Toggle
-                            var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
-                            
-                            IconToggleButton(
-                                checked = isBiometricEnabled,
-                                onCheckedChange = { enabled ->
-                                    isBiometricEnabled = enabled
-                                    settingsRepo.isBiometricEnabled = enabled
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (isBiometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
-                                    contentDescription = if (isBiometricEnabled) "Biometric Lock On" else "Biometric Lock Off",
-                                    tint = if (isBiometricEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        if (currentRoute == "challenges") {
-                            IconButton(onClick = { navController.navigate("challenge_history") }) {
-                                Icon(
-                                    imageVector = Icons.Default.History,
-                                    contentDescription = "Challenge History",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
+                val screensWithCustomHeader = setOf(
+                    "new_quick_note",
+                    "add_task",
+                    "add_tracker",
+                    "add_craving",
+                    "create_challenge",
+                    "image_viewer"
                 )
+                val hideGlobalTopBar = screensWithCustomHeader.contains(currentRoute) ||
+                        currentRoute?.startsWith("edit_quick_note") == true ||
+                        currentRoute?.startsWith("edit_task") == true ||
+                        currentRoute?.startsWith("add_habit") == true ||
+                        currentRoute?.startsWith("edit_tracker") == true ||
+                        currentRoute?.startsWith("habit_detail") == true ||
+                        currentRoute?.startsWith("habit_year_overview") == true ||
+                        currentRoute?.startsWith("tracker_detail") == true ||
+                        currentRoute?.startsWith("craving_detail") == true
+
+                if (!hideGlobalTopBar) {
+                    if (isSearchActive) {
+                        TopAppBar(
+                            title = {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (topBarSearchQuery.isEmpty()) {
+                                        val placeholderText = when (currentRoute) {
+                                            "archive" -> "Search journals..."
+                                            "quick_notes" -> "Search notes..."
+                                            "tasks" -> "Search tasks..."
+                                            "trackers" -> "Search trackers..."
+                                            else -> "Search..."
+                                        }
+                                        Text(
+                                            text = placeholderText,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    BasicTextField(
+                                        value = topBarSearchQuery,
+                                        onValueChange = { topBarSearchQuery = it },
+                                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        ),
+                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .focusRequester(searchFocusRequester)
+                                    )
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    isSearchActive = false
+                                    topBarSearchQuery = ""
+                                    keyboardController?.hide()
+                                }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close search")
+                                }
+                            },
+                            actions = {
+                                if (topBarSearchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { topBarSearchQuery = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                    }
+                                }
+                                if (currentRoute == "quick_notes") {
+                                    val quickNoteViewModel: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel = viewModel(
+                                        factory = QuickNoteViewModelFactory(quickNoteRepo, context)
+                                    )
+                                    val layoutType by quickNoteViewModel.layoutType.collectAsState()
+                                    IconButton(
+                                        onClick = {
+                                            val newLayout = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
+                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_LIST
+                                            } else {
+                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY
+                                            }
+                                            quickNoteViewModel.setLayoutType(newLayout)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
+                                                Icons.Default.ViewAgenda
+                                            } else {
+                                                Icons.Default.GridView
+                                            },
+                                            contentDescription = "Toggle Layout"
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    } else {
+                        val screenTitle = when {
+                            currentRoute == "archive" -> "R-Journal"
+                            currentRoute == "quick_notes" -> "Quick Notes"
+                            currentRoute == "tasks" -> "Tasks"
+                            currentRoute == "habits" -> "Habit Tracker"
+                            currentRoute == "password_generator" -> "Password Generator"
+                            currentRoute == "quotes" -> "Motivational Quotes"
+                            currentRoute == "calendar" -> "Calendar"
+                            currentRoute == "events" -> "Special Dates"
+                            currentRoute == "life_trackers" -> "Life Trackers"
+                            currentRoute == "trackers" -> "Trackers"
+                            currentRoute == "craving_quest" -> "Craving Quest"
+                            currentRoute == "challenges" -> "Challenge Tracker"
+                            currentRoute == "challenge_history" -> "Challenge History"
+                            currentRoute?.startsWith("challenge_detail") == true -> "Challenge Details"
+                            currentRoute == "year_in_pixels" -> "Mood Heatmap"
+                            currentRoute == "search" -> "Search"
+                            currentRoute == "dashboard" -> "Dashboard"
+                            currentRoute == "settings" -> "Settings"
+                            currentRoute?.startsWith("chat_input") == true -> {
+                                val backStackEntry = navController.currentBackStackEntry
+                                if (backStackEntry != null) {
+                                    val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
+                                        viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
+                                    val entry = journalViewModel.currentEntry
+                                    if (entry.id == "mine") {
+                                        "Mine"
+                                    } else {
+                                        val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
+                                        if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
+                                    }
+                                } else "Journal Entry"
+                            }
+                            else -> "R-Journal"
+                        }
+
+                        val showBackButton = currentRoute != "archive"
+
+                        TopAppBar(
+                            title = { 
+                                Text(
+                                    text = screenTitle,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                ) 
+                            },
+                            navigationIcon = {
+                                if (showBackButton) {
+                                    IconButton(onClick = { navController.popBackStack() }) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                    }
+                                } else {
+                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                        Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                                    }
+                                }
+                            },
+                            actions = {
+                                if (currentRoute == "archive" || currentRoute == "quick_notes" || currentRoute == "tasks" || currentRoute == "trackers") {
+                                    IconButton(onClick = { isSearchActive = true }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = "Search",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (currentRoute == "quotes") {
+                                    IconButton(onClick = { navController.navigate("quote_widget_settings") }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Settings,
+                                            contentDescription = "Widget Settings",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (currentRoute == "archive") {
+                                    // Biometric Toggle
+                                    var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
+                                    
+                                    IconToggleButton(
+                                        checked = isBiometricEnabled,
+                                        onCheckedChange = { enabled ->
+                                            isBiometricEnabled = enabled
+                                            settingsRepo.isBiometricEnabled = enabled
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isBiometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
+                                            contentDescription = if (isBiometricEnabled) "Biometric Lock On" else "Biometric Lock Off",
+                                            tint = if (isBiometricEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (currentRoute == "quick_notes") {
+                                    val quickNoteViewModel: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel = viewModel(
+                                        factory = QuickNoteViewModelFactory(quickNoteRepo, context)
+                                    )
+                                    val layoutType by quickNoteViewModel.layoutType.collectAsState()
+                                    IconButton(
+                                        onClick = {
+                                            val newLayout = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
+                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_LIST
+                                            } else {
+                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY
+                                            }
+                                            quickNoteViewModel.setLayoutType(newLayout)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
+                                                Icons.Default.ViewAgenda
+                                            } else {
+                                                Icons.Default.GridView
+                                            },
+                                            contentDescription = "Toggle Layout"
+                                        )
+                                    }
+                                }
+                                if (currentRoute == "challenges") {
+                                    IconButton(onClick = { navController.navigate("challenge_history") }) {
+                                        Icon(
+                                            imageVector = Icons.Default.History,
+                                            contentDescription = "Challenge History",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             },
         bottomBar = {
             val bottomNavItems = listOf(
@@ -467,14 +616,96 @@ fun MainApp(
                 }
             }
 
-            if (fabAction != null && fabIcon != null) {
-                LargeFloatingActionButton(
-                    onClick = fabAction,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = androidx.compose.foundation.shape.CircleShape
+            var showSpeedDialSheet by remember { mutableStateOf(false) }
+
+            if (showSpeedDialSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showSpeedDialSheet = false }
                 ) {
-                    Icon(fabIcon, contentDescription = fabDesc, modifier = Modifier.size(36.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Quick Action Speed Dial",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Long-press shortcut to create content from anywhere",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        val speedDialItems = listOf(
+                            Triple("New Journal Entry", Icons.AutoMirrored.Filled.Chat) { navController.navigate("chat_input") },
+                            Triple("New Quick Note", Icons.AutoMirrored.Filled.NoteAdd) { navController.navigate("new_quick_note") },
+                            Triple("New Task", Icons.Default.CheckCircle) { navController.navigate("add_task") },
+                            Triple("New Tracker", Icons.Default.BarChart) { navController.navigate("add_tracker") },
+                            Triple("Log Craving", Icons.Default.Add) { navController.navigate("add_craving") },
+                            Triple("New Habit", Icons.Default.Add) { navController.navigate("add_habit") }
+                        )
+
+                        speedDialItems.forEach { (label, icon, action) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        showSpeedDialSheet = false
+                                        action()
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+            }
+
+            val haptic = LocalHapticFeedback.current
+
+            if (fabAction != null && fabIcon != null) {
+                Surface(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .combinedClickable(
+                            onClick = fabAction,
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showSpeedDialSheet = true
+                            }
+                        ),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shadowElevation = 6.dp
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(fabIcon, contentDescription = fabDesc, modifier = Modifier.size(36.dp))
+                    }
                 }
             }
         }
@@ -496,25 +727,36 @@ fun MainApp(
                             eventRepo = eventRepo,
                             onEntryClick = { entry ->
                                 navController.navigate("chat_input/${entry.id}")
-                            }
+                            },
+                            searchQuery = topBarSearchQuery
                         )
                     }
 
                     // Quick Notes
                     composable("quick_notes") {
+                        val quickNoteViewModel: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel = viewModel(
+                            factory = QuickNoteViewModelFactory(quickNoteRepo, context)
+                        )
+                        LaunchedEffect(topBarSearchQuery) {
+                            quickNoteViewModel.onSearchQueryChange(topBarSearchQuery)
+                        }
                         QuickNotesScreen(
-                            viewModel = viewModel(
-                                factory = QuickNoteViewModelFactory(quickNoteRepo, context)
-                            ),
+                            viewModel = quickNoteViewModel,
                             navController = navController
                         )
                     }
 
-                    // Search
                     composable("search") {
                         SearchScreen(
                             viewModel = viewModel(
-                                factory = SearchViewModelFactory(journalRepo, context)
+                                factory = SearchViewModelFactory(
+                                    journalRepo,
+                                    quickNoteRepo,
+                                    taskRepo,
+                                    trackerRepo,
+                                    quoteRepo,
+                                    context
+                                )
                             ),
                             navController = navController
                         )
@@ -810,7 +1052,8 @@ fun MainApp(
                         )
                         TrackersScreen(
                             viewModel = vm,
-                            navController = navController
+                            navController = navController,
+                            searchQuery = topBarSearchQuery
                         )
                     }
 
@@ -857,6 +1100,9 @@ fun MainApp(
                                 taskRepo
                             )
                         )
+                        LaunchedEffect(topBarSearchQuery) {
+                            taskViewModel.setSearchQuery(topBarSearchQuery)
+                        }
                         TaskListScreen(
                             viewModel = taskViewModel,
                             navController = navController

@@ -97,9 +97,16 @@ class TaskViewModel(
     // ==================== DATA FLOWS ====================
     
     /**
-     * Categories list.
+     * Categories list (ordered with high-frequency Work & Personal first).
      */
     val categories: StateFlow<List<TaskCategory>> = repository.allCategories
+        .map { list ->
+            val priorityOrder = listOf("Work", "Personal", "Shopping", "Health", "Finance")
+            list.sortedWith(compareBy<TaskCategory> { category ->
+                val idx = priorityOrder.indexOfFirst { it.equals(category.name, ignoreCase = true) }
+                if (idx != -1) idx else Int.MAX_VALUE
+            }.thenBy { it.name })
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
     /**

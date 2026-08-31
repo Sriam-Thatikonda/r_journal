@@ -78,39 +78,6 @@ fun QuotesScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Header with settings access
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Motivational Quotes",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${quotes.count { it.isActive }} active • ${quotes.size} total",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                // Widget Settings Button
-                IconButton(
-                    onClick = { navController.navigate("quote_widget_settings") }
-                ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Widget Settings",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
             // Content
             if (quotes.isEmpty()) {
                 EmptyQuotesState(
