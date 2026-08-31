@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -144,19 +145,16 @@ fun VoiceNotePlayer(
             
             Spacer(modifier = Modifier.width(8.dp))
             
-            // Progress and duration
+            // Waveform progress visualizer
             Column(modifier = Modifier.weight(1f)) {
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = iconTint,
-                    trackColor = iconTint.copy(alpha = 0.2f)
+                AudioWaveformVisualizer(
+                    progress = animatedProgress,
+                    isPlaying = isPlaying,
+                    tint = iconTint,
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -280,6 +278,55 @@ fun RecordingIndicator(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Animated voice waveform visualizer for voice notes
+ */
+@Composable
+fun AudioWaveformVisualizer(
+    progress: Float,
+    isPlaying: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    barCount: Int = 20
+) {
+    val heights = remember {
+        listOf(
+            0.3f, 0.6f, 0.4f, 0.8f, 0.95f, 0.5f, 0.75f, 0.3f, 0.85f, 0.6f,
+            0.9f, 0.4f, 0.7f, 0.95f, 0.5f, 0.65f, 0.8f, 0.35f, 0.7f, 0.4f
+        )
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(20.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        heights.take(barCount).forEachIndexed { index, baseHeight ->
+            val barProgressThreshold = index.toFloat() / barCount.toFloat()
+            val isPlayed = progress >= barProgressThreshold
+
+            val activeHeightScale by animateFloatAsState(
+                targetValue = if (isPlaying && isPlayed) (baseHeight * 1.1f).coerceAtMost(1f) else baseHeight,
+                animationSpec = tween(150),
+                label = "barHeight"
+            )
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 1.dp)
+                    .fillMaxHeight(activeHeightScale)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        if (isPlayed) tint else tint.copy(alpha = 0.3f)
+                    )
+            )
         }
     }
 }

@@ -45,7 +45,7 @@ import java.util.*
  * - Input validation
  * - Save and cancel actions
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddEditTaskScreen(
     viewModel: TaskViewModel,
@@ -189,7 +189,7 @@ fun AddEditTaskScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Actions Row
                 Row(
@@ -250,8 +250,8 @@ fun AddEditTaskScreen(
                     onValueChange = { description = it },
                     label = { Text("Description") },
                     placeholder = { Text("Add notes or details...") },
-                    minLines = 3,
-                    maxLines = 5,
+                    minLines = 2,
+                    maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -262,11 +262,11 @@ fun AddEditTaskScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = "Due Date & Time",
@@ -276,7 +276,7 @@ fun AddEditTaskScreen(
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             // Date picker
                             DatePickerButton(
@@ -302,7 +302,9 @@ fun AddEditTaskScreen(
                                 onClick = {
                                     dueDate = null
                                     dueTime = null
-                                }
+                                },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(32.dp)
                             ) {
                                 Icon(
                                     Icons.Default.Clear,
@@ -322,11 +324,11 @@ fun AddEditTaskScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = "Priority",
@@ -349,77 +351,18 @@ fun AddEditTaskScreen(
                         }
                     }
                 }
-                
-                // Category Section
+
+                // Reminder Section (optional - placed above Category)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Category",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            
-                            TextButton(onClick = { showCategoryDialog = true }) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("New")
-                            }
-                        }
-                        
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // No category option
-                            item {
-                                CategoryChipSelectable(
-                                    name = "None",
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                    isSelected = selectedCategoryId == null,
-                                    onClick = { selectedCategoryId = null }
-                                )
-                            }
-                            
-                            items(categories) { category ->
-                                CategoryChipSelectable(
-                                    name = category.name,
-                                    color = Color(category.color),
-                                    isSelected = selectedCategoryId == category.id,
-                                    onClick = { selectedCategoryId = category.id }
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                // Reminder Section (optional)
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -448,7 +391,7 @@ fun AddEditTaskScreen(
                         
                         AnimatedVisibility(visible = hasReminder && dueDate != null) {
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
                                     text = "Remind me:",
@@ -477,7 +420,70 @@ fun AddEditTaskScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(80.dp)) // Space for FAB
+                // Category Section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Category",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            TextButton(
+                                onClick = { showCategoryDialog = true },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("New")
+                            }
+                        }
+                        
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // No category option
+                            CategoryChipSelectable(
+                                name = "None",
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                isSelected = selectedCategoryId == null,
+                                onClick = { selectedCategoryId = null }
+                            )
+                            
+                            categories.forEach { category ->
+                                CategoryChipSelectable(
+                                    name = category.name,
+                                    color = Color(category.color),
+                                    isSelected = selectedCategoryId == category.id,
+                                    onClick = { selectedCategoryId = category.id }
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }

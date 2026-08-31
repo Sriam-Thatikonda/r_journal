@@ -26,20 +26,41 @@ import com.baverika.r_journal.ui.theme.LocalAppTheme
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.data.local.entity.JournalEntrySummary
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JournalArchiveScreen(
     journalRepo: com.baverika.r_journal.repository.JournalRepository,
     eventRepo: com.baverika.r_journal.repository.EventRepository,
-    onEntryClick: (JournalEntrySummary) -> Unit
+    onEntryClick: (JournalEntrySummary) -> Unit,
+    searchQuery: String = ""
 ) {
     // ✅ Use lightweight summaries
     val allEntries by journalRepo.allEntrySummaries.collectAsState(initial = emptyList())
     val allEvents by eventRepo.allEvents.collectAsState(initial = emptyList())
+    
+    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+
+    val filteredEntries = remember(allEntries, searchQuery) {
+        if (searchQuery.isBlank()) allEntries
+        else {
+            val q = searchQuery.trim().lowercase()
+            allEntries.filter { entry ->
+                entry.dateFormatted.lowercase().contains(q) ||
+                entry.dayOfWeek.lowercase().contains(q) ||
+                (entry.previewText?.lowercase()?.contains(q) == true) ||
+                entry.moodEmojis.any { it.contains(q) }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Celestial Background only for Blue Sky theme
-        if (LocalAppTheme.current == AppTheme.BLUE_SKY) {
+        if (isBlueSky) {
             Image(
                 painter = painterResource(id = R.drawable.bg_journal_archive),
                 contentDescription = null,
@@ -47,33 +68,53 @@ fun JournalArchiveScreen(
                 contentScale = ContentScale.Crop
             )
         }
-        if (allEntries.isEmpty()) {
-            // Empty state
-            com.baverika.r_journal.ui.components.EmptyState(
-                icon = Icons.AutoMirrored.Filled.MenuBook,
-                title = "Your Journal Awaits",
-                message = "Start writing your first entry by tapping the + button"
-            )
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(allEntries, key = { it.id }) { entry ->
-                    // Find events for this entry's date
-                    val entryDate = entry.localDate
-                    val dayEvents = allEvents.filter { event ->
-                        event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
-                    }
+        
+        Column(modifier = Modifier.fillMaxSize()) {
 
-                    EnhancedJournalCard(
-                        entry = entry,
-                        events = dayEvents,
-                        onClick = { onEntryClick(entry) }
+            if (allEntries.isEmpty()) {
+                // Empty state
+                com.baverika.r_journal.ui.components.EmptyState(
+                    icon = Icons.AutoMirrored.Filled.MenuBook,
+                    title = "Your Journal Awaits",
+                    message = "Start writing your first entry by tapping the + button"
+                )
+            } else if (filteredEntries.isEmpty()) {
+                // Search no results state
+                com.baverika.r_journal.ui.components.EmptyState(
+                    icon = Icons.Default.SearchOff,
+                    title = "No Entries Found",
+                    message = "No journal entries matched \"$searchQuery\""
+                )
+            } else {
+                if (searchQuery.isNotBlank()) {
+                    Text(
+                        text = "Showing ${filteredEntries.size} of ${allEntries.size} entries",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isBlueSky) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                     )
+                }
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredEntries, key = { it.id }) { entry ->
+                        // Find events for this entry's date
+                        val entryDate = entry.localDate
+                        val dayEvents = allEvents.filter { event ->
+                            event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
+                        }
+
+                        EnhancedJournalCard(
+                            entry = entry,
+                            events = dayEvents,
+                            onClick = { onEntryClick(entry) }
+                        )
+                    }
                 }
             }
         }

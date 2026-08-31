@@ -133,25 +133,12 @@ fun YearInPixelsScreen(
                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
     val dayLabels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Mood Heatmap $selectedYear") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
             // GitHub-style Heatmap Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -388,7 +375,6 @@ fun YearInPixelsScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
         }
-    }
     
     // Mood Selection Dialog
     if (showMoodDialog && selectedDate != null) {

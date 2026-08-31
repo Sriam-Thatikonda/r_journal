@@ -56,52 +56,11 @@ fun QuickNotesScreen(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)) {
         // --- Main List Content ---
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Search Bar and Layout Toggle in same row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Search Bar (70% width)
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChange(it) },
-                    placeholder = { Text("Search...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    modifier = Modifier.weight(0.7f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-                
-                // Layout toggle button
-                IconButton(
-                    onClick = {
-                        val newLayout = if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
-                            QuickNotesPreferences.LAYOUT_LIST
-                        } else {
-                            QuickNotesPreferences.LAYOUT_MASONRY
-                        }
-                        viewModel.setLayoutType(newLayout)
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = if (layoutType == QuickNotesPreferences.LAYOUT_MASONRY) {
-                            Icons.Default.ViewAgenda // List icon
-                        } else {
-                            Icons.Default.GridView // Grid icon
-                        },
-                        contentDescription = "Toggle Layout"
-                    )
-                }
-            }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 8.dp)
+        ) {
 
             if (notes.isEmpty()) {
                 if (searchQuery.isNotEmpty()) {
@@ -266,15 +225,34 @@ fun QuickNotesScreen(
 
 @Composable
 fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.SemiBold,
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (title == "Pinned") {
+            Icon(
+                imageVector = Icons.Outlined.PushPin,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+        HorizontalDivider(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+        )
+    }
 }
 
 /**
