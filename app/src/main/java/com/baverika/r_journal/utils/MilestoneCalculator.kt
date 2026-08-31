@@ -32,8 +32,10 @@ object MilestoneCalculator {
             )
         }
 
-        // 2. Total Words & Most Active Day
+        // 2. Total Words, Images, Voice Notes & Most Active Day
         var grandTotalWords = 0
+        var grandTotalImages = 0
+        var grandTotalAudioNotes = 0
         var peakWordCount = 0
         var peakEntryDateMillis = 0L
 
@@ -43,7 +45,7 @@ object MilestoneCalculator {
         val moodCounts = mutableMapOf<String, Int>()
 
         for (entry in pastYearEntries) {
-            val hasMessages = entry.messages.isNotEmpty()
+            val hasMessages = entry.messages.isNotEmpty() || entry.imageUris.isNotEmpty()
             if (hasMessages) {
                 val dateStr = Instant.ofEpochMilli(entry.dateMillis)
                     .atZone(ZoneId.systemDefault())
@@ -51,11 +53,20 @@ object MilestoneCalculator {
                 uniqueJournaledDays.add(dateStr)
             }
 
+            // Entry-level images
+            grandTotalImages += entry.imageUris.size
+
             var entryWords = 0
             for (msg in entry.messages) {
                 if (msg.content.isNotBlank()) {
                     val words = msg.content.trim().split("\\s+".toRegex()).count { it.isNotBlank() }
                     entryWords += words
+                }
+                if (!msg.imageUri.isNullOrBlank()) {
+                    grandTotalImages++
+                }
+                if (!msg.voiceNoteUri.isNullOrBlank()) {
+                    grandTotalAudioNotes++
                 }
             }
             grandTotalWords += entryWords
@@ -111,7 +122,9 @@ object MilestoneCalculator {
             totalTasksCompleted = completedTasksCount,
             topMood = topMoodStr,
             totalDaysJournaled = uniqueJournaledDays.size,
-            totalDaysInPeriod = 365
+            totalDaysInPeriod = 365,
+            totalImagesAttached = grandTotalImages,
+            totalAudioNotesRecorded = grandTotalAudioNotes
         )
     }
 }
