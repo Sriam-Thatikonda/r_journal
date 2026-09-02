@@ -155,4 +155,41 @@ class Converters {
     fun toPasswordType(value: String): com.baverika.r_journal.data.local.entity.PasswordType {
         return com.baverika.r_journal.data.local.entity.PasswordType.fromString(value)
     }
+
+    // -------------------------------
+    // PasswordHistory converters
+    // -------------------------------
+    @TypeConverter
+    fun fromPasswordHistory(history: List<com.baverika.r_journal.data.local.entity.PasswordHistoryItem>?): String {
+        if (history.isNullOrEmpty()) return "[]"
+        val array = JSONArray()
+        for (item in history) {
+            val obj = JSONObject()
+            obj.put("passwordValue", item.passwordValue)
+            obj.put("changedAt", item.changedAt)
+            array.put(obj)
+        }
+        return array.toString()
+    }
+
+    @TypeConverter
+    fun toPasswordHistory(json: String?): List<com.baverika.r_journal.data.local.entity.PasswordHistoryItem> {
+        if (json.isNullOrEmpty() || json == "[]") return emptyList()
+        return try {
+            val array = JSONArray(json)
+            val list = mutableListOf<com.baverika.r_journal.data.local.entity.PasswordHistoryItem>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val passwordValue = obj.optString("passwordValue", "")
+                val changedAt = obj.optLong("changedAt", System.currentTimeMillis())
+                if (passwordValue.isNotEmpty()) {
+                    list.add(com.baverika.r_journal.data.local.entity.PasswordHistoryItem(passwordValue, changedAt))
+                }
+            }
+            list
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
+
