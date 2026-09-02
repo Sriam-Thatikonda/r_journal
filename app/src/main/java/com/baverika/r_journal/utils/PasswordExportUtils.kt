@@ -54,7 +54,13 @@ object PasswordExportUtils {
                         passwordValue = SecurityUtils.decrypt(password.passwordValue),
                         type = password.type,
                         createdAt = password.createdAt,
-                        updatedAt = password.updatedAt
+                        updatedAt = password.updatedAt,
+                        history = password.history.map { hItem ->
+                            ExportablePasswordHistoryItem(
+                                passwordValue = try { SecurityUtils.decrypt(hItem.passwordValue) } catch (e: Exception) { hItem.passwordValue },
+                                changedAt = hItem.changedAt
+                            )
+                        }
                     )
                 }
             )
@@ -92,13 +98,20 @@ object PasswordExportUtils {
             exportData.passwords.forEach { exportable ->
                 // Exported data is plaintext — encrypt it for secure storage
                 val encryptedValue = SecurityUtils.encrypt(exportable.passwordValue)
+                val encryptedHistory = exportable.history.map { hItem ->
+                    com.baverika.r_journal.data.local.entity.PasswordHistoryItem(
+                        passwordValue = SecurityUtils.encrypt(hItem.passwordValue),
+                        changedAt = hItem.changedAt
+                    )
+                }
                 val password = Password(
                     siteName = exportable.siteName,
                     username = exportable.username,
                     passwordValue = encryptedValue,
                     type = exportable.type,
                     createdAt = exportable.createdAt,
-                    updatedAt = exportable.updatedAt
+                    updatedAt = exportable.updatedAt,
+                    history = encryptedHistory
                 )
                 repository.insertPassword(password)
                 importedCount++
@@ -126,5 +139,12 @@ data class ExportablePassword(
     val passwordValue: String,
     val type: PasswordType = PasswordType.PASSWORD,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val history: List<ExportablePasswordHistoryItem> = emptyList()
 )
+
+data class ExportablePasswordHistoryItem(
+    val passwordValue: String,
+    val changedAt: Long
+)
+

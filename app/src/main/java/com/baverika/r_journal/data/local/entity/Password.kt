@@ -4,6 +4,11 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
 
+data class PasswordHistoryItem(
+    val passwordValue: String,
+    val changedAt: Long = System.currentTimeMillis()
+)
+
 @Entity(tableName = "passwords")
 data class Password(
     @PrimaryKey
@@ -13,8 +18,10 @@ data class Password(
     val passwordValue: String,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val type: PasswordType = PasswordType.PASSWORD
+    val type: PasswordType = PasswordType.PASSWORD,
+    val history: List<PasswordHistoryItem> = emptyList()
 )
+
 
 enum class PasswordType {
     PASSWORD,

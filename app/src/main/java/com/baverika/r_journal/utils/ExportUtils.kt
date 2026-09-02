@@ -237,14 +237,21 @@ object ExportUtils {
                     try {
                         // We must decrypt for the export to be useful on other devices
                         // WARNING: This puts plain text passwords in the JSON
-                        val exportablePasswords = passwords.map { 
-                            // Try to decrypt; if fails, keep original (might already be plain or broken)
+                        val exportablePasswords = passwords.map { password ->
                             val decoded = try {
-                                SecurityUtils.decrypt(it.passwordValue)
+                                SecurityUtils.decrypt(password.passwordValue)
                             } catch (e: Exception) {
-                                it.passwordValue
+                                password.passwordValue
                             }
-                            it.copy(passwordValue = decoded)
+                            val decodedHistory = password.history.map { hItem ->
+                                val hDecoded = try {
+                                    SecurityUtils.decrypt(hItem.passwordValue)
+                                } catch (e: Exception) {
+                                    hItem.passwordValue
+                                }
+                                hItem.copy(passwordValue = hDecoded)
+                            }
+                            password.copy(passwordValue = decoded, history = decodedHistory)
                         }
                         zos.putNextEntry(ZipEntry("data/passwords.json"))
                         zos.write(gson.toJson(exportablePasswords).toByteArray())
@@ -253,6 +260,7 @@ object ExportUtils {
                         e.printStackTrace()
                     }
                 }
+
 
                 // Export Trackers (JSON)
                 if (trackers.isNotEmpty()) {

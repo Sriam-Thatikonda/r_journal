@@ -447,7 +447,7 @@ fun ModernInput(
     )
 }
 
-// 9. Password Strength Bar Component
+// 9. Password Strength Bar Component — animated segments
 @Composable
 private fun PasswordStrengthBar(
     isPinMode: Boolean,
@@ -471,6 +471,12 @@ private fun PasswordStrengthBar(
         }
     }
 
+    val animatedColor by animateColorAsState(
+        targetValue = color,
+        animationSpec = tween(400),
+        label = "strengthColor"
+    )
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -481,20 +487,37 @@ private fun PasswordStrengthBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             for (i in 1..4) {
+                val filled = i <= score
+                val fillFraction by animateFloatAsState(
+                    targetValue = if (filled) 1f else 0f,
+                    animationSpec = tween(
+                        durationMillis = 350,
+                        delayMillis = if (filled) (i - 1) * 80 else 0
+                    ),
+                    label = "bar_$i"
+                )
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .height(4.dp)
                         .clip(CircleShape)
-                        .background(if (i <= score) color else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
-                )
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(fillFraction)
+                            .clip(CircleShape)
+                            .background(animatedColor)
+                    )
+                }
             }
         }
         Text(
             text = "Strength: $label",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = animatedColor
         )
     }
 }
@@ -512,6 +535,26 @@ fun UnifiedGeneratorCard(
     onLengthChange: (Int) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+
+    // Spin animation for the regenerate icon
+    var spinTrigger by remember { mutableIntStateOf(0) }
+    val spinRotation by animateFloatAsState(
+        targetValue = spinTrigger * 360f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "spinRotation"
+    )
+
+    // "Generated!" chip flash
+    var showGeneratedChip by remember { mutableStateOf(false) }
+    LaunchedEffect(showGeneratedChip) {
+        if (showGeneratedChip) {
+            delay(1200)
+            showGeneratedChip = false
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -568,27 +611,67 @@ fun UnifiedGeneratorCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Password Text
+                // Password Text with crossfade on change
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (isVisible) password else "••••••••••••",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = if (isVisible) 0.sp else 4.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.animateContentSize()
-                    )
+                    Crossfade(
+                        targetState = if (isVisible) password else "••••••••••••",
+                        animationSpec = tween(280),
+                        label = "pwCrossfade"
+                    ) { displayText ->
+                        Text(
+                            text = displayText,
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = if (isVisible) 0.sp else 4.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
-                // 9. Strength Bar
+                // "Generated!" feedback chip
+                AnimatedVisibility(
+                    visible = showGeneratedChip,
+                    enter = fadeIn(tween(150)) + scaleIn(
+                        initialScale = 0.8f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                    ),
+                    exit = fadeOut(tween(300))
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        shape = CircleShape
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                "Generated!",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                // Strength Bar
                 PasswordStrengthBar(isPinMode = isPinMode, currentLength = currentLength)
 
                 // Action Buttons Row
@@ -596,10 +679,12 @@ fun UnifiedGeneratorCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Regenerate
+                    // Regenerate — with spin animation
                     FilledTonalIconButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            spinTrigger++
+                            showGeneratedChip = true
                             onRegenerate()
                         },
                         modifier = Modifier.size(44.dp),
@@ -607,7 +692,13 @@ fun UnifiedGeneratorCard(
                             containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                         )
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Regenerate", modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Regenerate",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsLayer { rotationZ = spinRotation }
+                        )
                     }
 
                     // Copy
@@ -847,18 +938,49 @@ private fun PasswordListItem(
         )
     }
 
-    // 10. Edit Dialog
+    // 10. Edit Dialog with Password Refresh & History
     if (showEditDialog) {
         var editSite by remember { mutableStateOf(password.siteName) }
         var editUsername by remember { mutableStateOf(password.username) }
         var editPassword by remember { mutableStateOf(decryptedPassword) }
         var editPwVisible by remember { mutableStateOf(false) }
+        var showHistorySection by remember { mutableStateOf(false) }
+
+        // Regenerate spin animation for edit dialog
+        var editSpinTrigger by remember { mutableIntStateOf(0) }
+        val editSpinRotation by animateFloatAsState(
+            targetValue = editSpinTrigger * 360f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "editSpinRotation"
+        )
+
+        // "Password changed" indicator
+        val isPasswordChanged = editPassword != decryptedPassword
 
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit Entry") },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text("Edit Entry", fontWeight = FontWeight.Bold)
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     OutlinedTextField(
                         value = editSite,
                         onValueChange = { editSite = it },
@@ -897,17 +1019,220 @@ private fun PasswordListItem(
                         modifier = Modifier.fillMaxWidth(),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
                     )
+
+                    // Regenerate Button — dedicated, styled
+                    OutlinedButton(
+                        onClick = {
+                            editPassword = if (password.type == PasswordType.PIN) {
+                                PassphraseGenerator.generatePin(6)
+                            } else {
+                                PassphraseGenerator.generate(4)
+                            }
+                            editPwVisible = true
+                            editSpinTrigger++
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .graphicsLayer { rotationZ = editSpinRotation },
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Regenerate ${if (password.type == PasswordType.PIN) "PIN" else "Passphrase"}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // "Password changed" indicator chip
+                    AnimatedVisibility(
+                        visible = isPasswordChanged,
+                        enter = fadeIn(tween(200)) + expandVertically(),
+                        exit = fadeOut(tween(200)) + shrinkVertically()
+                    ) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    "Password changed — old password will be saved to history",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
+
+                    // Password History Section inside Edit Dialog
+                    if (password.history.isNotEmpty()) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showHistorySection = !showHistorySection }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Password History (${password.history.size}/3)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Icon(
+                                imageVector = if (showHistorySection) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = showHistorySection,
+                            enter = fadeIn(tween(200)) + expandVertically(),
+                            exit = fadeOut(tween(200)) + shrinkVertically()
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                password.history.forEach { historyItem ->
+                                    val decryptedPastPw = remember(historyItem.passwordValue) {
+                                        try {
+                                            SecurityUtils.decrypt(historyItem.passwordValue)
+                                        } catch (e: Exception) {
+                                            historyItem.passwordValue
+                                        }
+                                    }
+                                    val formattedDate = remember(historyItem.changedAt) {
+                                        val sdf = java.text.SimpleDateFormat("MMM dd, yyyy • HH:mm", java.util.Locale.getDefault())
+                                        sdf.format(java.util.Date(historyItem.changedAt))
+                                    }
+                                    var isPastPwVisible by remember { mutableStateOf(false) }
+
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = formattedDate,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                                )
+                                                Crossfade(
+                                                    targetState = isPastPwVisible,
+                                                    animationSpec = tween(200),
+                                                    label = "histPwCrossfade"
+                                                ) { visible ->
+                                                    Text(
+                                                        text = if (visible) decryptedPastPw else "••••••••••••",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                            Row {
+                                                IconButton(
+                                                    onClick = { isPastPwVisible = !isPastPwVisible },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        if (isPastPwVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        clipboardManager.setText(AnnotatedString(decryptedPastPw))
+                                                        Toast.makeText(context, "Copied past password!", Toast.LENGTH_SHORT).show()
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.ContentCopy,
+                                                        contentDescription = "Copy past password",
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
                 TextButton(
                     enabled = editSite.isNotBlank() && editUsername.isNotBlank() && editPassword.isNotBlank(),
                     onClick = {
+                        val updatedHistory = if (isPasswordChanged) {
+                            val newHistoryItem = com.baverika.r_journal.data.local.entity.PasswordHistoryItem(
+                                passwordValue = password.passwordValue,
+                                changedAt = System.currentTimeMillis()
+                            )
+                            (listOf(newHistoryItem) + password.history).take(3)
+                        } else {
+                            password.history
+                        }
+
                         onUpdate(
                             password.copy(
                                 siteName = editSite.trim(),
                                 username = editUsername.trim(),
                                 passwordValue = SecurityUtils.encrypt(editPassword),
+                                history = updatedHistory,
                                 updatedAt = System.currentTimeMillis()
                             )
                         )
@@ -920,6 +1245,8 @@ private fun PasswordListItem(
             }
         )
     }
+
+
 
     Card(
         modifier = Modifier
@@ -938,7 +1265,7 @@ private fun PasswordListItem(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Info + 7. Type Badge
+                // Info + 7. Type Badge + History Badge
                 Column(modifier = Modifier.weight(1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -969,6 +1296,32 @@ private fun PasswordListItem(
                                     MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
+                        }
+                        if (password.history.isNotEmpty()) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.History,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Text(
+                                        text = "${password.history.size}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                            }
                         }
                     }
                     Text(
