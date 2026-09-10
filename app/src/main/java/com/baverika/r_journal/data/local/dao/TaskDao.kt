@@ -134,8 +134,8 @@ interface TaskDao {
     /**
      * Get a single task by ID.
      */
-    @Query("SELECT * FROM tasks WHERE id = :taskId")
-    suspend fun getTaskById(taskId: String): Task?
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun getTaskById(id: String): Task?
     
     /**
      * Get task count statistics.
@@ -171,6 +171,24 @@ interface TaskDao {
     suspend fun updateTaskCompletion(taskId: String, isCompleted: Boolean, updatedAt: Long = System.currentTimeMillis())
     
     // ==================== SYNCHRONOUS METHODS FOR WIDGET ====================
+    
+    /**
+     * Get upcoming tasks asynchronously.
+     */
+    @Query("""
+        SELECT * FROM tasks 
+        WHERE isCompleted = 0 
+        ORDER BY 
+            CASE WHEN dueDate IS NULL THEN 1 ELSE 0 END,
+            dueDate ASC,
+            CASE priority 
+                WHEN 'HIGH' THEN 1 
+                WHEN 'MEDIUM' THEN 2 
+                WHEN 'LOW' THEN 3 
+            END
+        LIMIT :limit
+    """)
+    suspend fun getUpcomingTasksSuspend(limit: Int = 7): List<Task>
     
     /**
      * Get upcoming tasks synchronously (for widget).

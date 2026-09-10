@@ -48,7 +48,7 @@ class TaskReminderWorker(
             reminderTimeMillis: Long
         ) {
             val delay = reminderTimeMillis - System.currentTimeMillis()
-            if (delay <= 0) return // Don't schedule past reminders
+            val initialDelay = if (delay <= 0) 0L else delay
             
             val inputData = workDataOf(
                 KEY_TASK_ID to taskId,
@@ -57,7 +57,7 @@ class TaskReminderWorker(
             )
             
             val reminderWork = OneTimeWorkRequestBuilder<TaskReminderWorker>()
-                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                 .setInputData(inputData)
                 .addTag("task_reminder_$taskId")
                 .build()
@@ -130,13 +130,13 @@ class TaskReminderWorker(
         }
     }
     
-    private fun handleTaskReminder(): Result {
+    private suspend fun handleTaskReminder(): Result {
         val taskId = inputData.getString(KEY_TASK_ID) ?: return Result.failure()
         val taskTitle = inputData.getString(KEY_TASK_TITLE) ?: "Task Reminder"
         
         // Verify task still exists and isn't completed
         val db = JournalDatabase.getDatabase(applicationContext)
-        val task = db.taskDao().getUpcomingTasksSync(100).find { it.id == taskId }
+        val task = db.taskDao().getTaskById(taskId)
         
         if (task != null && !task.isCompleted) {
             showNotification(
