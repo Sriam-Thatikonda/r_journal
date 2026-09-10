@@ -173,8 +173,9 @@ object PdfExportUtils {
                     val dateStr = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(note.timestamp), ZoneId.systemDefault())
                             .format(DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm"))
                     
+                    val noteText = com.baverika.r_journal.data.model.RichContent.fromContentString(note.content).toPlainText()
                     val titleLayout = StaticLayout.Builder.obtain(titleStr, 0, titleStr.length, headerPaint, contentWidth.toInt()).build()
-                    val contentLayout = StaticLayout.Builder.obtain(note.content, 0, note.content.length, bodyPaint, contentWidth.toInt()).build()
+                    val contentLayout = StaticLayout.Builder.obtain(noteText, 0, noteText.length, bodyPaint, contentWidth.toInt()).build()
                     
                     val noteHeight = titleLayout.height + contentLayout.height + 50f
 

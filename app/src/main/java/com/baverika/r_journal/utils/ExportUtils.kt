@@ -366,7 +366,7 @@ object ExportUtils {
             append("created_at: $createdAt\n")
             append("---\n\n")
             append("# ${note.title}\n\n")
-            append(note.content)
+            append(com.baverika.r_journal.data.model.RichContent.fromContentString(note.content).toPlainText())
         }
     }
 

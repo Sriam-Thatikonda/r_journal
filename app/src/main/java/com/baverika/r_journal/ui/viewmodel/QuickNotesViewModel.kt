@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class QuickNoteViewModel(
-    private val repository: QuickNoteRepository,
+    val repository: QuickNoteRepository,
     private val preferences: QuickNotesPreferences
 ) : ViewModel() {
 
