@@ -40,7 +40,7 @@ sealed class UnifiedSearchResult {
         val note: QuickNote,
         override val id: String = note.id,
         override val title: String = note.title.ifBlank { "Untitled Note" },
-        override val subtitle: String = note.content,
+        override val subtitle: String = com.baverika.r_journal.data.model.RichContent.fromContentString(note.content).toPlainText(),
         override val category: SearchCategory = SearchCategory.NOTES
     ) : UnifiedSearchResult()
 

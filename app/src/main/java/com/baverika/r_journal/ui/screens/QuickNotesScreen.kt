@@ -20,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,6 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.baverika.r_journal.data.local.QuickNotesPreferences
 import com.baverika.r_journal.data.local.entity.QuickNote
+import com.baverika.r_journal.data.model.BlockType
+import com.baverika.r_journal.data.model.RichBlock
+import com.baverika.r_journal.data.model.RichContent
+import com.baverika.r_journal.data.model.SpanType
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel
 import com.baverika.r_journal.utils.ColorUtils
 import java.time.LocalDateTime
@@ -365,6 +372,7 @@ fun QuickNoteCard(
 
 /**
  * Parses and renders content with support for:
+ * - RichContent (JSON structured blocks and spans)
  * - Checklists (lines starting with [ ] or [x])
  * - Bullet lists (lines starting with -, *, or •)
  * - Numbered lists (lines starting with 1., 2., etc.)
@@ -376,57 +384,200 @@ fun ParsedContent(
     textColor: Color,
     secondaryTextColor: Color
 ) {
-    val lines = content.lines()
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
-        lines.forEach { line ->
-            when {
-                // Checklist item - unchecked
-                line.trimStart().startsWith("[ ]") -> {
-                    ChecklistItem(
-                        text = line.trimStart().removePrefix("[ ]").trim(),
-                        isChecked = false,
-                        textColor = textColor,
-                        secondaryTextColor = secondaryTextColor
-                    )
+    val trimmed = content.trim()
+    if (trimmed.startsWith("{") && trimmed.contains("\"blocks\"")) {
+        val richContent = remember(content) { RichContent.fromContentString(content) }
+        Column(modifier = Modifier.fillMaxWidth()) {
+            richContent.blocks.take(8).forEachIndexed { index, block ->
+                val annotatedText = remember(block.text, block.spans, block.isChecked) {
+                    buildBlockAnnotatedString(block, textColor, block.type == BlockType.CHECKLIST && block.isChecked)
                 }
-                // Checklist item - checked
-                line.trimStart().startsWith("[x]") || line.trimStart().startsWith("[X]") -> {
-                    ChecklistItem(
-                        text = line.trimStart().removePrefix("[x]").removePrefix("[X]").trim(),
-                        isChecked = true,
-                        textColor = textColor,
-                        secondaryTextColor = secondaryTextColor
-                    )
+                when (block.type) {
+                    BlockType.CHECKLIST -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (block.isChecked) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = if (block.isChecked) secondaryTextColor else textColor
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = annotatedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (block.isChecked) secondaryTextColor.copy(alpha = 0.7f) else textColor,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    BlockType.BULLET -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "•",
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            Text(
+                                text = annotatedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    BlockType.NUMBERED -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "${index + 1}.",
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            Text(
+                                text = annotatedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    BlockType.PARAGRAPH -> {
+                        if (block.text.isNotBlank()) {
+                            Text(
+                                text = annotatedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
-                // Bullet list
-                line.trimStart().startsWith("-") || 
-                line.trimStart().startsWith("*") || 
-                line.trimStart().startsWith("•") -> {
-                    BulletItem(
-                        text = line.trimStart().removePrefix("-").removePrefix("*").removePrefix("•").trim(),
-                        textColor = textColor
-                    )
-                }
-                // Numbered list
-                line.trimStart().matches(Regex("^\\d+\\.\\s.*")) -> {
-                    NumberedItem(
-                        text = line.trimStart(),
-                        textColor = textColor
-                    )
-                }
-                // Regular text
-                line.isNotBlank() -> {
-                    Text(
-                        text = line,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = textColor
-                    )
+            }
+        }
+    } else {
+        val lines = content.lines()
+        
+        Column(modifier = Modifier.fillMaxWidth()) {
+            lines.take(8).forEach { line ->
+                when {
+                    // Checklist item - unchecked
+                    line.trimStart().startsWith("[ ]") -> {
+                        ChecklistItem(
+                            text = line.trimStart().removePrefix("[ ]").trim(),
+                            isChecked = false,
+                            textColor = textColor,
+                            secondaryTextColor = secondaryTextColor
+                        )
+                    }
+                    // Checklist item - checked
+                    line.trimStart().startsWith("[x]") || line.trimStart().startsWith("[X]") -> {
+                        ChecklistItem(
+                            text = line.trimStart().removePrefix("[x]").removePrefix("[X]").trim(),
+                            isChecked = true,
+                            textColor = textColor,
+                            secondaryTextColor = secondaryTextColor
+                        )
+                    }
+                    // Bullet list
+                    line.trimStart().startsWith("-") || 
+                    line.trimStart().startsWith("*") || 
+                    line.trimStart().startsWith("•") -> {
+                        BulletItem(
+                            text = line.trimStart().removePrefix("-").removePrefix("*").removePrefix("•").trim(),
+                            textColor = textColor
+                        )
+                    }
+                    // Numbered list
+                    line.trimStart().matches(Regex("^\\d+\\.\\s.*")) -> {
+                        NumberedItem(
+                            text = line.trimStart(),
+                            textColor = textColor
+                        )
+                    }
+                    // Regular text
+                    line.isNotBlank() -> {
+                        Text(
+                            text = line,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            color = textColor,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private fun buildBlockAnnotatedString(
+    block: RichBlock,
+    defaultColor: Color,
+    forceStrikeThrough: Boolean
+): AnnotatedString {
+    val raw = block.text
+    val builder = AnnotatedString.Builder(raw)
+
+    if (forceStrikeThrough) {
+        builder.addStyle(
+            SpanStyle(textDecoration = TextDecoration.LineThrough),
+            0,
+            raw.length
+        )
+    }
+
+    for (span in block.spans) {
+        val start = span.start.coerceIn(0, raw.length)
+        val end = span.end.coerceIn(start, raw.length)
+        if (start < end) {
+            val style = when (span.type) {
+                SpanType.BOLD -> SpanStyle(fontWeight = FontWeight.Bold)
+                SpanType.ITALIC -> SpanStyle(fontStyle = FontStyle.Italic)
+                SpanType.UNDERLINE -> SpanStyle(textDecoration = TextDecoration.Underline)
+                SpanType.STRIKETHROUGH -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+                SpanType.COLOR -> {
+                    val parsed = try {
+                        if (span.colorHex != null) Color(android.graphics.Color.parseColor(span.colorHex)) else defaultColor
+                    } catch (_: Exception) {
+                        defaultColor
+                    }
+                    SpanStyle(color = parsed)
+                }
+            }
+            builder.addStyle(style, start, end)
+        }
+    }
+
+    return builder.toAnnotatedString()
 }
 
 @Composable
