@@ -7,10 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +37,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.baverika.r_journal.data.model.BlockType
+import com.baverika.r_journal.data.model.NoteColor
 import com.baverika.r_journal.ui.editor.components.RichBlockItem
 import com.baverika.r_journal.ui.editor.components.RichFormattingToolbar
 import com.baverika.r_journal.ui.viewmodel.QuickNoteEditorViewModel
@@ -45,21 +46,6 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-
-val NoteBackgroundColors = listOf(
-    0xFF000000, // Pure Black
-    0xFFF28B82, // Soft Red
-    0xFFFBBC04, // Warm Orange
-    0xFFFFF475, // Soft Yellow
-    0xFFCCFF90, // Light Green
-    0xFFA7FFEB, // Cyan
-    0xFFAECBFA, // Soft Blue
-    0xFFD7AEFB, // Lavender
-    0xFFFDCFE8, // Soft Pink
-    0xFFE6C9A8, // Beige
-    0xFFE8EAED, // Light Gray
-    0xFF1F1F1F  // Dark Gray
-)
 
 @Composable
 fun QuickNoteEditorScreen(
@@ -73,7 +59,7 @@ fun QuickNoteEditorScreen(
     val titleFocusRequester = remember { FocusRequester() }
     val blockFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
 
-    var showColorPicker by remember { mutableStateOf(false) }
+    var showColorDropdown by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -105,8 +91,19 @@ fun QuickNoteEditorScreen(
         }
     }
 
+    // Scroll to newly added block when requested
+    LaunchedEffect(state.focusTargetBlockId) {
+        val targetId = state.focusTargetBlockId ?: return@LaunchedEffect
+        val targetIndex = state.blocks.indexOfFirst { it.id == targetId }
+        if (targetIndex >= 0) {
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
+
+    val currentTheme = LocalAppTheme.current
+    val isDark = currentTheme.isDark
     val backgroundColor by animateColorAsState(
-        targetValue = Color(state.color),
+        targetValue = state.color.containerColor(isDark),
         animationSpec = tween(200),
         label = "bgColor"
     )
@@ -195,29 +192,43 @@ fun QuickNoteEditorScreen(
                     )
                 }
 
-                // Note Background Color Selector
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(backgroundColor)
-                        .border(
-                            width = 2.dp,
-                            color = if (ColorUtils.isColorLight(backgroundColor))
-                                Color.Gray.copy(alpha = 0.4f)
-                            else Color.White.copy(alpha = 0.4f),
-                            shape = CircleShape
+                // Note Background Color Selector Pill with Dropdown (RNotes style)
+                Box {
+                    IconButton(onClick = { showColorDropdown = true }) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(state.color.dot())
+                                .border(1.5.dp, MaterialTheme.colorScheme.outline, CircleShape)
                         )
-                        .clickable { showColorPicker = !showColorPicker },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Palette,
-                        contentDescription = "Note Color",
-                        tint = textColor,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    }
+
+                    DropdownMenu(
+                        expanded = showColorDropdown,
+                        onDismissRequest = { showColorDropdown = false }
+                    ) {
+                        NoteColor.entries.forEach { noteColor ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .clip(CircleShape)
+                                                .background(noteColor.dot())
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(noteColor.displayName)
+                                    }
+                                },
+                                onClick = {
+                                    viewModel.setNoteColor(noteColor)
+                                    showColorDropdown = false
+                                }
+                            )
+                        }
+                    }
                 }
 
                 // Delete Button (if not brand new)
@@ -241,45 +252,6 @@ fun QuickNoteEditorScreen(
                         contentDescription = "Save Note",
                         tint = textColor
                     )
-                }
-            }
-
-            // --- Expandable Note Background Color Picker ---
-            if (showColorPicker) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                ) {
-                    items(NoteBackgroundColors) { colorLong ->
-                        val isSelected = colorLong == state.color
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color(colorLong))
-                                .border(
-                                    width = if (isSelected) 3.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f),
-                                    shape = CircleShape
-                                )
-                                .clickable {
-                                    viewModel.setNoteColor(colorLong)
-                                    showColorPicker = false
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isSelected) {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = "Selected",
-                                    tint = ColorUtils.getContrastingTextColor(Color(colorLong)),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
                 }
             }
 
@@ -319,7 +291,6 @@ fun QuickNoteEditorScreen(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            // Focus last block or append block if last has text
                             val lastIndex = state.blocks.lastIndex
                             if (lastIndex >= 0) {
                                 val lastBlock = state.blocks[lastIndex]
@@ -345,6 +316,7 @@ fun QuickNoteEditorScreen(
                         block = block,
                         index = index,
                         isFocused = state.activeBlockIndex == index,
+                        autoFocus = state.focusTargetBlockId == block.id,
                         focusRequester = requester,
                         textColor = textColor,
                         secondaryTextColor = secondaryTextColor,
@@ -353,12 +325,15 @@ fun QuickNoteEditorScreen(
                         },
                         onFocusGained = { selection ->
                             viewModel.onBlockFocusChanged(index, selection)
+                            if (state.focusTargetBlockId == block.id) {
+                                viewModel.clearFocusTarget()
+                            }
                         },
                         onToggleChecked = { blockId ->
                             viewModel.toggleChecklist(blockId)
                         },
-                        onEnterPressed = {
-                            viewModel.onEnterPressed(index)
+                        onEnterPressed = { splitPosition ->
+                            viewModel.onEnterPressed(index, splitPosition)
                             scope.launch {
                                 listState.animateScrollToItem((index + 1).coerceAtMost(state.blocks.size))
                             }

@@ -206,5 +206,9 @@ enum class AppTheme(val displayName: String) {
     OCEAN("Ocean"),
     ROSEWOOD("Rosewood"),
     BLUE_SKY("Blue Sky"),
-    CLOUD_DANCER("Cloud '26")
+    CLOUD_DANCER("Cloud '26");
+
+    val isDark: Boolean
+        get() = this != LIGHT && this != CLOUD_DANCER
 }
+

@@ -163,19 +163,75 @@ data class RichContent(
         }
 
         /**
-         * Clamps existing span ranges when block text changes so formatting remains aligned and valid.
-         * Modeled after the proven RNotes implementation.
+         * Adjusts existing span ranges when block text changes so formatting remains aligned and valid.
          */
-        @Suppress("UNUSED_PARAMETER")
         fun adjustSpans(
             oldText: String,
             newText: String,
             spans: List<RichSpan>
         ): List<RichSpan> {
             if (spans.isEmpty() || newText.isEmpty()) return emptyList()
-            val newLength = newText.length
-            return spans.filter { it.start < newLength }.map {
-                it.copy(end = minOf(it.end, newLength))
+            if (oldText == newText) return spans
+
+            // Find common prefix length
+            var prefix = 0
+            val minLength = minOf(oldText.length, newText.length)
+            while (prefix < minLength && oldText[prefix] == newText[prefix]) {
+                prefix++
+            }
+
+            // Find matching suffix
+            var oldSuffix = oldText.length
+            var newSuffix = newText.length
+            while (oldSuffix > prefix && newSuffix > prefix && oldText[oldSuffix - 1] == newText[newSuffix - 1]) {
+                oldSuffix--
+                newSuffix--
+            }
+
+            val diff = newText.length - oldText.length
+
+            return spans.mapNotNull { span ->
+                var s = span.start
+                var e = span.end
+
+                if (diff > 0) {
+                    if (prefix <= s) {
+                        s += diff
+                        e += diff
+                    } else if (prefix < e) {
+                        e += diff
+                    }
+                } else if (diff < 0) {
+                    val delStart = prefix
+                    val delEnd = prefix - diff
+                    if (delEnd <= s) {
+                        s += diff
+                        e += diff
+                    } else if (delStart >= e) {
+                        // Unchanged
+                    } else {
+                        if (delStart <= s && delEnd >= e) {
+                            return@mapNotNull null
+                        }
+                        if (delStart <= s) {
+                            s = delStart
+                            e += diff
+                        } else if (delEnd >= e) {
+                            e = delStart
+                        } else {
+                            e += diff
+                        }
+                    }
+                }
+
+                s = s.coerceIn(0, newText.length)
+                e = e.coerceIn(s, newText.length)
+
+                if (s < e) {
+                    span.copy(start = s, end = e)
+                } else {
+                    null
+                }
             }
         }
     }

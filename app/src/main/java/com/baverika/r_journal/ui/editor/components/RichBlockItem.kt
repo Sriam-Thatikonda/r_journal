@@ -48,18 +48,19 @@ fun RichBlockItem(
     block: RichBlock,
     index: Int,
     isFocused: Boolean,
+    autoFocus: Boolean = false,
     focusRequester: FocusRequester,
     textColor: Color,
     secondaryTextColor: Color,
     onTextChanged: (String, TextRange) -> Unit,
     onFocusGained: (TextRange) -> Unit,
     onToggleChecked: (String) -> Unit,
-    onEnterPressed: () -> Unit,
+    onEnterPressed: (splitPosition: Int) -> Unit,
     onBackspaceOnEmpty: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var textFieldValue by remember(block.id) {
-        mutableStateOf(TextFieldValue(text = block.text, selection = TextRange(block.text.length)))
+        mutableStateOf(TextFieldValue(text = block.text, selection = TextRange(0)))
     }
 
     // Keep internal text in sync if external changes occur (e.g. undo/redo)
@@ -71,7 +72,18 @@ fun RichBlockItem(
         textFieldValue = textFieldValue.copy(text = block.text, selection = clampedSelection)
     }
 
-    val visualTransformation = remember(block.spans, block.isChecked, block.type) {
+    // Auto-focus when requested (e.g. new line created by Enter)
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            kotlinx.coroutines.delay(40)
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {}
+            onFocusGained(textFieldValue.selection)
+        }
+    }
+
+    val visualTransformation = remember(block.spans, block.isChecked, block.type, textColor) {
         RichTextVisualTransformation(
             spans = block.spans,
             forceStrikeThrough = block.type == BlockType.CHECKLIST && block.isChecked,
@@ -160,18 +172,12 @@ fun RichBlockItem(
             BasicTextField(
                 value = textFieldValue,
                 onValueChange = { newValue ->
-                    // Handle enter press from soft keyboard if newline is typed
-                    if (newValue.text.endsWith("\n") && !textFieldValue.text.endsWith("\n")) {
-                        val cleaned = newValue.text.removeSuffix("\n")
-                        textFieldValue = TextFieldValue(cleaned, TextRange(cleaned.length))
-                        onTextChanged(cleaned, TextRange(cleaned.length))
-                        onEnterPressed()
-                    } else if (newValue.text.contains("\n")) {
-                        val cleaned = newValue.text.replace("\n", "")
-                        val cursor = newValue.selection.start.coerceIn(0, cleaned.length)
-                        textFieldValue = TextFieldValue(cleaned, TextRange(cursor))
-                        onTextChanged(cleaned, TextRange(cursor))
-                        onEnterPressed()
+                    val newlineIdx = newValue.text.indexOf('\n')
+                    if (newlineIdx >= 0) {
+                        val textBefore = newValue.text.substring(0, newlineIdx)
+                        textFieldValue = TextFieldValue(textBefore, TextRange(textBefore.length))
+                        onTextChanged(textBefore, TextRange(textBefore.length))
+                        onEnterPressed(newlineIdx)
                     } else {
                         textFieldValue = newValue
                         onTextChanged(newValue.text, newValue.selection)
@@ -203,7 +209,7 @@ fun RichBlockItem(
                     imeAction = ImeAction.Default
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = { onEnterPressed() }
+                    onDone = { onEnterPressed(textFieldValue.selection.start) }
                 )
             )
 
