@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.model.BlockType
+import com.baverika.r_journal.data.model.NoteColor
 import com.baverika.r_journal.data.model.RichBlock
 import com.baverika.r_journal.data.model.RichContent
 import com.baverika.r_journal.data.model.RichSpan
@@ -23,12 +24,13 @@ data class QuickNoteEditorState(
     val noteId: String = UUID.randomUUID().toString(),
     val title: String = "",
     val blocks: List<RichBlock> = listOf(RichBlock()),
-    val color: Long = 0xFF000000,
+    val color: NoteColor = NoteColor.DEFAULT,
     val isPinned: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val activeBlockIndex: Int = 0,
     val activeSelection: TextRange = TextRange.Zero,
+    val focusTargetBlockId: String? = null,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val isSaving: Boolean = false,
@@ -39,20 +41,20 @@ data class QuickNoteEditorState(
 private data class EditorSnapshot(
     val title: String,
     val blocks: List<RichBlock>,
-    val color: Long,
+    val color: NoteColor,
     val isPinned: Boolean
 )
 
 class QuickNoteEditorViewModel(
     private val repository: QuickNoteRepository,
     private val initialNoteId: String?,
-    defaultNoteColor: Long = 0xFF000000
+    defaultNoteColor: Long = NoteColor.DEFAULT.dotColor
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         QuickNoteEditorState(
             noteId = initialNoteId ?: UUID.randomUUID().toString(),
-            color = defaultNoteColor,
+            color = NoteColor.fromLong(defaultNoteColor),
             isNewNote = initialNoteId.isNullOrBlank()
         )
     )
@@ -82,7 +84,7 @@ class QuickNoteEditorViewModel(
                     noteId = note.id,
                     title = note.title,
                     blocks = blocks,
-                    color = note.color,
+                    color = NoteColor.fromLong(note.color),
                     isPinned = note.isPinned,
                     createdAt = note.timestamp,
                     updatedAt = note.timestamp,
@@ -134,10 +136,7 @@ class QuickNoteEditorViewModel(
         val currentBlocks = _state.value.blocks.toMutableList()
         if (index in currentBlocks.indices) {
             val oldBlock = currentBlocks[index]
-            // Clamping spans predictably matching RNotes
-            val adjustedSpans = oldBlock.spans.filter { it.start < newText.length }.map {
-                it.copy(end = minOf(it.end, newText.length))
-            }
+            val adjustedSpans = RichContent.adjustSpans(oldBlock.text, newText, oldBlock.spans)
             currentBlocks[index] = oldBlock.copy(text = newText, spans = adjustedSpans)
             _state.value = _state.value.copy(
                 blocks = currentBlocks,
@@ -206,7 +205,6 @@ class QuickNoteEditorViewModel(
                 val currentSpans = block.spans.toMutableList()
 
                 if (spanType == SpanType.COLOR) {
-                    // Remove existing color spans overlapping this range
                     currentSpans.removeAll {
                         it.type == SpanType.COLOR && !(it.end <= start || it.start >= end)
                     }
@@ -214,7 +212,6 @@ class QuickNoteEditorViewModel(
                         currentSpans.add(RichSpan(start = start, end = end, type = SpanType.COLOR, colorHex = colorHex))
                     }
                 } else {
-                    // Toggle style: if already covering this exact range, remove it; else add it
                     val existing = currentSpans.firstOrNull {
                         it.type == spanType && it.start <= start && it.end >= end
                     }
@@ -248,7 +245,7 @@ class QuickNoteEditorViewModel(
         return Pair(start, end)
     }
 
-    fun onEnterPressed(index: Int) {
+    fun onEnterPressed(index: Int, splitPosition: Int = -1) {
         val currentBlocks = _state.value.blocks.toMutableList()
         if (index !in currentBlocks.indices) return
         val block = currentBlocks[index]
@@ -262,6 +259,7 @@ class QuickNoteEditorViewModel(
                 blocks = currentBlocks,
                 activeBlockIndex = index,
                 activeSelection = TextRange.Zero,
+                focusTargetBlockId = block.id,
                 updatedAt = System.currentTimeMillis()
             )
             saveImmediately()
@@ -269,22 +267,46 @@ class QuickNoteEditorViewModel(
         }
 
         // Continue list/checklist or create normal block
-        val nextType = if (block.type == BlockType.CHECKLIST || block.type == BlockType.BULLET || block.type == BlockType.NUMBERED) {
-            block.type
-        } else {
-            BlockType.PARAGRAPH
+        val nextType = when (block.type) {
+            BlockType.CHECKLIST -> BlockType.CHECKLIST
+            BlockType.BULLET -> BlockType.BULLET
+            BlockType.NUMBERED -> BlockType.NUMBERED
+            BlockType.PARAGRAPH -> BlockType.PARAGRAPH
         }
 
-        val insertIndex = (index + 1).coerceAtMost(currentBlocks.size)
-        val newBlock = RichBlock(type = nextType)
+        val insertIndex = index + 1
+        val effectiveSplit = if (splitPosition in 0..block.text.length) splitPosition else block.text.length
+
+        val textBefore = block.text.substring(0, effectiveSplit)
+        val textAfter = block.text.substring(effectiveSplit)
+
+        val spansBefore = block.spans.filter { it.start < effectiveSplit }.map {
+            it.copy(end = minOf(it.end, effectiveSplit))
+        }
+        val spansAfter = block.spans.filter { it.end > effectiveSplit }.mapNotNull {
+            val newStart = maxOf(0, it.start - effectiveSplit)
+            val newEnd = maxOf(0, it.end - effectiveSplit)
+            if (newStart < newEnd) it.copy(start = newStart, end = newEnd) else null
+        }
+
+        currentBlocks[index] = block.copy(text = textBefore, spans = spansBefore)
+        val newBlock = RichBlock(type = nextType, text = textAfter, isChecked = false, spans = spansAfter)
         currentBlocks.add(insertIndex, newBlock)
+
         _state.value = _state.value.copy(
             blocks = currentBlocks,
             activeBlockIndex = insertIndex,
             activeSelection = TextRange.Zero,
+            focusTargetBlockId = newBlock.id,
             updatedAt = System.currentTimeMillis()
         )
         saveImmediately()
+    }
+
+    fun clearFocusTarget() {
+        if (_state.value.focusTargetBlockId != null) {
+            _state.value = _state.value.copy(focusTargetBlockId = null)
+        }
     }
 
     fun onBackspaceOnEmpty(index: Int) {
@@ -295,17 +317,16 @@ class QuickNoteEditorViewModel(
 
         if (block.type != BlockType.PARAGRAPH) {
             recordSnapshot()
-            // Revert list item to standard paragraph
             currentBlocks[index] = block.copy(type = BlockType.PARAGRAPH)
             _state.value = _state.value.copy(
                 blocks = currentBlocks,
                 activeBlockIndex = index,
+                focusTargetBlockId = block.id,
                 updatedAt = System.currentTimeMillis()
             )
             saveImmediately()
         } else if (currentBlocks.size > 1) {
             recordSnapshot()
-            // Remove empty paragraph block and focus previous block
             currentBlocks.removeAt(index)
             val newActive = (index - 1).coerceAtLeast(0)
             val prevBlock = currentBlocks[newActive]
@@ -313,6 +334,7 @@ class QuickNoteEditorViewModel(
                 blocks = currentBlocks,
                 activeBlockIndex = newActive,
                 activeSelection = TextRange(prevBlock.text.length),
+                focusTargetBlockId = prevBlock.id,
                 updatedAt = System.currentTimeMillis()
             )
             saveImmediately()
@@ -329,6 +351,7 @@ class QuickNoteEditorViewModel(
             blocks = currentBlocks,
             activeBlockIndex = insertIndex,
             activeSelection = TextRange.Zero,
+            focusTargetBlockId = newBlock.id,
             updatedAt = System.currentTimeMillis()
         )
         saveImmediately()
@@ -340,22 +363,28 @@ class QuickNoteEditorViewModel(
             recordSnapshot()
             currentBlocks.removeAt(index)
             val newActive = (index - 1).coerceAtLeast(0)
+            val prevBlock = currentBlocks[newActive]
             _state.value = _state.value.copy(
                 blocks = currentBlocks,
                 activeBlockIndex = newActive,
+                focusTargetBlockId = prevBlock.id,
                 updatedAt = System.currentTimeMillis()
             )
             saveImmediately()
         }
     }
 
-    fun setNoteColor(color: Long) {
+    fun setNoteColor(color: NoteColor) {
         recordSnapshot()
         _state.value = _state.value.copy(
             color = color,
             updatedAt = System.currentTimeMillis()
         )
         saveImmediately()
+    }
+
+    fun setNoteColor(colorLong: Long) {
+        setNoteColor(NoteColor.fromLong(colorLong))
     }
 
     fun togglePin() {
@@ -423,10 +452,10 @@ class QuickNoteEditorViewModel(
             val contentJson = RichContent(blocks = current.blocks).toJson()
             val note = QuickNote(
                 id = current.noteId,
-                title = current.title, // Preserves empty title as "", not forcing "Untitled"
+                title = current.title,
                 content = contentJson,
                 timestamp = current.updatedAt,
-                color = current.color,
+                color = current.color.dotColor,
                 isPinned = current.isPinned
             )
             repository.upsertNote(note)
@@ -444,7 +473,7 @@ class QuickNoteEditorViewModel(
                 id = current.noteId,
                 title = current.title,
                 content = RichContent(blocks = current.blocks).toJson(),
-                color = current.color,
+                color = current.color.dotColor,
                 isPinned = current.isPinned
             )
             repository.deleteNote(note)
@@ -455,7 +484,7 @@ class QuickNoteEditorViewModel(
     class Factory(
         private val repository: QuickNoteRepository,
         private val initialNoteId: String?,
-        private val defaultNoteColor: Long = 0xFF000000
+        private val defaultNoteColor: Long = NoteColor.DEFAULT.dotColor
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

@@ -10,7 +10,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.PushPin
@@ -31,6 +34,7 @@ import androidx.navigation.NavController
 import com.baverika.r_journal.data.local.QuickNotesPreferences
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.model.BlockType
+import com.baverika.r_journal.data.model.NoteColor
 import com.baverika.r_journal.data.model.RichBlock
 import com.baverika.r_journal.data.model.RichContent
 import com.baverika.r_journal.data.model.SpanType
@@ -276,15 +280,15 @@ fun QuickNoteCard(
     onPin: (QuickNote) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backgroundAlpha: Float = DEFAULT_WIDGET_ALPHA // Transparency setting for widget background
+    backgroundAlpha: Float = 1.0f
 ) {
-    val cardColor = if (note.color != 0L) {
-        Color(note.color).copy(alpha = backgroundAlpha)
-    } else {
-        MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-    }
-    val textColor = MaterialTheme.colorScheme.onSurface
-    val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val currentTheme = LocalAppTheme.current
+    val isDark = currentTheme.isDark
+    val noteColor = NoteColor.fromLong(note.color)
+    val cardColor = noteColor.containerColor(isDark).copy(alpha = backgroundAlpha)
+    val borderColor = noteColor.borderColor(isDark)
+    val textColor = ColorUtils.getContrastingTextColor(cardColor)
+    val secondaryTextColor = ColorUtils.getSecondaryTextColor(cardColor)
     
     Card(
         modifier = modifier
@@ -292,7 +296,7 @@ fun QuickNoteCard(
             .padding(4.dp)
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = borderColor,
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable { onClick() },
@@ -301,8 +305,8 @@ fun QuickNoteCard(
             containerColor = cardColor
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 4.dp
+            defaultElevation = if (isDark) 0.dp else 1.dp,
+            pressedElevation = 2.dp
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -310,18 +314,31 @@ fun QuickNoteCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (note.title.isNotBlank()) {
-                    Text(
-                        text = note.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = textColor
-                    )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (noteColor != NoteColor.DEFAULT) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(noteColor.dot())
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    if (note.title.isNotBlank()) {
+                        Text(
+                            text = note.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = textColor
+                        )
+                    }
                 }
                 // Pin button
                 IconButton(
@@ -389,7 +406,7 @@ fun ParsedContent(
         val richContent = remember(content) { RichContent.fromContentString(content) }
         Column(modifier = Modifier.fillMaxWidth()) {
             richContent.blocks.take(8).forEachIndexed { index, block ->
-                val annotatedText = remember(block.text, block.spans, block.isChecked) {
+                val annotatedText = remember(block.text, block.spans, block.isChecked, textColor) {
                     buildBlockAnnotatedString(block, textColor, block.type == BlockType.CHECKLIST && block.isChecked)
                 }
                 when (block.type) {

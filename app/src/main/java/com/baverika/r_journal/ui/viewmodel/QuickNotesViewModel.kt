@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.QuickNotesPreferences
 import com.baverika.r_journal.data.local.entity.QuickNote
+import com.baverika.r_journal.data.model.NoteColor
 import com.baverika.r_journal.repository.QuickNoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,7 +48,7 @@ class QuickNoteViewModel(
         }
     }
 
-    fun addNote(title: String, content: String, color: Long = 0xFFFFFFFF, isPinned: Boolean = false) {
+    fun addNote(title: String, content: String, color: Long = NoteColor.DEFAULT.dotColor, isPinned: Boolean = false) {
         if (title.isBlank() && content.isBlank()) return
         val note = QuickNote(
             title = title.ifBlank { "Untitled" },
