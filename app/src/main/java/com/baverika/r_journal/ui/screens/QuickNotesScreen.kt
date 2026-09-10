@@ -425,7 +425,7 @@ fun ParsedContent(
                             verticalAlignment = Alignment.Top
                         ) {
                             Text(
-                                text = "•",
+                                text = "\u2022",
                                 color = textColor,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
@@ -509,9 +509,10 @@ fun ParsedContent(
                     // Bullet list
                     line.trimStart().startsWith("-") || 
                     line.trimStart().startsWith("*") || 
+                    line.trimStart().startsWith("\u2022") ||
                     line.trimStart().startsWith("•") -> {
                         BulletItem(
-                            text = line.trimStart().removePrefix("-").removePrefix("*").removePrefix("•").trim(),
+                            text = line.trimStart().removePrefix("-").removePrefix("*").removePrefix("\u2022").removePrefix("•").trim(),
                             textColor = textColor
                         )
                     }
@@ -630,7 +631,7 @@ fun BulletItem(
         verticalAlignment = Alignment.Top
     ) {
         Text(
-            text = "•",
+            text = "\u2022",
             color = textColor,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(end = 8.dp)
@@ -662,5 +663,5 @@ fun NumberedItem(
 private fun formatTimestamp(timestamp: Long): String {
     return LocalDateTime
         .ofInstant(java.time.Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("MMM d, yyyy · h:mm a"))
+        .format(DateTimeFormatter.ofPattern("MMM d, yyyy \u2022 h:mm a"))
 }

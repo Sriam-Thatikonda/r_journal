@@ -62,7 +62,6 @@ class QuickNoteEditorViewModel(
     private val redoStack = mutableListOf<EditorSnapshot>()
 
     private var autoSaveJob: Job? = null
-    private var isDirty = false
 
     init {
         if (!initialNoteId.isNullOrBlank()) {
@@ -135,7 +134,10 @@ class QuickNoteEditorViewModel(
         val currentBlocks = _state.value.blocks.toMutableList()
         if (index in currentBlocks.indices) {
             val oldBlock = currentBlocks[index]
-            val adjustedSpans = RichContent.adjustSpans(oldBlock.text, newText, oldBlock.spans)
+            // Clamping spans predictably matching RNotes
+            val adjustedSpans = oldBlock.spans.filter { it.start < newText.length }.map {
+                it.copy(end = minOf(it.end, newText.length))
+            }
             currentBlocks[index] = oldBlock.copy(text = newText, spans = adjustedSpans)
             _state.value = _state.value.copy(
                 blocks = currentBlocks,
@@ -235,25 +237,25 @@ class QuickNoteEditorViewModel(
 
     private fun findWordBoundaries(text: String, cursor: Int): Pair<Int, Int> {
         if (text.isEmpty() || cursor < 0 || cursor > text.length) return Pair(0, 0)
-        var start = cursor
+        var start = cursor.coerceIn(0, text.length)
         while (start > 0 && !text[start - 1].isWhitespace()) {
             start--
         }
-        var end = cursor
+        var end = cursor.coerceIn(0, text.length)
         while (end < text.length && !text[end].isWhitespace()) {
             end++
         }
         return Pair(start, end)
     }
 
-    fun onEnterPressed(index: Int, splitPosition: Int = -1) {
+    fun onEnterPressed(index: Int) {
         val currentBlocks = _state.value.blocks.toMutableList()
         if (index !in currentBlocks.indices) return
         val block = currentBlocks[index]
 
         recordSnapshot()
 
-        // If pressing enter on empty list/checklist item -> exit to normal paragraph
+        // If pressing enter on empty list/checklist/numbered item -> exit to normal paragraph
         if (block.text.isEmpty() && block.type != BlockType.PARAGRAPH) {
             currentBlocks[index] = block.copy(type = BlockType.PARAGRAPH)
             _state.value = _state.value.copy(
@@ -266,38 +268,16 @@ class QuickNoteEditorViewModel(
             return
         }
 
-        // Determine type of new block
-        val nextType = when (block.type) {
-            BlockType.CHECKLIST -> BlockType.CHECKLIST
-            BlockType.BULLET -> BlockType.BULLET
-            BlockType.NUMBERED -> BlockType.NUMBERED
-            BlockType.PARAGRAPH -> BlockType.PARAGRAPH
-        }
-
-        val insertIndex = index + 1
-        if (splitPosition in 0 until block.text.length) {
-            // Split block at cursor
-            val textBefore = block.text.substring(0, splitPosition)
-            val textAfter = block.text.substring(splitPosition)
-
-            val spansBefore = block.spans.filter { it.start < splitPosition }.map {
-                it.copy(end = minOf(it.end, splitPosition))
-            }
-            val spansAfter = block.spans.filter { it.end > splitPosition }.mapNotNull {
-                val newStart = maxOf(0, it.start - splitPosition)
-                val newEnd = maxOf(0, it.end - splitPosition)
-                if (newStart < newEnd) it.copy(start = newStart, end = newEnd) else null
-            }
-
-            currentBlocks[index] = block.copy(text = textBefore, spans = spansBefore)
-            val newBlock = RichBlock(type = nextType, text = textAfter, isChecked = false, spans = spansAfter)
-            currentBlocks.add(insertIndex, newBlock)
+        // Continue list/checklist or create normal block
+        val nextType = if (block.type == BlockType.CHECKLIST || block.type == BlockType.BULLET || block.type == BlockType.NUMBERED) {
+            block.type
         } else {
-            // Append new block below
-            val newBlock = RichBlock(type = nextType, text = "", isChecked = false)
-            currentBlocks.add(insertIndex, newBlock)
+            BlockType.PARAGRAPH
         }
 
+        val insertIndex = (index + 1).coerceAtMost(currentBlocks.size)
+        val newBlock = RichBlock(type = nextType)
+        currentBlocks.add(insertIndex, newBlock)
         _state.value = _state.value.copy(
             blocks = currentBlocks,
             activeBlockIndex = insertIndex,
@@ -313,8 +293,8 @@ class QuickNoteEditorViewModel(
         val block = currentBlocks[index]
         if (block.text.isNotEmpty()) return
 
-        recordSnapshot()
         if (block.type != BlockType.PARAGRAPH) {
+            recordSnapshot()
             // Revert list item to standard paragraph
             currentBlocks[index] = block.copy(type = BlockType.PARAGRAPH)
             _state.value = _state.value.copy(
@@ -324,6 +304,7 @@ class QuickNoteEditorViewModel(
             )
             saveImmediately()
         } else if (currentBlocks.size > 1) {
+            recordSnapshot()
             // Remove empty paragraph block and focus previous block
             currentBlocks.removeAt(index)
             val newActive = (index - 1).coerceAtLeast(0)
@@ -400,7 +381,7 @@ class QuickNoteEditorViewModel(
                 updatedAt = System.currentTimeMillis()
             )
             updateUndoRedoAvailability()
-            persistNote(_state.value)
+            saveImmediately()
         }
     }
 
@@ -417,45 +398,38 @@ class QuickNoteEditorViewModel(
                 updatedAt = System.currentTimeMillis()
             )
             updateUndoRedoAvailability()
-            persistNote(_state.value)
+            saveImmediately()
         }
     }
 
     private fun scheduleAutoSave() {
-        isDirty = true
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
-            delay(600)
+            delay(500)
             recordSnapshot()
-            persistNote(_state.value)
+            saveImmediately()
         }
     }
 
     fun saveImmediately() {
-        autoSaveJob?.cancel()
-        recordSnapshot()
-        persistNote(_state.value)
-    }
-
-    private fun persistNote(current: QuickNoteEditorState) {
-        val hasContent = current.title.isNotBlank() || current.blocks.any { it.text.isNotBlank() }
-        if (!hasContent && current.isNewNote) {
-            return
-        }
-
         viewModelScope.launch {
+            val current = _state.value
+            val hasContent = current.title.isNotBlank() || current.blocks.any { it.text.isNotBlank() }
+            if (!hasContent && current.isNewNote) {
+                return@launch
+            }
+
             _state.value = _state.value.copy(isSaving = true)
             val contentJson = RichContent(blocks = current.blocks).toJson()
             val note = QuickNote(
                 id = current.noteId,
-                title = current.title.ifBlank { "Untitled" },
+                title = current.title, // Preserves empty title as "", not forcing "Untitled"
                 content = contentJson,
-                timestamp = System.currentTimeMillis(),
+                timestamp = current.updatedAt,
                 color = current.color,
                 isPinned = current.isPinned
             )
             repository.upsertNote(note)
-            isDirty = false
             _state.value = _state.value.copy(
                 isSaving = false,
                 isNewNote = false
@@ -478,10 +452,14 @@ class QuickNoteEditorViewModel(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        if (isDirty) {
-            saveImmediately()
+    class Factory(
+        private val repository: QuickNoteRepository,
+        private val initialNoteId: String?,
+        private val defaultNoteColor: Long = 0xFF000000
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return QuickNoteEditorViewModel(repository, initialNoteId, defaultNoteColor) as T
         }
     }
 }

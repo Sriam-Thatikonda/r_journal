@@ -61,14 +61,14 @@ data class RichContent(
     @SerializedName("version") val version: Int = 1
 ) {
     fun toPlainText(): String {
-        return blocks.joinToString("\n") { block ->
+        return blocks.mapIndexed { index, block ->
             when (block.type) {
                 BlockType.CHECKLIST -> if (block.isChecked) "[x] ${block.text}" else "[ ] ${block.text}"
-                BlockType.BULLET -> "• ${block.text}"
-                BlockType.NUMBERED -> block.text
+                BlockType.BULLET -> "\u2022 ${block.text}"
+                BlockType.NUMBERED -> "${index + 1}. ${block.text}"
                 BlockType.PARAGRAPH -> block.text
             }
-        }
+        }.joinToString("\n")
     }
 
     fun hasChecklists(): Boolean {
@@ -142,13 +142,9 @@ data class RichContent(
                         text = rawLine.replaceFirst(Regex("^\\s*-\\s*\\[ \\]\\s*"), ""),
                         isChecked = false
                     )
-                    line.startsWith("• ") -> RichBlock(
+                    line.startsWith("\u2022 ") || line.startsWith("• ") || line.startsWith("* ") || line.startsWith("- ") -> RichBlock(
                         type = BlockType.BULLET,
-                        text = rawLine.replaceFirst(Regex("^\\s*•\\s*"), "")
-                    )
-                    line.startsWith("- ") || line.startsWith("* ") -> RichBlock(
-                        type = BlockType.BULLET,
-                        text = rawLine.replaceFirst(Regex("^\\s*[-*]\\s*"), "")
+                        text = rawLine.replaceFirst(Regex("^\\s*[\u2022•*-]\\s*"), "")
                     )
                     line.matches(Regex("^\\d+\\.\\s.*")) -> {
                         val dotIndex = rawLine.indexOf(". ")
@@ -167,70 +163,19 @@ data class RichContent(
         }
 
         /**
-         * Adjusts existing span ranges when block text changes so formatting remains aligned with words.
+         * Clamps existing span ranges when block text changes so formatting remains aligned and valid.
+         * Modeled after the proven RNotes implementation.
          */
+        @Suppress("UNUSED_PARAMETER")
         fun adjustSpans(
             oldText: String,
             newText: String,
             spans: List<RichSpan>
         ): List<RichSpan> {
             if (spans.isEmpty() || newText.isEmpty()) return emptyList()
-            if (oldText == newText) return spans
-
-            // Find common prefix
-            var prefixLen = 0
-            val minLen = minOf(oldText.length, newText.length)
-            while (prefixLen < minLen && oldText[prefixLen] == newText[prefixLen]) {
-                prefixLen++
-            }
-
-            // Find common suffix
-            var oldSuffix = oldText.length
-            var newSuffix = newText.length
-            while (oldSuffix > prefixLen && newSuffix > prefixLen && oldText[oldSuffix - 1] == newText[newSuffix - 1]) {
-                oldSuffix--
-                newSuffix--
-            }
-
-            val diff = newText.length - oldText.length
-
-            return spans.mapNotNull { span ->
-                var s = span.start
-                var e = span.end
-
-                if (diff > 0) {
-                    // Insertion at prefixLen
-                    if (s >= prefixLen) {
-                        s += diff
-                        e += diff
-                    } else if (e > prefixLen) {
-                        e += diff
-                    }
-                } else if (diff < 0) {
-                    // Deletion between prefixLen and prefixLen - diff
-                    val delStart = prefixLen
-                    val delEnd = prefixLen - diff
-
-                    if (s >= delEnd) {
-                        s += diff
-                        e += diff
-                    } else if (e <= delStart) {
-                        // Before deletion - unchanged
-                    } else {
-                        // Overlaps deletion
-                        if (s >= delStart) s = delStart
-                        if (e > delEnd) e += diff else e = delStart
-                    }
-                }
-
-                s = s.coerceIn(0, newText.length)
-                e = e.coerceIn(s, newText.length)
-
-                if (s < e) {
-                    span.copy(start = s, end = e)
-                } else {
-                    null
-                }
+            val newLength = newText.length
+            return spans.filter { it.start < newLength }.map {
+                it.copy(end = minOf(it.end, newLength))
             }
         }
     }
