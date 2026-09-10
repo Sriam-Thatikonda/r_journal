@@ -105,20 +105,6 @@ fun QuickNoteEditorScreen(
         }
     }
 
-    // Auto-focus active block when user splits block or adds new block
-    LaunchedEffect(state.activeBlockIndex, state.blocks.size) {
-        if (state.isLoaded && !(state.isNewNote && state.title.isEmpty() && state.blocks.firstOrNull()?.text.isNullOrEmpty())) {
-            val activeIndex = state.activeBlockIndex
-            if (activeIndex in state.blocks.indices) {
-                val block = state.blocks[activeIndex]
-                kotlinx.coroutines.delay(50)
-                try {
-                    blockFocusRequesters[block.id]?.requestFocus()
-                } catch (_: Exception) {}
-            }
-        }
-    }
-
     val backgroundColor by animateColorAsState(
         targetValue = Color(state.color),
         animationSpec = tween(200),
@@ -131,15 +117,33 @@ fun QuickNoteEditorScreen(
         val dt = Instant.ofEpochMilli(state.updatedAt)
             .atZone(ZoneId.systemDefault())
             .toLocalDateTime()
-        dt.format(DateTimeFormatter.ofPattern("EEE, MMM d, yyyy • h:mm a"))
+        dt.format(DateTimeFormatter.ofPattern("EEE, MMM d, yyyy \u2022 h:mm a"))
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(backgroundColor)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        containerColor = backgroundColor,
+        bottomBar = {
+            val activeType = state.blocks.getOrNull(state.activeBlockIndex)?.type ?: BlockType.PARAGRAPH
+            RichFormattingToolbar(
+                activeBlockType = activeType,
+                canUndo = state.canUndo,
+                canRedo = state.canRedo,
+                onFormatClick = { spanType, colorHex ->
+                    viewModel.applyFormatting(spanType, colorHex)
+                },
+                onListTypeClick = { blockType ->
+                    viewModel.setBlockType(blockType)
+                },
+                onUndoClick = { viewModel.undo() },
+                onRedoClick = { viewModel.redo() }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             // --- TOP ACTION BAR ---
             Row(
                 modifier = Modifier
@@ -293,7 +297,7 @@ fun QuickNoteEditorScreen(
                     color = secondaryTextColor.copy(alpha = 0.6f)
                 )
 
-                // Subtle Autosave status
+                // Autosave status
                 Text(
                     text = if (state.isSaving) "Saving..." else "Saved",
                     style = MaterialTheme.typography.labelSmall,
@@ -353,10 +357,10 @@ fun QuickNoteEditorScreen(
                         onToggleChecked = { blockId ->
                             viewModel.toggleChecklist(blockId)
                         },
-                        onEnterPressed = { splitPos ->
-                            viewModel.onEnterPressed(index, splitPos)
+                        onEnterPressed = {
+                            viewModel.onEnterPressed(index)
                             scope.launch {
-                                listState.animateScrollToItem(index + 1)
+                                listState.animateScrollToItem((index + 1).coerceAtMost(state.blocks.size))
                             }
                         },
                         onBackspaceOnEmpty = {
@@ -365,27 +369,10 @@ fun QuickNoteEditorScreen(
                     )
                 }
 
-                // Comfortable bottom spacing above keyboard-docked toolbar
                 item {
-                    Spacer(modifier = Modifier.height(72.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
-
-            // --- BOTTOM FORMATTING TOOLBAR ---
-            val activeType = state.blocks.getOrNull(state.activeBlockIndex)?.type ?: BlockType.PARAGRAPH
-            RichFormattingToolbar(
-                activeBlockType = activeType,
-                canUndo = state.canUndo,
-                canRedo = state.canRedo,
-                onFormatClick = { spanType, colorHex ->
-                    viewModel.applyFormatting(spanType, colorHex)
-                },
-                onListTypeClick = { blockType ->
-                    viewModel.setBlockType(blockType)
-                },
-                onUndoClick = { viewModel.undo() },
-                onRedoClick = { viewModel.redo() }
-            )
         }
     }
 

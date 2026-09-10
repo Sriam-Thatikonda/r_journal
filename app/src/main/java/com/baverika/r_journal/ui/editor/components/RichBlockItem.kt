@@ -54,7 +54,7 @@ fun RichBlockItem(
     onTextChanged: (String, TextRange) -> Unit,
     onFocusGained: (TextRange) -> Unit,
     onToggleChecked: (String) -> Unit,
-    onEnterPressed: (Int) -> Unit,
+    onEnterPressed: () -> Unit,
     onBackspaceOnEmpty: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -72,7 +72,11 @@ fun RichBlockItem(
     }
 
     val visualTransformation = remember(block.spans, block.isChecked, block.type) {
-        RichTextVisualTransformation(block.spans, block.type == BlockType.CHECKLIST && block.isChecked)
+        RichTextVisualTransformation(
+            spans = block.spans,
+            forceStrikeThrough = block.type == BlockType.CHECKLIST && block.isChecked,
+            defaultColor = textColor
+        )
     }
 
     val itemTextColor by animateColorAsState(
@@ -89,15 +93,14 @@ fun RichBlockItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Fixed-width prefix column for proper indentation
+        // Leading prefix based on block type
         when (block.type) {
             BlockType.CHECKLIST -> {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .padding(top = 2.dp)
+                        .size(36.dp)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -106,10 +109,10 @@ fun RichBlockItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = if (block.isChecked) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                        imageVector = if (block.isChecked) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank,
                         contentDescription = if (block.isChecked) "Checked" else "Unchecked",
                         tint = if (block.isChecked) MaterialTheme.colorScheme.primary else secondaryTextColor,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(4.dp))
@@ -117,14 +120,14 @@ fun RichBlockItem(
             BlockType.BULLET -> {
                 Box(
                     modifier = Modifier
-                        .size(width = 28.dp, height = 28.dp)
-                        .padding(top = 2.dp),
+                        .size(width = 28.dp, height = 36.dp)
+                        .padding(start = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "•",
+                        text = "\u2022",
                         style = MaterialTheme.typography.titleLarge,
-                        color = textColor,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -132,16 +135,15 @@ fun RichBlockItem(
             BlockType.NUMBERED -> {
                 Box(
                     modifier = Modifier
-                        .widthIn(min = 28.dp)
-                        .height(28.dp)
-                        .padding(top = 4.dp, end = 6.dp),
+                        .size(width = 32.dp, height = 36.dp)
+                        .padding(start = 4.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
                         text = "${index + 1}.",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = textColor
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -150,26 +152,26 @@ fun RichBlockItem(
             }
         }
 
-        // Editable text column - wrapped lines stay within this column
+        // Editable text column
         Box(
-            modifier = Modifier
-                .weight(1f)
-                .padding(top = 4.dp),
+            modifier = Modifier.weight(1f),
             contentAlignment = Alignment.CenterStart
         ) {
             BasicTextField(
                 value = textFieldValue,
                 onValueChange = { newValue ->
-                    // Handle enter press if newline character is inserted
-                    val newlineIdx = newValue.text.indexOf('\n')
-                    if (newlineIdx >= 0) {
-                        // Enter was pressed at newlineIdx
-                        val before = newValue.text.substring(0, newlineIdx)
-                        val after = if (newlineIdx + 1 <= newValue.text.length) newValue.text.substring(newlineIdx + 1) else ""
-                        val cleaned = before + after
-                        textFieldValue = TextFieldValue(cleaned, TextRange(newlineIdx))
-                        onTextChanged(cleaned, TextRange(newlineIdx))
-                        onEnterPressed(newlineIdx)
+                    // Handle enter press from soft keyboard if newline is typed
+                    if (newValue.text.endsWith("\n") && !textFieldValue.text.endsWith("\n")) {
+                        val cleaned = newValue.text.removeSuffix("\n")
+                        textFieldValue = TextFieldValue(cleaned, TextRange(cleaned.length))
+                        onTextChanged(cleaned, TextRange(cleaned.length))
+                        onEnterPressed()
+                    } else if (newValue.text.contains("\n")) {
+                        val cleaned = newValue.text.replace("\n", "")
+                        val cursor = newValue.selection.start.coerceIn(0, cleaned.length)
+                        textFieldValue = TextFieldValue(cleaned, TextRange(cursor))
+                        onTextChanged(cleaned, TextRange(cursor))
+                        onEnterPressed()
                     } else {
                         textFieldValue = newValue
                         onTextChanged(newValue.text, newValue.selection)
@@ -193,29 +195,29 @@ fun RichBlockItem(
                     },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = itemTextColor,
-                    lineHeight = 24.sp
+                    lineHeight = 26.sp
                 ),
-                cursorBrush = SolidColor(textColor),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 visualTransformation = visualTransformation,
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Default
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = { onEnterPressed(textFieldValue.selection.end) }
+                    onDone = { onEnterPressed() }
                 )
             )
 
             if (textFieldValue.text.isEmpty() && isFocused) {
                 Text(
                     text = when (block.type) {
-                        BlockType.CHECKLIST -> "Checklist item..."
+                        BlockType.CHECKLIST -> "To-do item..."
                         BlockType.BULLET -> "List item..."
-                        BlockType.NUMBERED -> "Numbered item..."
-                        BlockType.PARAGRAPH -> "Note..."
+                        BlockType.NUMBERED -> "List item..."
+                        BlockType.PARAGRAPH -> "Type something..."
                     },
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = secondaryTextColor.copy(alpha = 0.4f),
-                        lineHeight = 24.sp
+                        lineHeight = 26.sp
                     )
                 )
             }
@@ -225,7 +227,8 @@ fun RichBlockItem(
 
 class RichTextVisualTransformation(
     private val spans: List<RichSpan>,
-    private val forceStrikeThrough: Boolean
+    private val forceStrikeThrough: Boolean,
+    private val defaultColor: Color = Color.Unspecified
 ) : VisualTransformation {
 
     override fun filter(text: AnnotatedString): TransformedText {
@@ -254,10 +257,10 @@ class RichTextVisualTransformation(
                             if (span.colorHex != null) {
                                 Color(android.graphics.Color.parseColor(span.colorHex))
                             } else {
-                                Color.Unspecified
+                                defaultColor
                             }
                         } catch (_: Exception) {
-                            Color.Unspecified
+                            defaultColor
                         }
                         SpanStyle(color = parsedColor)
                     }
