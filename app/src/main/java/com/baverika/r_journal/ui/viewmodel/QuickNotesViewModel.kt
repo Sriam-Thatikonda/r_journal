@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.QuickNotesPreferences
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.model.NoteColor
+import com.baverika.r_journal.data.model.RichContent
 import com.baverika.r_journal.repository.QuickNoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -78,6 +79,18 @@ class QuickNoteViewModel(
     fun togglePin(note: QuickNote) {
         viewModelScope.launch {
             repository.updateNote(note.copy(isPinned = !note.isPinned))
+        }
+    }
+
+    fun toggleChecklist(note: QuickNote, blockId: String) {
+        viewModelScope.launch {
+            val richContent = RichContent.fromContentString(note.content)
+            val updatedRichContent = richContent.toggleChecklist(blockId)
+            val updatedNote = note.copy(
+                content = updatedRichContent.toJson(),
+                timestamp = System.currentTimeMillis()
+            )
+            repository.updateNote(updatedNote)
         }
     }
 }

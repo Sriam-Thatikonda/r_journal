@@ -83,9 +83,7 @@ data class RichContent(
 
     fun toggleChecklist(blockId: String): RichContent {
         return copy(
-            blocks = blocks.map {
-                if (it.id == blockId) it.toggleChecked() else it
-            }
+            blocks = reorderChecklistOnToggle(blocks, blockId)
         )
     }
 
@@ -95,6 +93,60 @@ data class RichContent(
 
     companion object {
         private val gson = Gson()
+
+        /**
+         * Toggles the checked state of a checklist block and repositions it:
+         * - If enabled (checked): moves to the top of remaining ticked checkboxes (or bottom of the list if no other ticked items).
+         * - If unchecked: moves to the bottom of the unchecked items (or bottom of the list if all unchecked).
+         * Surrounding non-checklist blocks (e.g. paragraphs or headers) are preserved.
+         */
+        fun reorderChecklistOnToggle(
+            blocks: List<RichBlock>,
+            blockId: String
+        ): List<RichBlock> {
+            val index = blocks.indexOfFirst { it.id == blockId }
+            if (index == -1) return blocks
+
+            val targetBlock = blocks[index]
+            if (targetBlock.type != BlockType.CHECKLIST) return blocks
+
+            val newCheckedState = !targetBlock.isChecked
+            val updatedBlock = targetBlock.copy(isChecked = newCheckedState)
+
+            // 1. Find the contiguous range of CHECKLIST blocks containing this item
+            var startIndex = index
+            while (startIndex > 0 && blocks[startIndex - 1].type == BlockType.CHECKLIST) {
+                startIndex--
+            }
+
+            var endIndex = index
+            while (endIndex < blocks.size - 1 && blocks[endIndex + 1].type == BlockType.CHECKLIST) {
+                endIndex++
+            }
+
+            // 2. Extract contiguous checklist group and remove the target block
+            val group = blocks.subList(startIndex, endIndex + 1).toMutableList()
+            val indexInGroup = index - startIndex
+            group.removeAt(indexInGroup)
+
+            // 3. Determine insertion point:
+            // - If checked: top of remaining ticked checkboxes (first index where isChecked == true), or bottom of list if none.
+            // - If unchecked: bottom of unchecked items (first index where isChecked == true, i.e., immediately before ticked items), or bottom of list if all unchecked.
+            val firstTickedIndex = group.indexOfFirst { it.isChecked }
+            if (firstTickedIndex != -1) {
+                group.add(firstTickedIndex, updatedBlock)
+            } else {
+                group.add(updatedBlock)
+            }
+
+            // 4. Rebuild full blocks list preserving non-checklist blocks
+            val result = blocks.toMutableList()
+            for (i in endIndex downTo startIndex) {
+                result.removeAt(i)
+            }
+            result.addAll(startIndex, group)
+            return result
+        }
 
         fun fromJson(json: String): RichContent {
             return gson.fromJson(json, RichContent::class.java)

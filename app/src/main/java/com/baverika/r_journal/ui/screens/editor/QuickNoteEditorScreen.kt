@@ -313,6 +313,7 @@ fun QuickNoteEditorScreen(
                     val requester = blockFocusRequesters.getOrPut(block.id) { FocusRequester() }
 
                     RichBlockItem(
+                        modifier = Modifier.animateItem(),
                         block = block,
                         index = index,
                         isFocused = state.activeBlockIndex == index,
