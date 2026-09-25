@@ -4,6 +4,7 @@ import androidx.compose.ui.text.TextRange
 import com.baverika.r_journal.data.local.dao.QuickNoteDao
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.model.BlockType
+import com.baverika.r_journal.data.model.RichBlock
 import com.baverika.r_journal.data.model.RichContent
 import com.baverika.r_journal.data.model.SpanType
 import com.baverika.r_journal.repository.QuickNoteRepository
@@ -219,5 +220,61 @@ class QuickNoteEditorViewModelTest {
 
         assertEquals(1, fakeDao.notes.size)
         assertEquals("Important Note", fakeDao.notes.values.first().title)
+    }
+
+    @Test
+    fun toggleChecklist_movesItemToTopOfTickedCheckboxes_andTracksActiveIndex() = runTest(testDispatcher) {
+        val note = QuickNote(
+            id = "note-reorder-test",
+            title = "Checklist Note",
+            content = RichContent(
+                blocks = listOf(
+                    RichBlock(id = "item-1", type = BlockType.CHECKLIST, text = "Task 1", isChecked = false),
+                    RichBlock(id = "item-2", type = BlockType.CHECKLIST, text = "Task 2", isChecked = false),
+                    RichBlock(id = "item-3", type = BlockType.CHECKLIST, text = "Task 3", isChecked = true)
+                )
+            ).toJson()
+        )
+        fakeDao.insertNote(note)
+
+        val viewModel = QuickNoteEditorViewModel(repository, initialNoteId = "note-reorder-test")
+        testDispatcher.scheduler.runCurrent()
+
+        // Toggle item-1 to checked: it should move to the top of ticked items (before item-3)
+        viewModel.toggleChecklist("item-1")
+        testDispatcher.scheduler.runCurrent()
+
+        val blocks = viewModel.state.value.blocks
+        assertEquals(listOf("item-2", "item-1", "item-3"), blocks.map { it.id })
+        assertTrue(blocks.first { it.id == "item-1" }.isChecked)
+        // Active index should follow the moved item (index 1)
+        assertEquals(1, viewModel.state.value.activeBlockIndex)
+    }
+
+    @Test
+    fun toggleChecklist_uncheckingMovesToBottomOfUncheckedItems() = runTest(testDispatcher) {
+        val note = QuickNote(
+            id = "note-uncheck-test",
+            title = "Checklist Note",
+            content = RichContent(
+                blocks = listOf(
+                    RichBlock(id = "item-1", type = BlockType.CHECKLIST, text = "Task 1", isChecked = false),
+                    RichBlock(id = "item-2", type = BlockType.CHECKLIST, text = "Task 2", isChecked = true),
+                    RichBlock(id = "item-3", type = BlockType.CHECKLIST, text = "Task 3", isChecked = true)
+                )
+            ).toJson()
+        )
+        fakeDao.insertNote(note)
+
+        val viewModel = QuickNoteEditorViewModel(repository, initialNoteId = "note-uncheck-test")
+        testDispatcher.scheduler.runCurrent()
+
+        // Uncheck item-2: should move to bottom of unchecked items (after item-1, before item-3)
+        viewModel.toggleChecklist("item-2")
+        testDispatcher.scheduler.runCurrent()
+
+        val blocks = viewModel.state.value.blocks
+        assertEquals(listOf("item-1", "item-2", "item-3"), blocks.map { it.id })
+        assertFalse(blocks.first { it.id == "item-2" }.isChecked)
     }
 }
