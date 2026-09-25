@@ -42,8 +42,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ChatBubble(
     message: ChatMessage,
-    isCurrentEntryToday: Boolean,
-    isAddedLater: Boolean,
+    isCurrentEntryToday: Boolean = true,
+    isAddedLater: Boolean = false,
     navController: NavController,
     onLongClick: (() -> Unit)? = null,
     repliedMessage: ChatMessage? = null,

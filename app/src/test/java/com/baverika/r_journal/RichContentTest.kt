@@ -155,6 +155,95 @@ class RichContentTest {
     }
 
     @Test
+    fun checklist_toggleChecked_movesToTopOfRemainingTickedCheckboxes() {
+        val content = RichContent(
+            blocks = listOf(
+                RichBlock(id = "item-a", type = BlockType.CHECKLIST, text = "Task A", isChecked = false),
+                RichBlock(id = "item-b", type = BlockType.CHECKLIST, text = "Task B", isChecked = false),
+                RichBlock(id = "item-c", type = BlockType.CHECKLIST, text = "Task C", isChecked = false),
+                RichBlock(id = "item-d", type = BlockType.CHECKLIST, text = "Task D", isChecked = true),
+                RichBlock(id = "item-e", type = BlockType.CHECKLIST, text = "Task E", isChecked = true)
+            )
+        )
+
+        val toggled = content.toggleChecklist("item-b")
+        val ids = toggled.blocks.map { it.id }
+        // Task B should move to the top of remaining ticked items (directly above Task D)
+        assertEquals(listOf("item-a", "item-c", "item-b", "item-d", "item-e"), ids)
+        assertTrue(toggled.blocks.first { it.id == "item-b" }.isChecked)
+    }
+
+    @Test
+    fun checklist_toggleChecked_whenNoOtherTicked_movesToBottom() {
+        val content = RichContent(
+            blocks = listOf(
+                RichBlock(id = "item-a", type = BlockType.CHECKLIST, text = "Task A", isChecked = false),
+                RichBlock(id = "item-b", type = BlockType.CHECKLIST, text = "Task B", isChecked = false),
+                RichBlock(id = "item-c", type = BlockType.CHECKLIST, text = "Task C", isChecked = false)
+            )
+        )
+
+        val toggled = content.toggleChecklist("item-b")
+        val ids = toggled.blocks.map { it.id }
+        // Task B becomes checked and moves to bottom of the list
+        assertEquals(listOf("item-a", "item-c", "item-b"), ids)
+        assertTrue(toggled.blocks.first { it.id == "item-b" }.isChecked)
+    }
+
+    @Test
+    fun checklist_toggleUnchecked_movesToBottomOfUncheckedItems() {
+        val content = RichContent(
+            blocks = listOf(
+                RichBlock(id = "item-a", type = BlockType.CHECKLIST, text = "Task A", isChecked = false),
+                RichBlock(id = "item-c", type = BlockType.CHECKLIST, text = "Task C", isChecked = false),
+                RichBlock(id = "item-b", type = BlockType.CHECKLIST, text = "Task B", isChecked = true),
+                RichBlock(id = "item-d", type = BlockType.CHECKLIST, text = "Task D", isChecked = true)
+            )
+        )
+
+        val toggled = content.toggleChecklist("item-b")
+        val ids = toggled.blocks.map { it.id }
+        // Task B becomes unchecked and moves to bottom of unchecked items (before Task D)
+        assertEquals(listOf("item-a", "item-c", "item-b", "item-d"), ids)
+        assertFalse(toggled.blocks.first { it.id == "item-b" }.isChecked)
+    }
+
+    @Test
+    fun checklist_toggleUnchecked_whenAllTicked_movesToTop() {
+        val content = RichContent(
+            blocks = listOf(
+                RichBlock(id = "item-a", type = BlockType.CHECKLIST, text = "Task A", isChecked = true),
+                RichBlock(id = "item-b", type = BlockType.CHECKLIST, text = "Task B", isChecked = true),
+                RichBlock(id = "item-c", type = BlockType.CHECKLIST, text = "Task C", isChecked = true)
+            )
+        )
+
+        val toggled = content.toggleChecklist("item-b")
+        val ids = toggled.blocks.map { it.id }
+        // Task B is now unchecked; as the only unchecked item, it is at top (before ticked items)
+        assertEquals(listOf("item-b", "item-a", "item-c"), ids)
+        assertFalse(toggled.blocks.first { it.id == "item-b" }.isChecked)
+    }
+
+    @Test
+    fun checklist_preservesSurroundingNonChecklistBlocks() {
+        val content = RichContent(
+            blocks = listOf(
+                RichBlock(id = "header", type = BlockType.PARAGRAPH, text = "Header Note"),
+                RichBlock(id = "item-a", type = BlockType.CHECKLIST, text = "Task A", isChecked = false),
+                RichBlock(id = "item-b", type = BlockType.CHECKLIST, text = "Task B", isChecked = false),
+                RichBlock(id = "footer", type = BlockType.PARAGRAPH, text = "Footer Note")
+            )
+        )
+
+        val toggled = content.toggleChecklist("item-a")
+        val ids = toggled.blocks.map { it.id }
+        // Header and Footer stay at index 0 and index 3
+        assertEquals(listOf("header", "item-b", "item-a", "footer"), ids)
+        assertTrue(toggled.blocks.first { it.id == "item-a" }.isChecked)
+    }
+
+    @Test
     fun spanAdjustment_insertionShiftsSpans() {
         val oldText = "Hello world"
         val spans = listOf(

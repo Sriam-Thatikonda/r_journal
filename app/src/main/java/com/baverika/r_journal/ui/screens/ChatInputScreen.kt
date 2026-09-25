@@ -70,6 +70,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 
 // Journal sub-components
 import com.baverika.r_journal.ui.screens.journal.ChatBubble
+import com.baverika.r_journal.ui.screens.journal.DateSeparator
+import com.baverika.r_journal.ui.screens.journal.formatWhatsAppDateHeader
 import com.baverika.r_journal.ui.screens.journal.CompactMoodPicker
 import com.baverika.r_journal.ui.screens.journal.EventBanner
 import com.baverika.r_journal.ui.screens.journal.InputBar
@@ -338,6 +340,19 @@ fun ChatInputScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         itemsIndexed(entry.messages, key = { _, it -> it.id }) { index, message ->
+                            // ── WhatsApp-style Date Header (same as Mine feature) ──
+                            val currentDateStr = formatWhatsAppDateHeader(message.timestamp)
+                            val showDateHeader = if (index == 0) {
+                                true
+                            } else {
+                                val prevDateStr = formatWhatsAppDateHeader(entry.messages[index - 1].timestamp)
+                                currentDateStr != prevDateStr
+                            }
+
+                            if (showDateHeader) {
+                                DateSeparator(dateText = currentDateStr)
+                            }
+
                             val dismissState = rememberSwipeToDismissBoxState(
                                 positionalThreshold = { totalDistance -> totalDistance * 0.25f },
                                 confirmValueChange = { newValue ->
@@ -381,7 +396,7 @@ fun ChatInputScreen(
                                     ChatBubble(
                                         message = message,
                                         isCurrentEntryToday = isCurrentEntryToday,
-                                        isAddedLater = viewModel.isMessageAddedLater(message),
+                                        isAddedLater = false,
                                         navController = navController,
                                         onLongClick = {
                                             messageActionMenuForId = message.id

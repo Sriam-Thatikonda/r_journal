@@ -48,6 +48,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.entity.ChatMessage
+import com.baverika.r_journal.ui.screens.journal.DateSeparator
+import com.baverika.r_journal.ui.screens.journal.formatWhatsAppDateHeader
 import com.baverika.r_journal.ui.screens.journal.*
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
@@ -510,52 +512,6 @@ fun MineScreen(
                     showMediaSheet = false
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun DateSeparator(dateText: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
-            shape = RoundedCornerShape(12.dp),
-            tonalElevation = 2.dp,
-            shadowElevation = 1.dp
-        ) {
-            Text(
-                text = dateText,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            )
-        }
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.O)
-fun formatWhatsAppDateHeader(timestamp: Long): String {
-    val messageDate = Instant.ofEpochMilli(timestamp)
-        .atZone(ZoneId.systemDefault())
-        .toLocalDate()
-    val today = LocalDate.now()
-    val yesterday = today.minusDays(1)
-
-    return when (messageDate) {
-        today -> "Today"
-        yesterday -> "Yesterday"
-        else -> {
-            if (messageDate.year == today.year) {
-                messageDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d"))
-            } else {
-                messageDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
-            }
         }
     }
 }
