@@ -153,6 +153,7 @@ fun QuickNotesScreen(
                                     onDelete = { noteToDelete = it },
                                     onPin = { viewModel.togglePin(it) },
                                     onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                    onToggleChecklist = { targetNote, blockId -> viewModel.toggleChecklist(targetNote, blockId) },
                                     modifier = Modifier
                                 )
                             }
@@ -166,6 +167,7 @@ fun QuickNotesScreen(
                                 onDelete = { noteToDelete = it },
                                 onPin = { viewModel.togglePin(it) },
                                 onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                onToggleChecklist = { targetNote, blockId -> viewModel.toggleChecklist(targetNote, blockId) },
                                 modifier = Modifier
                             )
                         }
@@ -189,6 +191,7 @@ fun QuickNotesScreen(
                                     onDelete = { noteToDelete = it },
                                     onPin = { viewModel.togglePin(it) },
                                     onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                    onToggleChecklist = { targetNote, blockId -> viewModel.toggleChecklist(targetNote, blockId) },
                                     modifier = Modifier
                                 )
                             }
@@ -200,6 +203,7 @@ fun QuickNotesScreen(
                                 onDelete = { noteToDelete = it },
                                 onPin = { viewModel.togglePin(it) },
                                 onClick = { navController.navigate("edit_quick_note/${note.id}") },
+                                onToggleChecklist = { targetNote, blockId -> viewModel.toggleChecklist(targetNote, blockId) },
                                 modifier = Modifier
                             )
                         }
@@ -280,7 +284,8 @@ fun QuickNoteCard(
     onPin: (QuickNote) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backgroundAlpha: Float = 1.0f
+    backgroundAlpha: Float = 1.0f,
+    onToggleChecklist: ((QuickNote, String) -> Unit)? = null
 ) {
     val currentTheme = LocalAppTheme.current
     val isDark = currentTheme.isDark
@@ -372,7 +377,8 @@ fun QuickNoteCard(
                 ParsedContent(
                     content = note.content,
                     textColor = textColor,
-                    secondaryTextColor = secondaryTextColor
+                    secondaryTextColor = secondaryTextColor,
+                    onToggleChecklist = onToggleChecklist?.let { callback -> { blockId -> callback(note, blockId) } }
                 )
             }
 
@@ -399,7 +405,8 @@ fun QuickNoteCard(
 fun ParsedContent(
     content: String,
     textColor: Color,
-    secondaryTextColor: Color
+    secondaryTextColor: Color,
+    onToggleChecklist: ((String) -> Unit)? = null
 ) {
     val trimmed = content.trim()
     if (trimmed.startsWith("{") && trimmed.contains("\"blocks\"")) {
@@ -417,12 +424,23 @@ fun ParsedContent(
                                 .padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = if (block.isChecked) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = if (block.isChecked) secondaryTextColor else textColor
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .then(
+                                        if (onToggleChecklist != null) {
+                                            Modifier.clickable { onToggleChecklist(block.id) }
+                                        } else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (block.isChecked) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                                    contentDescription = if (block.isChecked) "Checked" else "Unchecked",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = if (block.isChecked) secondaryTextColor else textColor
+                                )
+                            }
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = annotatedText,

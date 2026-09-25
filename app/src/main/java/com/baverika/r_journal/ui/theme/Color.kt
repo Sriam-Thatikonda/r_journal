@@ -39,7 +39,7 @@ object MidnightColors {
 // Clean, bright theme
 // ============================================
 object LightColors {
-    val Primary = Color(0xFF1B6B52)
+    val Primary = Color(0xFF4FE5B7)
     val OnPrimary = Color(0xFFFFFFFF)
     val PrimaryContainer = Color(0xFFA8F2D6)
     val OnPrimaryContainer = Color(0xFF002117)

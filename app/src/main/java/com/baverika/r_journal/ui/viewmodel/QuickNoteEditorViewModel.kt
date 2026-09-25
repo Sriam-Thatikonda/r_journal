@@ -157,11 +157,13 @@ class QuickNoteEditorViewModel(
 
     fun toggleChecklist(blockId: String) {
         recordSnapshot()
-        val currentBlocks = _state.value.blocks.map {
-            if (it.id == blockId) it.toggleChecked() else it
-        }
+        val currentBlocks = _state.value.blocks
+        val updatedBlocks = RichContent.reorderChecklistOnToggle(currentBlocks, blockId)
+        val targetIndex = updatedBlocks.indexOfFirst { it.id == blockId }
+        val newActiveIndex = if (targetIndex != -1) targetIndex else _state.value.activeBlockIndex.coerceIn(0, (updatedBlocks.size - 1).coerceAtLeast(0))
         _state.value = _state.value.copy(
-            blocks = currentBlocks,
+            blocks = updatedBlocks,
+            activeBlockIndex = newActiveIndex,
             updatedAt = System.currentTimeMillis()
         )
         saveImmediately()
