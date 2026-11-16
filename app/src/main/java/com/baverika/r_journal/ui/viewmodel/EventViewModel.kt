@@ -1,10 +1,13 @@
 package com.baverika.r_journal.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.repository.EventRepository
+import com.baverika.r_journal.repository.TaskRepository
+import com.baverika.r_journal.utils.EventTaskGenerator
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -13,7 +16,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-class EventViewModel(private val repository: EventRepository) : ViewModel() {
+class EventViewModel(
+    private val repository: EventRepository,
+    private val taskRepository: TaskRepository? = null,
+    private val context: Context? = null
+) : ViewModel() {
 
     val allEvents: StateFlow<List<EventUiModel>> = repository.allEvents
         .map { events ->
@@ -27,6 +34,12 @@ class EventViewModel(private val repository: EventRepository) : ViewModel() {
     fun addEvent(event: Event) {
         viewModelScope.launch {
             repository.insertEvent(event)
+            if (taskRepository != null) {
+                val events = repository.getAllEventsList()
+                EventTaskGenerator.ensureEventTasksCreated(events, taskRepository, context)
+            } else if (context != null) {
+                EventTaskGenerator.ensureEventTasksCreated(context)
+            }
         }
     }
 
@@ -54,11 +67,15 @@ data class EventUiModel(
     val daysRemaining: Long
 )
 
-class EventViewModelFactory(private val repository: EventRepository) : ViewModelProvider.Factory {
+class EventViewModelFactory(
+    private val repository: EventRepository,
+    private val taskRepository: TaskRepository? = null,
+    private val context: Context? = null
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(EventViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return EventViewModel(repository) as T
+            return EventViewModel(repository, taskRepository, context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

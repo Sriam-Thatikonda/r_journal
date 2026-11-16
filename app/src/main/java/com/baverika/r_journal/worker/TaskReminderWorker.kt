@@ -120,6 +120,13 @@ class TaskReminderWorker(
     override suspend fun doWork(): Result {
         createNotificationChannel()
         
+        // Sync upcoming special date tasks in background
+        try {
+            com.baverika.r_journal.utils.EventTaskGenerator.ensureEventTasksCreated(applicationContext)
+        } catch (e: Exception) {
+            // Non-fatal, continue with worker task
+        }
+
         val notificationType = inputData.getString(KEY_NOTIFICATION_TYPE) ?: TYPE_REMINDER
         
         return when (notificationType) {

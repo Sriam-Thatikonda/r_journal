@@ -44,6 +44,7 @@ fun JournalArchiveScreen(
     val allEvents by eventRepo.allEvents.collectAsState(initial = emptyList())
     
     val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
 
     val filteredEntries = remember(allEntries, searchQuery) {
         if (searchQuery.isBlank()) allEntries
@@ -134,6 +135,7 @@ fun EnhancedJournalCard(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     
     Card(
         modifier = Modifier
@@ -142,12 +144,21 @@ fun EnhancedJournalCard(
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onClick()
             },
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(if (isSpace) 20.dp else 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isBlueSky) Color.Black.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surface,
-            contentColor = if (isBlueSky) Color.White else MaterialTheme.colorScheme.onSurface
+            containerColor = when {
+                isSpace -> Color(0xB3101216)
+                isBlueSky -> Color.Black.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.surface
+            },
+            contentColor = if (isSpace || isBlueSky) Color(0xFFF3F4F6) else MaterialTheme.colorScheme.onSurface
         ),
-        border = if (isBlueSky) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        border = when {
+            isSpace -> androidx.compose.foundation.BorderStroke(1.dp, Color(0x2EFFFFFF))
+            isBlueSky -> androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            else -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        }
     ) {
         Column(
             modifier = Modifier

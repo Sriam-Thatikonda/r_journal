@@ -30,6 +30,7 @@ fun EntryDateHeader(
     modifier: Modifier = Modifier
 ) {
     val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     val dateText = remember(localDate) {
         localDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"))
     }
@@ -38,11 +39,19 @@ fun EntryDateHeader(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(if (isSpace) 16.dp else 12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isBlueSky) Color.Black.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            containerColor = when {
+                isSpace -> Color(0xB3101216)
+                isBlueSky -> Color.Black.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            }
         ),
-        border = if (isBlueSky) BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)) else null
+        border = when {
+            isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
+            isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            else -> null
+        }
     ) {
         Row(
             modifier = Modifier

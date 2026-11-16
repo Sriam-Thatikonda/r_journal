@@ -198,8 +198,19 @@ fun ChatBubble(
                     val currentTheme = LocalAppTheme.current
                     val isBlueSky = currentTheme == AppTheme.BLUE_SKY
                     val isMidnight = currentTheme == AppTheme.MIDNIGHT
-                    val textColor = if (isBlueSky) Color(0xFFD6D6D6) else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                    val timeColor = if (isBlueSky) Color(0xFFD6D6D6).copy(alpha = 0.7f) else if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                    val isSpace = currentTheme == AppTheme.ROSEWOOD
+                    val textColor = when {
+                        isSpace -> Color(0xFFF3F4F6)
+                        isBlueSky -> Color(0xFFD6D6D6)
+                        isUser -> MaterialTheme.colorScheme.onPrimaryContainer
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                    val timeColor = when {
+                        isSpace -> Color(0xFF9CA3AF)
+                        isBlueSky -> Color(0xFFD6D6D6).copy(alpha = 0.7f)
+                        isUser -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                    }
 
                     Surface(
                         shape = RoundedCornerShape(
@@ -208,8 +219,17 @@ fun ChatBubble(
                             bottomStart = if (isUser) 16.dp else 4.dp,
                             bottomEnd = if (isUser) 4.dp else 16.dp
                         ),
-                        color = if (isBlueSky) Color.Black.copy(alpha = 0.6f) else if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isMidnight) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)) else null,
+                        color = when {
+                            isSpace -> if (isUser) Color(0xCC1A1C22) else Color(0xB3101216)
+                            isBlueSky -> Color.Black.copy(alpha = 0.6f)
+                            isUser -> MaterialTheme.colorScheme.primaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        border = when {
+                            isSpace -> androidx.compose.foundation.BorderStroke(1.dp, if (isUser) Color(0x38FFFFFF) else Color(0x26FFFFFF))
+                            isMidnight -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                            else -> null
+                        },
                         modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         Column(

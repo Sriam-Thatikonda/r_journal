@@ -73,7 +73,7 @@ fun getEmptyCellColor(): Color {
         AppTheme.CLOUD_DANCER -> Color(0xFFE4E0D6) // Warm greige cell for Cloud Dancer
         AppTheme.MIDNIGHT -> Color(0xFF161B22)
         AppTheme.OCEAN -> Color(0xFF0D2137)
-        AppTheme.ROSEWOOD -> Color(0xFF2D1F1D)
+        AppTheme.ROSEWOOD -> Color(0xFF14161A) // Charcoal glass cell for Space theme
         AppTheme.BLUE_SKY -> Color(0xFF081428)
     }
 }

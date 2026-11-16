@@ -196,7 +196,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ThemeOption(
-                    name = "Rose",
+                    name = "Space",
                     backgroundColor = RosewoodColors.Background,
                     primaryColor = RosewoodColors.Primary,
                     isSelected = currentTheme == AppTheme.ROSEWOOD,
@@ -542,6 +542,10 @@ private fun ThemeOption(
                 if (isSelected) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(10.dp)
+                ) else if (name == "Space") Modifier.border(
+                    width = 1.dp,
+                    color = Color(0x33FFFFFF),
                     shape = RoundedCornerShape(10.dp)
                 ) else Modifier
             ),

@@ -161,9 +161,19 @@ class TaskViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TaskStats())
     
     init {
-        // Create default categories on first run
+        // Create default categories on first run and ensure special date tasks are synced
         viewModelScope.launch {
             repository.createDefaultCategoriesIfNeeded()
+            com.baverika.r_journal.utils.EventTaskGenerator.ensureEventTasksCreated(getApplication())
+        }
+    }
+
+    /**
+     * Re-syncs upcoming special date tasks.
+     */
+    fun syncSpecialDateTasks() {
+        viewModelScope.launch {
+            com.baverika.r_journal.utils.EventTaskGenerator.ensureEventTasksCreated(getApplication())
         }
     }
     

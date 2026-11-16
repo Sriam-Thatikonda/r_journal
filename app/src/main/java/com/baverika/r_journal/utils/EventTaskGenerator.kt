@@ -17,6 +17,17 @@ object EventTaskGenerator {
      * Checks events against current date and tomorrow's date.
      * Auto-creates tasks 1 day in advance for upcoming events without emojis.
      */
+    /**
+     * Helper that loads events and TaskRepository automatically from application Context.
+     */
+    suspend fun ensureEventTasksCreated(context: Context) {
+        val appContext = context.applicationContext
+        val db = com.baverika.r_journal.data.local.database.JournalDatabase.getDatabase(appContext)
+        val events = db.eventDao().getAllEventsList()
+        val taskRepository = TaskRepository(db.taskDao())
+        ensureEventTasksCreated(events, taskRepository, appContext)
+    }
+
     suspend fun ensureEventTasksCreated(
         events: List<Event>,
         taskRepository: TaskRepository,

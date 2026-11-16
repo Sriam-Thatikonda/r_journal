@@ -1,7 +1,11 @@
 package com.baverika.r_journal.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -169,15 +173,25 @@ fun CalendarDay(
     isFuture: Boolean,
     onClick: () -> Unit
 ) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .padding(4.dp)
             .clip(CircleShape)
+            .then(
+                if (isSpace && isToday) Modifier.border(1.dp, Color(0x66FFFFFF), CircleShape)
+                else if (isSpace && hasEntry) Modifier.border(0.5.dp, Color(0x33FFFFFF), CircleShape)
+                else Modifier
+            )
             .background(
-                if (isToday) MaterialTheme.colorScheme.primaryContainer
-                else if (hasEntry) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                else Color.Transparent
+                when {
+                    isSpace && isToday -> Color(0x33FFFFFF)
+                    isSpace && hasEntry -> Color(0x3314161C)
+                    isToday -> MaterialTheme.colorScheme.primaryContainer
+                    hasEntry -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    else -> Color.Transparent
+                }
             )
             .clickable(enabled = !isFuture, onClick = onClick),
         contentAlignment = Alignment.Center

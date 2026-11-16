@@ -12,7 +12,13 @@ import kotlinx.coroutines.launch
 class TaskBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            TaskReminderWorker.scheduleDailySummary(context)
             CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    com.baverika.r_journal.utils.EventTaskGenerator.ensureEventTasksCreated(context)
+                } catch (e: Exception) {
+                    // Non-fatal
+                }
                 val db = JournalDatabase.getDatabase(context)
                 val activeTasks = db.taskDao().getUpcomingTasksSuspend(100).filter { 
                     !it.isCompleted && it.reminderTime != null && it.reminderTime!! > System.currentTimeMillis() 

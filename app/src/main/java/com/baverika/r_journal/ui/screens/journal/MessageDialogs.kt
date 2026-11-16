@@ -1,5 +1,11 @@
 package com.baverika.r_journal.ui.screens.journal
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
@@ -30,7 +36,12 @@ fun MessageOptionsSheet(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = if (isSpace) Color(0xF208090C) else BottomSheetDefaults.ContainerColor,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -92,8 +103,13 @@ fun EditMessageDialog(
         focusRequester.requestFocus()
     }
 
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = if (isSpace) Color(0xF20A0B0E) else AlertDialogDefaults.containerColor,
+        shape = RoundedCornerShape(24.dp),
+        modifier = if (isSpace) Modifier.border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp)) else Modifier,
         title = { Text("Edit Message") },
         text = {
             OutlinedTextField(
@@ -127,8 +143,13 @@ fun DeleteMessageDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = if (isSpace) Color(0xF20A0B0E) else AlertDialogDefaults.containerColor,
+        shape = RoundedCornerShape(24.dp),
+        modifier = if (isSpace) Modifier.border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp)) else Modifier,
         title = { Text("Delete Message") },
         text = { Text("Are you sure you want to delete this message?") },
         confirmButton = {
@@ -154,7 +175,12 @@ fun MediaPickerSheet(
     onTakePhoto: () -> Unit,
     onChooseFromGallery: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = if (isSpace) Color(0xF208090C) else BottomSheetDefaults.ContainerColor,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -195,8 +221,13 @@ fun ExitConfirmationDialog(
     onDiscard: () -> Unit,
     onKeepWriting: () -> Unit
 ) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
     AlertDialog(
         onDismissRequest = onKeepWriting,
+        containerColor = if (isSpace) Color(0xF20A0B0E) else AlertDialogDefaults.containerColor,
+        shape = RoundedCornerShape(24.dp),
+        modifier = if (isSpace) Modifier.border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp)) else Modifier,
         title = { Text("Discard Unsaved Changes?") },
         text = { Text("You have unsaved text. Are you sure you want to leave?") },
         confirmButton = {

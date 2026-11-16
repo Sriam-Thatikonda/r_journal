@@ -289,9 +289,11 @@ fun QuickNoteCard(
 ) {
     val currentTheme = LocalAppTheme.current
     val isDark = currentTheme.isDark
+    val isSpace = currentTheme == AppTheme.ROSEWOOD
     val noteColor = NoteColor.fromLong(note.color)
-    val cardColor = noteColor.containerColor(isDark).copy(alpha = backgroundAlpha)
-    val borderColor = noteColor.borderColor(isDark)
+    val cardColor = if (isSpace && noteColor == NoteColor.DEFAULT) Color(0xB3101216) else noteColor.containerColor(isDark).copy(alpha = backgroundAlpha)
+    val borderColor = if (isSpace && noteColor == NoteColor.DEFAULT) Color(0x2EFFFFFF) else noteColor.borderColor(isDark)
+    val shape = RoundedCornerShape(if (isSpace) 16.dp else 12.dp)
     val textColor = ColorUtils.getContrastingTextColor(cardColor)
     val secondaryTextColor = ColorUtils.getSecondaryTextColor(cardColor)
     
@@ -302,10 +304,10 @@ fun QuickNoteCard(
             .border(
                 width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(12.dp)
+                shape = shape
             )
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = cardColor
         ),

@@ -6,7 +6,11 @@ import android.app.Application
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -38,9 +42,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.launch
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 //import androidx.compose.ui.platform.LocalLifecycleOwner
 //import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.NavHost
@@ -130,6 +138,14 @@ class MainActivity : FragmentActivity() {
         // Schedule Daily Backup
         // Auto-backup disabled by user request
         androidx.work.WorkManager.getInstance(this).cancelUniqueWork("DailyBackup")
+
+        // Schedule periodic tasks checks & reminders
+        com.baverika.r_journal.worker.TaskReminderWorker.scheduleDailySummary(this)
+
+        // Ensure tasks for upcoming special dates (today and 1 day prior) are created
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            com.baverika.r_journal.utils.EventTaskGenerator.ensureEventTasksCreated(this@MainActivity)
+        }
 
         setContent {
             var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
@@ -248,9 +264,13 @@ fun MainApp(
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
     ModalNavigationDrawer(
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerContainerColor = if (isSpace) Color(0xF208090C) else DrawerDefaults.modalContainerColor
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -325,9 +345,20 @@ fun MainApp(
                 if (!hideGlobalTopBar) {
                     if (isSearchActive) {
                         TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = if (isSpace) Color(0xE6000000) else MaterialTheme.colorScheme.surface
+                            ),
                             title = {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (isSpace) Modifier
+                                                .background(Color(0x8014161B), RoundedCornerShape(20.dp))
+                                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
+                                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                            else Modifier
+                                        ),
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     if (topBarSearchQuery.isEmpty()) {
@@ -440,6 +471,9 @@ fun MainApp(
                         val showBackButton = currentRoute != "archive"
 
                         TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = if (isSpace) Color(0xE6000000) else MaterialTheme.colorScheme.surface
+                            ),
                             title = { 
                                 Text(
                                     text = screenTitle,
@@ -557,7 +591,10 @@ fun MainApp(
             val showBottomBar = currentRoute in bottomNavItems.map { it.route }
             
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = if (isSpace) Color(0xE6050505) else NavigationBarDefaults.containerColor,
+                    modifier = if (isSpace) Modifier.border(width = 0.5.dp, color = Color(0x26FFFFFF), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) else Modifier
+                ) {
                     val haptic = LocalHapticFeedback.current
                     bottomNavItems.forEach { item ->
                         val isSelected = currentRoute == item.route
@@ -566,6 +603,13 @@ fun MainApp(
                             label = { Text(item.label) },
                             selected = isSelected,
                             alwaysShowLabel = false,
+                            colors = if (isSpace) NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color(0xFFF3F4F6),
+                                selectedTextColor = Color(0xFFF3F4F6),
+                                indicatorColor = Color(0x26FFFFFF),
+                                unselectedIconColor = Color(0xFF9CA3AF),
+                                unselectedTextColor = Color(0xFF9CA3AF)
+                            ) else NavigationBarItemDefaults.colors(),
                             onClick = {
                                 if (currentRoute != item.route) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -636,7 +680,8 @@ fun MainApp(
 
             if (showSpeedDialSheet) {
                 ModalBottomSheet(
-                    onDismissRequest = { showSpeedDialSheet = false }
+                    onDismissRequest = { showSpeedDialSheet = false },
+                    containerColor = if (isSpace) Color(0xF208090C) else BottomSheetDefaults.ContainerColor
                 ) {
                     Column(
                         modifier = Modifier
@@ -704,6 +749,9 @@ fun MainApp(
                     modifier = Modifier
                         .size(96.dp)
                         .clip(androidx.compose.foundation.shape.CircleShape)
+                        .then(
+                            if (isSpace) Modifier.border(1.dp, Color(0x40FFFFFF), androidx.compose.foundation.shape.CircleShape) else Modifier
+                        )
                         .combinedClickable(
                             onClick = fabAction,
                             onLongClick = {
@@ -712,9 +760,9 @@ fun MainApp(
                             }
                         ),
                     shape = androidx.compose.foundation.shape.CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shadowElevation = 6.dp
+                    color = if (isSpace) Color(0xCC1A1C22) else MaterialTheme.colorScheme.primary,
+                    contentColor = if (isSpace) Color(0xFFF3F4F6) else MaterialTheme.colorScheme.onPrimary,
+                    shadowElevation = if (isSpace) 2.dp else 6.dp
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -808,7 +856,7 @@ fun MainApp(
                     composable("events") {
                         EventsScreen(
                             viewModel = viewModel(
-                                factory = EventViewModelFactory(eventRepo)
+                                factory = EventViewModelFactory(eventRepo, taskRepo, context)
                             ),
                             navController = navController
                         )
@@ -1375,11 +1423,20 @@ fun DrawerItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     NavigationDrawerItem(
         icon = { Icon(icon, contentDescription = null) },
         label = { Text(label) },
         selected = isSelected,
         onClick = onClick,
+        colors = if (isSpace) NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = Color(0x26FFFFFF),
+            selectedIconColor = Color(0xFFF3F4F6),
+            selectedTextColor = Color(0xFFF3F4F6),
+            unselectedContainerColor = Color.Transparent,
+            unselectedIconColor = Color(0xFF9CA3AF),
+            unselectedTextColor = Color(0xFF9CA3AF)
+        ) else NavigationDrawerItemDefaults.colors(),
         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
     )
 }

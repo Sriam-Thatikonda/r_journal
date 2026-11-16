@@ -4,7 +4,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -318,14 +321,16 @@ private fun getSortDisplayName(option: TaskSortOption): String {
  */
 @Composable
 private fun TaskStatsSummary(stats: TaskStats) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         ),
-        shape = RoundedCornerShape(16.dp)
+        border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else null,
+        shape = RoundedCornerShape(18.dp)
     ) {
         Row(
             modifier = Modifier
@@ -524,6 +529,7 @@ fun SwipeableTaskItem(
         }
 
         // Task card
+        val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -551,16 +557,18 @@ fun SwipeableTaskItem(
                     }
                 }
                 .clickable(onClick = onClick),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(if (isSpace) 18.dp else 16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (task.isCompleted) {
-                    MaterialTheme.colorScheme.surfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.surface
+                containerColor = when {
+                    isSpace && task.isCompleted -> Color(0x6614161C)
+                    isSpace -> Color(0xB3101216)
+                    task.isCompleted -> MaterialTheme.colorScheme.surfaceVariant
+                    else -> MaterialTheme.colorScheme.surface
                 }
             ),
+            border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else null,
             elevation = CardDefaults.cardElevation(
-                defaultElevation = if (task.isCompleted) 0.dp else 2.dp
+                defaultElevation = if (task.isCompleted || isSpace) 0.dp else 2.dp
             )
         ) {
             Row(

@@ -113,7 +113,7 @@ private val OceanColorScheme = darkColorScheme(
 )
 
 /**
- * Color scheme for Rosewood theme (Subtle Warm)
+ * Color scheme for Space theme (Pure Black OLED Glassmorphism)
  */
 private val RosewoodColorScheme = darkColorScheme(
     primary = RosewoodColors.Primary,
@@ -136,7 +136,10 @@ private val RosewoodColorScheme = darkColorScheme(
     onSurfaceVariant = RosewoodColors.OnSurfaceVariant,
     error = RosewoodColors.Error,
     onError = RosewoodColors.OnError,
-    outline = RosewoodColors.Outline
+    outline = RosewoodColors.Outline,
+    outlineVariant = RosewoodColors.OutlineVariant,
+    surfaceTint = Color.Transparent, // Pure OLED black without purple elevation tint
+    scrim = Color(0xFF000000)
 )
 
 /**

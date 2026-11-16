@@ -65,7 +65,15 @@ class JournalViewModel(
     // Tracks the date of the currently displayed entry, used to filter events reactively
     private val _currentDateMillis = MutableStateFlow(currentEntry.dateMillis)
 
-    // Event banners (Today & 1 Day Ahead) — reactive, auto-generates tasks
+    init {
+        viewModelScope.launch {
+            eventRepo.allEvents.collect { events ->
+                EventTaskGenerator.ensureEventTasksCreated(events, taskRepo, appContext)
+            }
+        }
+    }
+
+    // Event banners (Today & 1 Day Ahead) — reactive
     val eventBanners: StateFlow<List<EventDisplayItem>> = combine(
         _currentDateMillis,
         eventRepo.allEvents
@@ -74,11 +82,6 @@ class JournalViewModel(
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
         val tomorrowDate = entryDate.plusDays(1)
-
-        // Auto-create tasks 1 day in advance
-        viewModelScope.launch {
-            EventTaskGenerator.ensureEventTasksCreated(events, taskRepo, appContext)
-        }
 
         val items = mutableListOf<EventDisplayItem>()
 

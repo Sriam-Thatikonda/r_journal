@@ -17,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,6 +39,7 @@ fun SearchScreen(
     val results by viewModel.searchResults.collectAsState()
 
     val focusRequester = remember { FocusRequester() }
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -46,9 +50,9 @@ fun SearchScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            tonalElevation = 1.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            color = if (isSpace) Color(0x8014161B) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            tonalElevation = if (isSpace) 0.dp else 1.dp,
+            border = BorderStroke(1.dp, if (isSpace) Color(0x33FFFFFF) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
             Row(
                 modifier = Modifier
@@ -176,11 +180,17 @@ fun UnifiedSearchResultCard(
     item: UnifiedSearchResult,
     onClick: () -> Unit
 ) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(if (isSpace) 18.dp else 12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surface
+        ),
+        border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else null,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -199,11 +209,11 @@ fun UnifiedSearchResultCard(
 
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = tint.copy(alpha = 0.15f),
+                color = if (isSpace) Color(0x26FFFFFF) else tint.copy(alpha = 0.15f),
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                    Icon(icon, contentDescription = null, tint = if (isSpace) Color(0xFFF3F4F6) else tint, modifier = Modifier.size(20.dp))
                 }
             }
 
