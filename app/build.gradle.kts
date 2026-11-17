@@ -46,14 +46,48 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
     
-    signingConfigs {
-        create("release") {
-            storeFile = file("../release-key.jks")
-            storePassword = "android"
-            keyAlias = "rjournal"
-            keyPassword = "android"
+    
+signingConfigs {
+    create("release") {
+        // Read signing configuration from environment variables first.
+        // Fall back to ignored local key.properties for local builds.
+
+        val signingProperties = Properties().apply {
+            val propertiesFile = rootProject.file("key.properties")
+            if (propertiesFile.exists()) {
+                propertiesFile.inputStream().use { load(it) }
+            }
         }
+
+        fun signingValue(envName: String, propertyName: String): String? {
+            return System.getenv(envName)?.takeIf { it.isNotBlank() }
+                ?: signingProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+        }
+
+        val keystorePath = signingValue(
+            "ANDROID_KEYSTORE_PATH",
+            "storeFile"
+        ) ?: "release-key.jks"
+
+        storeFile = rootProject.file(keystorePath)
+
+        storePassword = signingValue(
+            "ANDROID_KEYSTORE_PASSWORD",
+            "storePassword"
+        )
+
+        keyAlias = signingValue(
+            "ANDROID_KEY_ALIAS",
+            "keyAlias"
+        )
+
+        keyPassword = signingValue(
+            "ANDROID_KEY_PASSWORD",
+            "keyPassword"
+        )
     }
+}
+
 
     buildTypes {
         release {
