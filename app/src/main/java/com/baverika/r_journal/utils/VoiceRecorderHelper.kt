@@ -12,7 +12,7 @@ import java.util.Locale
 
 /**
  * Helper class for recording voice notes.
- * Handles recording, pausing, resuming, and saving.
+ * Handles recording, pausing, resuming, and saving safely.
  */
 class VoiceRecorderHelper(private val context: Context) {
     
@@ -21,8 +21,7 @@ class VoiceRecorderHelper(private val context: Context) {
     private var isRecording = false
     private var isPaused = false
     private var recordingStartTime = 0L
-    private var totalDuration = 0L
-    private var pauseStartTime = 0L
+    private var accumulatedDuration = 0L
     
     // Callbacks
     var onRecordingComplete: ((String, Long) -> Unit)? = null
@@ -37,14 +36,14 @@ class VoiceRecorderHelper(private val context: Context) {
     val currentDuration: Long
         get() {
             return if (isRecording && !isPaused) {
-                totalDuration + (System.currentTimeMillis() - recordingStartTime)
+                accumulatedDuration + (System.currentTimeMillis() - recordingStartTime)
             } else {
-                totalDuration
+                accumulatedDuration
             }
         }
     
     /**
-     * Start a new recording
+     * Start a new recording session
      */
     fun startRecording(): Boolean {
         return try {
@@ -78,7 +77,7 @@ class VoiceRecorderHelper(private val context: Context) {
             isRecording = true
             isPaused = false
             recordingStartTime = System.currentTimeMillis()
-            totalDuration = 0L
+            accumulatedDuration = 0L
             true
         } catch (e: Exception) {
             e.printStackTrace()
@@ -98,11 +97,9 @@ class VoiceRecorderHelper(private val context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 mediaRecorder?.pause()
                 isPaused = true
-                totalDuration += (System.currentTimeMillis() - recordingStartTime)
-                pauseStartTime = System.currentTimeMillis()
+                accumulatedDuration += (System.currentTimeMillis() - recordingStartTime)
                 true
             } else {
-                // For older APIs, stop and save recording
                 stopAndSave()
                 true
             }
@@ -143,7 +140,7 @@ class VoiceRecorderHelper(private val context: Context) {
         
         return try {
             if (!isPaused) {
-                totalDuration += (System.currentTimeMillis() - recordingStartTime)
+                accumulatedDuration += (System.currentTimeMillis() - recordingStartTime)
             }
             
             mediaRecorder?.apply {
@@ -157,7 +154,7 @@ class VoiceRecorderHelper(private val context: Context) {
             currentFilePath?.let { path ->
                 val file = File(path)
                 if (file.exists() && file.length() > 0) {
-                    onRecordingComplete?.invoke(path, totalDuration)
+                    onRecordingComplete?.invoke(path, accumulatedDuration)
                     return true
                 }
             }
@@ -173,7 +170,7 @@ class VoiceRecorderHelper(private val context: Context) {
     }
     
     /**
-     * Cancel and delete the current recording
+     * Cancel and delete the current recording file
      */
     fun cancelRecording() {
         cleanup()
@@ -186,10 +183,6 @@ class VoiceRecorderHelper(private val context: Context) {
         currentFilePath = null
     }
     
-    /**
-     * Force stop and save if recording is in progress
-     * Called when app goes to background or on back press
-     */
     fun forceStopAndSave() {
         if (isRecording) {
             stopAndSave()
@@ -205,7 +198,7 @@ class VoiceRecorderHelper(private val context: Context) {
         mediaRecorder = null
         isRecording = false
         isPaused = false
-        totalDuration = 0L
+        accumulatedDuration = 0L
     }
     
     fun release() {
@@ -222,7 +215,6 @@ class VoicePlayerHelper {
     
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
-    var onProgressUpdate: ((Int, Int) -> Unit)? = null // current position, total duration
     
     val isPlaying: Boolean
         get() = mediaPlayer?.isPlaying == true
@@ -279,7 +271,11 @@ class VoicePlayerHelper {
     }
     
     fun stop() {
-        mediaPlayer?.stop()
+        try {
+            mediaPlayer?.stop()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         isPrepared = false
     }
     
@@ -294,9 +290,6 @@ class VoicePlayerHelper {
     }
 }
 
-/**
- * Format duration in milliseconds to mm:ss
- */
 fun formatDuration(durationMs: Long): String {
     val totalSeconds = durationMs / 1000
     val minutes = totalSeconds / 60

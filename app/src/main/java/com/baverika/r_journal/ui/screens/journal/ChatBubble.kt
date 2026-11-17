@@ -1,29 +1,31 @@
 package com.baverika.r_journal.ui.screens.journal
 
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.baverika.r_journal.R
@@ -34,6 +36,7 @@ import com.baverika.r_journal.ui.theme.LocalAppTheme
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -51,203 +54,259 @@ fun ChatBubble(
     isHighlighted: Boolean = false
 ) {
     val isUser = message.role == "user"
-    val timestamp = LocalDateTime
-        .ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("h:mm a"))
+    val currentTheme = LocalAppTheme.current
+    val isBlueSky = currentTheme == AppTheme.BLUE_SKY
+    val isMidnight = currentTheme == AppTheme.MIDNIGHT
+    val isSpace = currentTheme == AppTheme.ROSEWOOD
 
-    AnimatedVisibility(
-        visible = true,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 4 })
+    val timestamp = remember(message.timestamp) {
+        LocalDateTime
+            .ofInstant(Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("h:mm a"))
+    }
+
+    val highlightColor by animateColorAsState(
+        targetValue = if (isHighlighted) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 350),
+        label = "quoteHighlight"
+    )
+
+    val bubbleContainerColor = when {
+        isSpace -> if (isUser) Color(0xCC1A1C22) else Color(0xB3101216)
+        isBlueSky -> Color.Black.copy(alpha = 0.62f)
+        isUser -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    val textColor = when {
+        isSpace -> Color(0xFFF3F4F6)
+        isBlueSky -> Color(0xFFECECEC)
+        isUser -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    val timeColor = when {
+        isSpace -> Color(0xFF9CA3AF)
+        isBlueSky -> Color(0xFFD6D6D6).copy(alpha = 0.7f)
+        isUser -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+    }
+
+    val bubbleBorder = when {
+        isSpace -> BorderStroke(1.dp, if (isUser) Color(0x38FFFFFF) else Color(0x26FFFFFF))
+        isMidnight -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+        else -> null
+    }
+
+    val bubbleShape = RoundedCornerShape(
+        topStart = 20.dp,
+        topEnd = 20.dp,
+        bottomStart = if (isUser) 20.dp else 4.dp,
+        bottomEnd = if (isUser) 4.dp else 20.dp
+    )
+
+    Row(
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(highlightColor)
+            .padding(vertical = 4.dp, horizontal = 4.dp)
     ) {
-        Row(
-            horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(if (isHighlighted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else Color.Transparent)
-                .padding(vertical = 6.dp)
-                .then(
-                    if (onLongClick != null) {
-                        Modifier.combinedClickable(
-                            onClick = {},
-                            onLongClick = onLongClick
-                        )
-                    } else Modifier
-                )
+        Column(
+            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
         ) {
-            Column(
-                horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-            ) {
-                if (isAddedLater) {
-                    Text(
-                        text = "Added ${LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
-                    )
+            if (isAddedLater) {
+                val addedDate = remember(message.timestamp) {
+                    LocalDateTime
+                        .ofInstant(Instant.ofEpochMilli(message.timestamp), ZoneId.systemDefault())
+                        .format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
                 }
+                Text(
+                    text = "Added $addedDate",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
 
-                // quoted reply (if any)
-                repliedMessage?.let { original ->
-                    Surface(
-                        shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp, topStart = 0.dp, bottomStart = 0.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .fillMaxWidth(0.82f)
-                            .clickable { onQuoteClick?.invoke() }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(start = 0.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(3.dp)
-                                    .fillMaxHeight()
-                                    .heightIn(min = 36.dp)
-                                    .background(MaterialTheme.colorScheme.primary)
+            // Unified Message Bubble Container
+            Surface(
+                shape = bubbleShape,
+                color = bubbleContainerColor,
+                border = bubbleBorder,
+                tonalElevation = if (isUser) 1.dp else 0.dp,
+                modifier = Modifier
+                    .widthIn(min = 84.dp, max = 300.dp)
+                    .clip(bubbleShape)
+                    .then(
+                        if (onLongClick != null) {
+                            Modifier.combinedClickable(
+                                onClick = {},
+                                onLongClick = onLongClick
                             )
-                            Spacer(Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = if (original.role == "user") "Replying to you" else original.role.replaceFirstChar { it.uppercaseChar() },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
+                        } else {
+                            Modifier
+                        }
+                    )
+            ) {
+                Column(modifier = Modifier.padding(4.dp)) {
+                    // 1. Embedded Quoted Reply Block
+                    repliedMessage?.let { original ->
+                        val previewLabel = when {
+                            original.content.isNotBlank() -> original.content
+                            original.voiceNoteUri != null -> "🎤 Voice Note"
+                            original.imageUri != null -> "📷 Photo"
+                            else -> "Attachment"
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = if (isSpace || isBlueSky) 0.2f else 0.55f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable { onQuoteClick?.invoke() }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(4.dp)
+                                        .fillMaxHeight()
+                                        .background(MaterialTheme.colorScheme.primary)
                                 )
-                                Text(
-                                    text = original.content.ifBlank { "[Image]" },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                        .weight(1f)
+                                ) {
+                                    Text(
+                                        text = if (original.role == "user") "You" else original.role.replaceFirstChar { it.uppercaseChar() },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = previewLabel,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = textColor.copy(alpha = 0.85f),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // image attachment with embedded timestamp pill
-                message.imageUri?.let { imagePath ->
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .size(220.dp)
-                            .clickable {
-                                val encodedPath = URLEncoder.encode(
-                                    imagePath,
-                                    StandardCharsets.UTF_8.toString()
+                    // 2. Attached Image
+                    message.imageUri?.let { imagePath ->
+                        val hasCaption = message.content.isNotBlank()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 160.dp, max = 260.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        val encodedPath = URLEncoder.encode(
+                                            imagePath,
+                                            StandardCharsets.UTF_8.toString()
+                                        )
+                                        navController.navigate("image_viewer/$encodedPath")
+                                    },
+                                    onLongClick = onLongClick
                                 )
-                                navController.navigate("image_viewer/$encodedPath")
-                            },
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        ) {
                             AsyncImage(
                                 model = Uri.fromFile(File(imagePath)),
                                 contentDescription = "Attached Image",
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxWidth(),
                                 contentScale = ContentScale.Crop,
                                 placeholder = painterResource(R.drawable.ic_launcher_foreground),
                                 error = painterResource(R.drawable.ic_launcher_foreground)
                             )
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.65f),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(8.dp)
-                            ) {
+
+                            // Only show floating timestamp pill on image if there is no text caption below it
+                            if (!hasCaption) {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(8.dp)
+                                ) {
+                                    Text(
+                                        text = timestamp,
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Voice Note Attachment
+                    message.voiceNoteUri?.let { voicePath ->
+                        Box(
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) {
+                            VoiceNotePlayer(
+                                filePath = voicePath,
+                                durationMs = message.voiceNoteDuration,
+                                modifier = Modifier,
+                                isUserMessage = isUser
+                            )
+                            if (message.content.isBlank()) {
                                 Text(
                                     text = timestamp,
-                                    color = Color(0xFFD6D6D6),
+                                    color = timeColor,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontSize = androidx.compose.ui.unit.TextUnit(10f, androidx.compose.ui.unit.TextUnitType.Sp),
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    fontSize = 10.sp,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 8.dp, bottom = 2.dp)
                                 )
                             }
                         }
                     }
-                }
 
-                // voice note with embedded timestamp
-                message.voiceNoteUri?.let { voicePath ->
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        VoiceNotePlayer(
-                            filePath = voicePath,
-                            durationMs = message.voiceNoteDuration,
-                            modifier = Modifier,
-                            isUserMessage = isUser
-                        )
-                        Text(
-                            text = timestamp,
-                            color = if (isUser) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = androidx.compose.ui.unit.TextUnit(10f, androidx.compose.ui.unit.TextUnitType.Sp),
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 12.dp, bottom = 6.dp)
-                        )
-                    }
-                }
-
-                // text bubble with inline/bottom-end timestamp (WhatsApp / Telegram style)
-                if (message.content.isNotBlank()) {
-                    val currentTheme = LocalAppTheme.current
-                    val isBlueSky = currentTheme == AppTheme.BLUE_SKY
-                    val isMidnight = currentTheme == AppTheme.MIDNIGHT
-                    val isSpace = currentTheme == AppTheme.ROSEWOOD
-                    val textColor = when {
-                        isSpace -> Color(0xFFF3F4F6)
-                        isBlueSky -> Color(0xFFD6D6D6)
-                        isUser -> MaterialTheme.colorScheme.onPrimaryContainer
-                        else -> MaterialTheme.colorScheme.onSurface
-                    }
-                    val timeColor = when {
-                        isSpace -> Color(0xFF9CA3AF)
-                        isBlueSky -> Color(0xFFD6D6D6).copy(alpha = 0.7f)
-                        isUser -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomStart = if (isUser) 16.dp else 4.dp,
-                            bottomEnd = if (isUser) 4.dp else 16.dp
-                        ),
-                        color = when {
-                            isSpace -> if (isUser) Color(0xCC1A1C22) else Color(0xB3101216)
-                            isBlueSky -> Color.Black.copy(alpha = 0.6f)
-                            isUser -> MaterialTheme.colorScheme.primaryContainer
-                            else -> MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        border = when {
-                            isSpace -> androidx.compose.foundation.BorderStroke(1.dp, if (isUser) Color(0x38FFFFFF) else Color(0x26FFFFFF))
-                            isMidnight -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                            else -> null
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    ) {
+                    // 4. Text Content + Bottom-End Timestamp
+                    if (message.content.isNotBlank()) {
                         Column(
-                            modifier = Modifier.padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 6.dp)
+                            modifier = Modifier
+                                .padding(
+                                    start = 10.dp,
+                                    end = 10.dp,
+                                    top = if (message.imageUri != null || repliedMessage != null) 6.dp else 4.dp,
+                                    bottom = 4.dp
+                                )
                         ) {
                             Text(
                                 text = message.content,
                                 color = textColor,
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    lineHeight = 20.sp
+                                )
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = timestamp,
                                 color = timeColor,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = androidx.compose.ui.unit.TextUnit(10f, androidx.compose.ui.unit.TextUnitType.Sp),
-                                modifier = Modifier
-                                    .align(Alignment.End)
-                                    .padding(top = 2.dp)
+                                fontSize = 10.sp,
+                                modifier = Modifier.align(Alignment.End)
                             )
                         }
                     }
