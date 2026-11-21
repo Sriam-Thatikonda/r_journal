@@ -1,4 +1,5 @@
-- name: Validate keystore secret
+
+- name: Diagnose keystore secret
   shell: bash
   env:
     KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -7,8 +8,13 @@
 
     echo "Secret length: ${#KEYSTORE_BASE64}"
 
+    if [[ -z "$KEYSTORE_BASE64" ]]; then
+      echo "ERROR: Secret is empty"
+      exit 1
+    fi
+
     if [[ ! "$KEYSTORE_BASE64" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
-      echo "ERROR: Secret contains invalid Base64 characters"
+      echo "ERROR: Secret contains invalid characters"
       exit 1
     fi
 
@@ -18,3 +24,7 @@
     fi
 
     echo "Base64 format looks valid"
+
+    printf '%s' "$KEYSTORE_BASE64" | base64 --decode > /tmp/test-keystore.jks
+
+    echo "Decoded size: $(wc -c < /tmp/test-keystore.jks)"
