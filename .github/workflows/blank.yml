@@ -1,0 +1,20 @@
+- name: Validate keystore secret
+  shell: bash
+  env:
+    KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+  run: |
+    set -euo pipefail
+
+    echo "Secret length: ${#KEYSTORE_BASE64}"
+
+    if [[ ! "$KEYSTORE_BASE64" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
+      echo "ERROR: Secret contains invalid Base64 characters"
+      exit 1
+    fi
+
+    if (( ${#KEYSTORE_BASE64} % 4 != 0 )); then
+      echo "ERROR: Base64 length is not divisible by 4"
+      exit 1
+    fi
+
+    echo "Base64 format looks valid"
