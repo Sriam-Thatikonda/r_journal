@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -177,22 +179,61 @@ fun TrackersScreen(
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    // Increment + Button
-                                    Box(
+                                    val haptic = LocalHapticFeedback.current
+
+                                    // Quick Dual Stepper: Decrement (-) and Increment (+)
+                                    Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        contentAlignment = Alignment.CenterEnd
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        IconButton(
-                                            onClick = { viewModel.incrementTracker(tracker.id) },
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .background(textColor.copy(alpha = 0.15f), CircleShape)
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = textColor.copy(alpha = 0.16f)
                                         ) {
-                                            Icon(
-                                                Icons.Default.Add,
-                                                contentDescription = "Increment",
-                                                tint = textColor
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                            ) {
+                                                IconButton(
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                        viewModel.decrementTracker(tracker.id)
+                                                    },
+                                                    enabled = tracker.currentCount > 0,
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Remove,
+                                                        contentDescription = "Decrement",
+                                                        tint = if (tracker.currentCount > 0) textColor else textColor.copy(alpha = 0.35f),
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(1.dp)
+                                                        .height(16.dp)
+                                                        .background(textColor.copy(alpha = 0.25f))
+                                                )
+
+                                                IconButton(
+                                                    onClick = {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                        viewModel.incrementTracker(tracker.id)
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Add,
+                                                        contentDescription = "Increment",
+                                                        tint = textColor,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }

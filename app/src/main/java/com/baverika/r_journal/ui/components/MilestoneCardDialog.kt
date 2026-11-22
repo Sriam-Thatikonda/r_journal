@@ -66,14 +66,14 @@ fun MilestoneCardDialog(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "🎉 1-Year Milestone Card",
+                            text = "🎉 ${stats.year} Milestone Card",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Your reflection story over the past 365 days",
+                            text = "Your reflection story (Jan 1 – Dec 31, ${stats.year})",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                         )

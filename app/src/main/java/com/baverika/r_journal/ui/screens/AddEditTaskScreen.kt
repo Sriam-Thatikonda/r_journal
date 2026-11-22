@@ -1,8 +1,6 @@
 package com.baverika.r_journal.ui.screens
 
 import android.Manifest
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -84,6 +83,8 @@ fun AddEditTaskScreen(
     // For category creation dialog
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+    var showTimePickerDialog by remember { mutableStateOf(false) }
     
     // Load task data if editing
     LaunchedEffect(taskId) {
@@ -282,25 +283,69 @@ fun AddEditTaskScreen(
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        // Quick Presets Row: Today, Tomorrow, This Weekend, Next Week
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AssistChip(
+                                onClick = {
+                                    val cal = Calendar.getInstance()
+                                    dueDate = cal.timeInMillis
+                                },
+                                label = { Text("Today") },
+                                leadingIcon = { Icon(Icons.Outlined.Today, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            )
+                            AssistChip(
+                                onClick = {
+                                    val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                                    dueDate = cal.timeInMillis
+                                },
+                                label = { Text("Tomorrow") },
+                                leadingIcon = { Icon(Icons.Outlined.Event, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            )
+                            AssistChip(
+                                onClick = {
+                                    val cal = Calendar.getInstance()
+                                    val daysUntilSaturday = (Calendar.SATURDAY - cal.get(Calendar.DAY_OF_WEEK) + 7) % 7
+                                    cal.add(Calendar.DAY_OF_YEAR, if (daysUntilSaturday == 0) 7 else daysUntilSaturday)
+                                    dueDate = cal.timeInMillis
+                                },
+                                label = { Text("This Weekend") }
+                            )
+                            AssistChip(
+                                onClick = {
+                                    val cal = Calendar.getInstance()
+                                    val daysUntilMonday = (Calendar.MONDAY - cal.get(Calendar.DAY_OF_WEEK) + 7) % 7
+                                    cal.add(Calendar.DAY_OF_YEAR, if (daysUntilMonday == 0) 7 else daysUntilMonday)
+                                    dueDate = cal.timeInMillis
+                                },
+                                label = { Text("Next Week") }
+                            )
+                        }
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Date picker
+                            // Date picker button (triggers M3 DatePicker)
                             DatePickerButton(
                                 date = dueDate,
                                 dateFormat = dateFormat,
-                                onDateSelected = { dueDate = it },
+                                onClick = { showDatePickerDialog = true },
                                 modifier = Modifier.weight(1f)
                             )
                             
-                            // Time picker
+                            // Time picker button (triggers M3 TimePicker)
                             TimePickerButton(
                                 time = dueTime,
                                 timeFormat = timeFormat,
                                 enabled = dueDate != null,
-                                onTimeSelected = { dueTime = it },
+                                onClick = { showTimePickerDialog = true },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -546,6 +591,75 @@ fun AddEditTaskScreen(
             }
         )
     }
+
+    // Material 3 DatePickerDialog
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = dueDate ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { sel ->
+                            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = sel }
+                            val localCal = Calendar.getInstance().apply {
+                                set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH), utcCal.get(Calendar.DAY_OF_MONTH))
+                            }
+                            dueDate = localCal.timeInMillis
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Material 3 TimePickerDialog (AlertDialog with TimePicker)
+    if (showTimePickerDialog) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = dueTime?.first ?: 12,
+            initialMinute = dueTime?.second ?: 0,
+            is24Hour = false
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dueTime = timePickerState.hour to timePickerState.minute
+                        showTimePickerDialog = false
+                    }
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePickerDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Set Time", fontWeight = FontWeight.Bold) },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TimePicker(state = timePickerState)
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -555,26 +669,11 @@ fun AddEditTaskScreen(
 private fun DatePickerButton(
     date: Long?,
     dateFormat: SimpleDateFormat,
-    onDateSelected: (Long) -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val calendar = remember { Calendar.getInstance() }
-    
     Surface(
-        onClick = {
-            date?.let { calendar.timeInMillis = it }
-            DatePickerDialog(
-                context,
-                { _, year, month, day ->
-                    calendar.set(year, month, day)
-                    onDateSelected(calendar.timeInMillis)
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
-        },
+        onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -610,26 +709,11 @@ private fun TimePickerButton(
     time: Pair<Int, Int>?,
     timeFormat: SimpleDateFormat,
     enabled: Boolean,
-    onTimeSelected: (Pair<Int, Int>) -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val calendar = remember { Calendar.getInstance() }
-    
     Surface(
-        onClick = {
-            if (enabled) {
-                TimePickerDialog(
-                    context,
-                    { _, hour, minute ->
-                        onTimeSelected(hour to minute)
-                    },
-                    time?.first ?: calendar.get(Calendar.HOUR_OF_DAY),
-                    time?.second ?: calendar.get(Calendar.MINUTE),
-                    false
-                ).show()
-            }
-        },
+        onClick = { if (enabled) onClick() },
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = if (enabled) {

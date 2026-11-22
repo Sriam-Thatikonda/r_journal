@@ -1,120 +1,294 @@
 package com.baverika.r_journal.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.blur
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
 import com.baverika.r_journal.R
-import com.baverika.r_journal.ui.theme.LocalAppTheme
-import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.data.local.entity.Event
+import com.baverika.r_journal.data.local.entity.EventType
 import com.baverika.r_journal.data.local.entity.JournalEntrySummary
+import com.baverika.r_journal.repository.EventRepository
+import com.baverika.r_journal.repository.JournalRepository
+import com.baverika.r_journal.ui.components.EmptyState
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalAppTheme
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.graphics.SolidColor
+enum class ArchiveViewMode {
+    GRID,
+    LIST,
+    TIMELINE
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JournalArchiveScreen(
-    journalRepo: com.baverika.r_journal.repository.JournalRepository,
-    eventRepo: com.baverika.r_journal.repository.EventRepository,
+    journalRepo: JournalRepository,
+    eventRepo: EventRepository,
     onEntryClick: (JournalEntrySummary) -> Unit,
     searchQuery: String = ""
 ) {
-    // ✅ Use lightweight summaries
     val allEntries by journalRepo.allEntrySummaries.collectAsState(initial = emptyList())
     val allEvents by eventRepo.allEvents.collectAsState(initial = emptyList())
-    
+    val haptic = LocalHapticFeedback.current
+
     val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
     val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
+    var viewMode by rememberSaveable { mutableStateOf(ArchiveViewMode.GRID) }
 
     val filteredEntries = remember(allEntries, searchQuery) {
         if (searchQuery.isBlank()) allEntries
         else {
-            val q = searchQuery.trim().lowercase()
+            val q = searchQuery.trim().lowercase(Locale.getDefault())
             allEntries.filter { entry ->
-                entry.dateFormatted.lowercase().contains(q) ||
-                entry.dayOfWeek.lowercase().contains(q) ||
-                (entry.previewText?.lowercase()?.contains(q) == true) ||
+                entry.dateFormatted.lowercase(Locale.getDefault()).contains(q) ||
+                entry.dayOfWeek.lowercase(Locale.getDefault()).contains(q) ||
+                (entry.previewText?.lowercase(Locale.getDefault())?.contains(q) == true) ||
                 entry.moodEmojis.any { it.contains(q) }
             }
         }
     }
 
+    // Group entries chronologically by Month & Year (preserving descending order)
+    val groupedEntries = remember(filteredEntries) {
+        val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+        val map = linkedMapOf<String, MutableList<JournalEntrySummary>>()
+        for (entry in filteredEntries) {
+            val key = entry.localDate.format(formatter)
+            map.getOrPut(key) { mutableListOf() }.add(entry)
+        }
+        map
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // Celestial Background only for Blue Sky theme
         if (isBlueSky) {
             Image(
                 painter = painterResource(id = R.drawable.bg_journal_archive),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize().blur(6.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(6.dp),
                 contentScale = ContentScale.Crop
             )
         }
-        
-        Column(modifier = Modifier.fillMaxSize()) {
 
+        Column(modifier = Modifier.fillMaxSize()) {
             if (allEntries.isEmpty()) {
-                // Empty state
-                com.baverika.r_journal.ui.components.EmptyState(
+                EmptyState(
                     icon = Icons.AutoMirrored.Filled.MenuBook,
                     title = "Your Journal Awaits",
                     message = "Start writing your first entry by tapping the + button"
                 )
             } else if (filteredEntries.isEmpty()) {
-                // Search no results state
-                com.baverika.r_journal.ui.components.EmptyState(
+                EmptyState(
                     icon = Icons.Default.SearchOff,
                     title = "No Entries Found",
                     message = "No journal entries matched \"$searchQuery\""
                 )
             } else {
-                if (searchQuery.isNotBlank()) {
-                    Text(
-                        text = "Showing ${filteredEntries.size} of ${allEntries.size} entries",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isBlueSky) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                    )
+                // Header Controls Bar: Result count & View Mode Switcher
+                Surface(
+                    color = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (searchQuery.isNotBlank()) {
+                                "Found ${filteredEntries.size} of ${allEntries.size} entries"
+                            } else {
+                                "${filteredEntries.size} entries recorded"
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isBlueSky) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // View mode switcher segmented pill
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSpace) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ViewModeIconButton(
+                                    icon = Icons.Default.GridView,
+                                    description = "Grid view",
+                                    selected = viewMode == ArchiveViewMode.GRID,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewMode = ArchiveViewMode.GRID
+                                    }
+                                )
+                                ViewModeIconButton(
+                                    icon = Icons.AutoMirrored.Filled.ViewList,
+                                    description = "List view",
+                                    selected = viewMode == ArchiveViewMode.LIST,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewMode = ArchiveViewMode.LIST
+                                    }
+                                )
+                                ViewModeIconButton(
+                                    icon = Icons.Default.Timeline,
+                                    description = "Timeline view",
+                                    selected = viewMode == ArchiveViewMode.TIMELINE,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewMode = ArchiveViewMode.TIMELINE
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredEntries, key = { it.id }) { entry ->
-                        // Find events for this entry's date
-                        val entryDate = entry.localDate
-                        val dayEvents = allEvents.filter { event ->
-                            event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
+                // Crossfade between view modes
+                Crossfade(
+                    targetState = viewMode,
+                    label = "ArchiveViewModeTransition"
+                ) { mode ->
+                    when (mode) {
+                        ArchiveViewMode.GRID -> {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 88.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                groupedEntries.forEach { (monthYear, entries) ->
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        ArchiveSectionHeader(
+                                            title = monthYear,
+                                            count = entries.size,
+                                            isBlueSky = isBlueSky
+                                        )
+                                    }
+                                    items(entries, key = { it.id }) { entry ->
+                                        val entryDate = entry.localDate
+                                        val dayEvents = allEvents.filter { event ->
+                                            event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
+                                        }
+
+                                        EnhancedJournalCard(
+                                            entry = entry,
+                                            events = dayEvents,
+                                            onClick = { onEntryClick(entry) }
+                                        )
+                                    }
+                                }
+                            }
                         }
 
-                        EnhancedJournalCard(
-                            entry = entry,
-                            events = dayEvents,
-                            onClick = { onEntryClick(entry) }
-                        )
+                        ArchiveViewMode.LIST -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 88.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                groupedEntries.forEach { (monthYear, entries) ->
+                                    item(key = "hdr_$monthYear") {
+                                        ArchiveSectionHeader(
+                                            title = monthYear,
+                                            count = entries.size,
+                                            isBlueSky = isBlueSky
+                                        )
+                                    }
+                                    items(entries, key = { it.id }) { entry ->
+                                        val entryDate = entry.localDate
+                                        val dayEvents = allEvents.filter { event ->
+                                            event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
+                                        }
+
+                                        JournalListItemCard(
+                                            entry = entry,
+                                            events = dayEvents,
+                                            onClick = { onEntryClick(entry) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        ArchiveViewMode.TIMELINE -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 88.dp),
+                                verticalArrangement = Arrangement.spacedBy(0.dp)
+                            ) {
+                                groupedEntries.forEach { (monthYear, entries) ->
+                                    item(key = "hdr_tl_$monthYear") {
+                                        ArchiveSectionHeader(
+                                            title = monthYear,
+                                            count = entries.size,
+                                            isBlueSky = isBlueSky
+                                        )
+                                    }
+                                    itemsIndexed(entries, key = { _, it -> it.id }) { idx, entry ->
+                                        val entryDate = entry.localDate
+                                        val dayEvents = allEvents.filter { event ->
+                                            event.day == entryDate.dayOfMonth && event.month == entryDate.monthValue
+                                        }
+                                        val isLast = idx == entries.lastIndex
+
+                                        JournalTimelineItemCard(
+                                            entry = entry,
+                                            events = dayEvents,
+                                            isLastInGroup = isLast,
+                                            onClick = { onEntryClick(entry) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -122,29 +296,89 @@ fun JournalArchiveScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ViewModeIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(32.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = description,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArchiveSectionHeader(
+    title: String,
+    count: Int,
+    isBlueSky: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 14.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (isBlueSky) Color.White else MaterialTheme.colorScheme.onSurface
+        )
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ) {
+            Text(
+                text = "$count ${if (count == 1) "entry" else "entries"}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Grid Card (2-column layout)
+// ─────────────────────────────────────────────────────────────
 @Composable
 fun EnhancedJournalCard(
     entry: JournalEntrySummary,
-    events: List<com.baverika.r_journal.data.local.entity.Event> = emptyList(),
+    events: List<Event> = emptyList(),
     onClick: () -> Unit
 ) {
     val hasImages = entry.hasImages
     val imageCount = entry.imageCount
     val moodEmojis = entry.moodEmojis
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val haptic = LocalHapticFeedback.current
 
     val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
     val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             },
-        shape = RoundedCornerShape(if (isSpace) 20.dp else 12.dp),
+        shape = RoundedCornerShape(if (isSpace) 20.dp else 14.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
@@ -155,9 +389,9 @@ fun EnhancedJournalCard(
             contentColor = if (isSpace || isBlueSky) Color(0xFFF3F4F6) else MaterialTheme.colorScheme.onSurface
         ),
         border = when {
-            isSpace -> androidx.compose.foundation.BorderStroke(1.dp, Color(0x2EFFFFFF))
-            isBlueSky -> androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-            else -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
+            isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
         }
     ) {
         Column(
@@ -165,40 +399,37 @@ fun EnhancedJournalCard(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            // Row 1: Day and Date (Vertical stack for grid compactness)
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column {
-                        Text(
-                            text = entry.dayOfWeek.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                        )
-                        Text(
-                            text = entry.dateFormatted, // Now includes Year
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+            // Header: Day of week and date + events
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text(
+                        text = entry.dayOfWeek.uppercase(Locale.getDefault()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = entry.dateFormatted,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
-                    // Event Indicators
-                    if (events.isNotEmpty()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            events.take(3).forEach { event ->
-                                val icon = when (event.type) {
-                                    com.baverika.r_journal.data.local.entity.EventType.BIRTHDAY -> "🎂"
-                                    com.baverika.r_journal.data.local.entity.EventType.ANNIVERSARY -> "💍"
-                                    else -> "🎉"
-                                }
-                                Text(text = icon, style = MaterialTheme.typography.bodySmall)
+                if (events.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        events.take(3).forEach { event ->
+                            val icon = when (event.type) {
+                                EventType.BIRTHDAY -> "🎂"
+                                EventType.ANNIVERSARY -> "💍"
+                                else -> "🎉"
                             }
+                            Text(text = icon, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -206,38 +437,41 @@ fun EnhancedJournalCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Row 2: Mood
+            // Mood emojis
             if (moodEmojis.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 ) {
-                    moodEmojis.take(4).forEach { emoji -> // Limit emojis to prevent overflow
+                    moodEmojis.take(4).forEach { emoji ->
                         Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
 
-            // Row 3: Preview
+            // Preview snippet
             val previewText = entry.previewText
             Text(
                 text = previewText ?: "No preview",
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                color = if (previewText != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                color = if (previewText != null) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Row 4: Counts (SpaceBetween: Msg Left, Img Right)
+            // Footer counts
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Message Count (Left)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Chat,
@@ -253,7 +487,6 @@ fun EnhancedJournalCard(
                     )
                 }
 
-                // Image Count (Right)
                 if (hasImages) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -273,4 +506,324 @@ fun EnhancedJournalCard(
             }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────
+// List View Card (Full-width detailed row)
+// ─────────────────────────────────────────────────────────────
+@Composable
+private fun JournalListItemCard(
+    entry: JournalEntrySummary,
+    events: List<Event> = emptyList(),
+    onClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                isSpace -> Color(0xB3101216)
+                isBlueSky -> Color.Black.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.surface
+            }
+        ),
+        border = when {
+            isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
+            isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Date Badge
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                modifier = Modifier.size(width = 52.dp, height = 56.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "${entry.localDate.dayOfMonth}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = entry.localDate.format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault())).uppercase(Locale.getDefault()),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Center details
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (entry.moodEmojis.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            entry.moodEmojis.take(4).forEach { emoji ->
+                                Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = entry.dateFormatted,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (events.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            events.take(3).forEach { event ->
+                                val icon = when (event.type) {
+                                    EventType.BIRTHDAY -> "🎂"
+                                    EventType.ANNIVERSARY -> "💍"
+                                    else -> "🎉"
+                                }
+                                Text(text = icon, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                val preview = entry.previewText
+                Text(
+                    text = preview ?: "No preview available",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (preview != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${entry.messageCount} msg",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (entry.hasImages) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${entry.imageCount} img",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Open entry",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Timeline View Item (Vertical connected stream)
+// ─────────────────────────────────────────────────────────────
+@Composable
+private fun JournalTimelineItemCard(
+    entry: JournalEntrySummary,
+    events: List<Event> = emptyList(),
+    isLastInGroup: Boolean,
+    onClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
+    IntrinsicHeightRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+            .padding(vertical = 2.dp)
+    ) {
+        // Timeline vertical rail + circle indicator
+        Column(
+            modifier = Modifier
+                .width(28.dp)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            if (!isLastInGroup) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Content Card
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = 8.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = when {
+                    isSpace -> Color(0xB3101216)
+                    isBlueSky -> Color.Black.copy(alpha = 0.7f)
+                    else -> MaterialTheme.colorScheme.surface
+                }
+            ),
+            border = when {
+                isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
+                isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = entry.dateFormatted,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    if (events.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            events.take(2).forEach { event ->
+                                val icon = when (event.type) {
+                                    EventType.BIRTHDAY -> "🎂"
+                                    EventType.ANNIVERSARY -> "💍"
+                                    else -> "🎉"
+                                }
+                                Text(text = icon, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+
+                if (entry.moodEmojis.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        entry.moodEmojis.take(5).forEach { emoji ->
+                            Text(text = emoji, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                val preview = entry.previewText
+                if (!preview.isNullOrBlank()) {
+                    Text(
+                        text = preview,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${entry.messageCount} messages",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    if (entry.hasImages) {
+                        Text(
+                            text = "\u2022 ${entry.imageCount} photos",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IntrinsicHeightRow(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit
+) {
+    Row(
+        modifier = modifier.height(IntrinsicSize.Min),
+        content = content
+    )
 }

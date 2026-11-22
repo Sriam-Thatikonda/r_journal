@@ -48,34 +48,60 @@ fun HabitTrackerScreen(
             .fillMaxSize()
     ) {
         // Header for 7 Days
+        val titleColumnWidth = 112.dp
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 120.dp, bottom = 8.dp, top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-             val today = java.time.LocalDate.now()
-             (0..6).forEach { i ->
-                 val date = today.plusDays(i.toLong())
-                 Column(
-                     horizontalAlignment = Alignment.CenterHorizontally,
-                     modifier = Modifier.width(32.dp)
-                 ) {
-                     Text(
-                         text = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()),
-                         style = MaterialTheme.typography.labelSmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                     )
-                     Text(
-                         text = date.dayOfMonth.toString(),
-                         style = MaterialTheme.typography.labelSmall,
-                         fontWeight = FontWeight.Bold
-                     )
-                 }
-             }
+            Box(
+                modifier = Modifier
+                    .width(titleColumnWidth)
+                    .padding(start = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = "Habit",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            val today = java.time.LocalDate.now()
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                (0..6).forEach { i ->
+                    val date = today.plusDays(i.toLong())
+                    val isToday = i == 0
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.width(36.dp)
+                    ) {
+                        Text(
+                            text = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()).take(3),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                        )
+                        Text(
+                            text = date.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Bold,
+                            color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
         }
         
-        HorizontalDivider()
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
         if (dashboardGrids.isEmpty()) {
              EmptyState(
@@ -114,6 +140,7 @@ fun HabitTrackerScreen(
 @Composable
 fun HabitRow7Day(
     grid: HabitViewModel.YearlyHabitGrid,
+    titleColumnWidth: androidx.compose.ui.unit.Dp = 112.dp,
     onNameClick: () -> Unit,
     onEditClick: (com.baverika.r_journal.data.local.entity.Habit) -> Unit,
     onDeleteClick: (com.baverika.r_journal.data.local.entity.Habit) -> Unit,
@@ -125,13 +152,13 @@ fun HabitRow7Day(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp),
+            .height(70.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Name Column
         Box(
             modifier = Modifier
-                .width(120.dp) // Slightly wider for better readability
+                .width(titleColumnWidth)
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.surface)
                 .combinedClickable(
@@ -139,13 +166,13 @@ fun HabitRow7Day(
                     onLongClick = { showMenu = true }
                 )
                 .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.Center // Changed from Alignment.CenterStart
+            contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 text = grid.habit.title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Start,
                 maxLines = 2,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -175,23 +202,28 @@ fun HabitRow7Day(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(end = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             val appTheme = com.baverika.r_journal.ui.theme.LocalAppTheme.current
             grid.days.forEach { dayState ->
-                HeatmapBlock(
-                    state = dayState,
-                    color = com.baverika.r_journal.ui.theme.getEffectiveColor(Color(grid.habit.color), appTheme),
-                    isLarge = true, // Larger blocks for touch focus
-                    onClick = {
-                        if (dayState.status != HabitViewModel.HabitStatus.DISABLED) {
-                            val newState = dayState.status != HabitViewModel.HabitStatus.DONE
-                            onBlockClick(dayState.date, newState)
+                Box(
+                    modifier = Modifier.width(36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    HeatmapBlock(
+                        state = dayState,
+                        color = com.baverika.r_journal.ui.theme.getEffectiveColor(Color(grid.habit.color), appTheme),
+                        isLarge = true, // Larger blocks for touch focus
+                        onClick = {
+                            if (dayState.status != HabitViewModel.HabitStatus.DISABLED) {
+                                val newState = dayState.status != HabitViewModel.HabitStatus.DONE
+                                onBlockClick(dayState.date, newState)
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
         }
     }

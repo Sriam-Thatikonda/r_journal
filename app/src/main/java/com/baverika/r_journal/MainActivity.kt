@@ -15,6 +15,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
@@ -260,7 +261,7 @@ fun MainApp(
     // Define top-level routes where the drawer should be accessible via swipe
     val topLevelRoutes = setOf(
         "archive", "chat_input/mine", "quick_notes", "search", "dashboard",
-        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest", "challenges", "trackers"
+        "calendar", "events", "export", "import", "settings", "habits", "quotes", "tasks", "life_trackers", "craving_quest", "challenges", "trackers", "password_generator"
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
@@ -271,33 +272,19 @@ fun MainApp(
             ModalDrawerSheet(
                 drawerContainerColor = if (isSpace) Color(0xF208090C) else DrawerDefaults.modalContainerColor
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "R-Journal",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp)
-                    )
-
-                    HorizontalDivider()
-
-                    DrawerContent(
-                        currentRoute = currentRoute,
-                        onScreenSelected = { route ->
-                            navController.navigate(route) {
-                                popUpTo("archive") {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                DrawerContent(
+                    currentRoute = currentRoute,
+                    onScreenSelected = { route ->
+                        navController.navigate(route) {
+                            popUpTo("archive") {
+                                saveState = true
                             }
-                            scope.launch { drawerState.close() }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                    )
-                }
+                        scope.launch { drawerState.close() }
+                    }
+                )
             }
         },
         drawerState = drawerState,
@@ -330,9 +317,11 @@ fun MainApp(
                     "add_tracker",
                     "add_craving",
                     "create_challenge",
-                    "image_viewer"
+                    "image_viewer",
+                    "search"
                 )
                 val hideGlobalTopBar = screensWithCustomHeader.contains(currentRoute) ||
+                        currentRoute?.startsWith("search") == true ||
                         currentRoute?.startsWith("edit_quick_note") == true ||
                         currentRoute?.startsWith("edit_task") == true ||
                         currentRoute?.startsWith("add_habit") == true ||
@@ -399,6 +388,25 @@ fun MainApp(
                                 }
                             },
                             actions = {
+                                IconButton(
+                                    onClick = {
+                                        val q = topBarSearchQuery.trim()
+                                        isSearchActive = false
+                                        topBarSearchQuery = ""
+                                        keyboardController?.hide()
+                                        if (q.isNotEmpty()) {
+                                            navController.navigate("search?query=${android.net.Uri.encode(q)}")
+                                        } else {
+                                            navController.navigate("search")
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.TravelExplore,
+                                        contentDescription = "Search Everywhere (Global Search)",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                                 if (topBarSearchQuery.isNotEmpty()) {
                                     IconButton(onClick = { topBarSearchQuery = "" }) {
                                         Icon(Icons.Default.Close, contentDescription = "Clear search")
@@ -441,7 +449,7 @@ fun MainApp(
                             currentRoute == "quotes" -> "Motivational Quotes"
                             currentRoute == "calendar" -> "Calendar"
                             currentRoute == "events" -> "Special Dates"
-                            currentRoute == "life_trackers" -> "Life Trackers"
+                            currentRoute == "life_trackers" -> "Life Milestones"
                             currentRoute == "trackers" -> "Trackers"
                             currentRoute == "craving_quest" -> "Craving Quest"
                             currentRoute == "challenges" -> "Challenge Tracker"
@@ -494,24 +502,22 @@ fun MainApp(
                             },
                             actions = {
                                 if (currentRoute == "archive" || currentRoute == "quick_notes" || currentRoute == "tasks" || currentRoute == "trackers") {
+                                    val haptic = LocalHapticFeedback.current
                                     Box(
                                         modifier = Modifier
                                             .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(
-                                                    onTap = {
-                                                        isSearchActive = true
-                                                    },
-                                                    onDoubleTap = {
-                                                        navController.navigate("search")
-                                                    }
-                                                )
-                                            }
+                                            .combinedClickable(
+                                                onClick = { isSearchActive = true },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    navController.navigate("search")
+                                                }
+                                            )
                                             .padding(12.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Search,
-                                            contentDescription = "Search (Double tap for Global Search)",
+                                            contentDescription = "Search (Hold for Global Search)",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -747,7 +753,7 @@ fun MainApp(
             if (fabAction != null && fabIcon != null) {
                 Surface(
                     modifier = Modifier
-                        .size(96.dp)
+                        .size(56.dp)
                         .clip(androidx.compose.foundation.shape.CircleShape)
                         .then(
                             if (isSpace) Modifier.border(1.dp, Color(0x40FFFFFF), androidx.compose.foundation.shape.CircleShape) else Modifier
@@ -768,7 +774,7 @@ fun MainApp(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        Icon(fabIcon, contentDescription = fabDesc, modifier = Modifier.size(36.dp))
+                        Icon(fabIcon, contentDescription = fabDesc, modifier = Modifier.size(26.dp))
                     }
                 }
             }
@@ -822,7 +828,32 @@ fun MainApp(
                                     context
                                 )
                             ),
-                            navController = navController
+                            navController = navController,
+                            initialQuery = ""
+                        )
+                    }
+
+                    composable(
+                        route = "search?query={query}",
+                        arguments = listOf(androidx.navigation.navArgument("query") {
+                            type = androidx.navigation.NavType.StringType
+                            defaultValue = ""
+                        })
+                    ) { backStackEntry ->
+                        val initialQuery = backStackEntry.arguments?.getString("query") ?: ""
+                        SearchScreen(
+                            viewModel = viewModel(
+                                factory = SearchViewModelFactory(
+                                    journalRepo,
+                                    quickNoteRepo,
+                                    taskRepo,
+                                    trackerRepo,
+                                    quoteRepo,
+                                    context
+                                )
+                            ),
+                            navController = navController,
+                            initialQuery = initialQuery
                         )
                     }
 
@@ -1288,79 +1319,77 @@ fun DrawerContent(
     currentRoute: String?,
     onScreenSelected: (String) -> Unit
 ) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .padding(vertical = 12.dp)
     ) {
-        // Section: Reference
-        Text(
-            text = "Reference",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
-        )
-        DrawerItem(
-            icon = Icons.Filled.FormatQuote,
-            label = "Quotes",
-            isSelected = currentRoute == "quotes",
-            onClick = { onScreenSelected("quotes") }
-        )
+        // App Branding Header Card
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = if (isSpace) Color(0x33FFFFFF) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "R-Journal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Personal Life OS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Group 1: Overview
+        DrawerSectionTitle(title = "Overview")
         DrawerItem(
             icon = Icons.Filled.BarChart,
             label = "Dashboard",
             isSelected = currentRoute == "dashboard",
             onClick = { onScreenSelected("dashboard") }
         )
-        DrawerItem(
-            icon = Icons.Filled.FitnessCenter,
-            label = "Craving Quest",
-            isSelected = currentRoute == "craving_quest",
-            onClick = { onScreenSelected("craving_quest") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.CalendarMonth,
-            label = "Calendar",
-            isSelected = currentRoute == "calendar",
-            onClick = { onScreenSelected("calendar") }
-        )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-        // Section: Utilities
-        Text(
-            text = "Utilities",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
-        )
-        DrawerItem(
-            icon = Icons.Filled.VpnKey,
-            label = "Password Generator",
-            isSelected = currentRoute == "password_generator",
-            onClick = { onScreenSelected("password_generator") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Event,
-            label = "Special Dates",
-            isSelected = currentRoute == "events",
-            onClick = { onScreenSelected("events") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.DateRange, 
-            label = "Life Tracker",
-            isSelected = currentRoute == "life_trackers",
-            onClick = { onScreenSelected("life_trackers") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.AddCircle,
-            label = "Trackers",
-            isSelected = currentRoute == "trackers",
-            onClick = { onScreenSelected("trackers") }
-        )
+        // Group 2: Habits & Goals
+        DrawerSectionTitle(title = "Habits & Goals")
         DrawerItem(
             icon = Icons.Filled.CheckCircle,
-            label = "Habits",
+            label = "Habit Tracker",
             isSelected = currentRoute == "habits",
             onClick = { onScreenSelected("habits") }
         )
@@ -1370,31 +1399,63 @@ fun DrawerContent(
             isSelected = currentRoute == "challenges",
             onClick = { onScreenSelected("challenges") }
         )
+        DrawerItem(
+            icon = Icons.Filled.FitnessCenter,
+            label = "Craving Quest",
+            isSelected = currentRoute == "craving_quest",
+            onClick = { onScreenSelected("craving_quest") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.AddCircle,
+            label = "Trackers",
+            isSelected = currentRoute == "trackers",
+            onClick = { onScreenSelected("trackers") }
+        )
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-        // Section: Personal
-        Text(
-            text = "Personal",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
+        // Group 3: Memory & Time
+        DrawerSectionTitle(title = "Memory & Time")
+        DrawerItem(
+            icon = Icons.Filled.CalendarMonth,
+            label = "Calendar",
+            isSelected = currentRoute == "calendar",
+            onClick = { onScreenSelected("calendar") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.Event,
+            label = "Special Dates",
+            isSelected = currentRoute == "events",
+            onClick = { onScreenSelected("events") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.DateRange,
+            label = "Life Milestones",
+            isSelected = currentRoute == "life_trackers",
+            onClick = { onScreenSelected("life_trackers") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.FormatQuote,
+            label = "Quotes",
+            isSelected = currentRoute == "quotes",
+            onClick = { onScreenSelected("quotes") }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+        // Group 4: Vault & System
+        DrawerSectionTitle(title = "Vault & System")
+        DrawerItem(
+            icon = Icons.Filled.VpnKey,
+            label = "Password Vault",
+            isSelected = currentRoute == "password_generator",
+            onClick = { onScreenSelected("password_generator") }
         )
         DrawerItem(
             icon = Icons.Filled.FolderSpecial,
             label = "Mine",
             isSelected = currentRoute == "chat_input/mine",
             onClick = { onScreenSelected("chat_input/mine") }
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Section: System
-        Text(
-            text = "System",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp)
         )
         DrawerItem(
             icon = Icons.Filled.Settings,
@@ -1414,6 +1475,17 @@ fun DrawerContent(
                 .padding(bottom = 16.dp)
         )
     }
+}
+
+@Composable
+fun DrawerSectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 28.dp, top = 10.dp, bottom = 4.dp)
+    )
 }
 
 @Composable

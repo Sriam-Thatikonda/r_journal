@@ -73,7 +73,7 @@ fun SettingsScreen(
     val tasks by taskRepo.allTasks.collectAsState(initial = emptyList())
 
     val milestoneStats = remember(entries, tasks) {
-        MilestoneCalculator.calculatePastYearStats(entries, tasks)
+        MilestoneCalculator.calculateCurrentYearStats(entries, tasks)
     }
 
     var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
@@ -496,8 +496,8 @@ fun SettingsScreen(
 
             SettingsItem(
                 icon = Icons.Default.EmojiEvents,
-                title = "1-Year Milestone Card",
-                subtitle = "View your 365-day story & personal statistics",
+                title = "${milestoneStats.year} Milestone Card",
+                subtitle = "View your ${milestoneStats.year} story & personal statistics (Jan 1 – Dec 31)",
                 onClick = { showMilestoneDialog = true }
             )
 

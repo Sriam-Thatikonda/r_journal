@@ -35,23 +35,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -129,7 +113,7 @@ fun LifeTrackersScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search trackers...") },
+                        placeholder = { Text("Search milestones...") },
                         modifier = Modifier
                             .weight(1f)
                             .focusRequester(searchFocusRequester),
@@ -147,7 +131,7 @@ fun LifeTrackersScreen(
                     )
                 } else {
                     Text(
-                        "Trackers", 
+                        "Life Milestones", 
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
@@ -168,14 +152,14 @@ fun LifeTrackersScreen(
             if (trackers.isEmpty()) {
                 com.baverika.r_journal.ui.components.EmptyState(
                     icon = Icons.AutoMirrored.Filled.List,
-                    title = "No Trackers Yet",
-                    message = "Create trackers for life events, activities, and logs.",
-                    actionLabel = "Add Tracker",
+                    title = "No Milestones Yet",
+                    message = "Create milestones to track important life durations, days since, or countdowns.",
+                    actionLabel = "Add Milestone",
                     onActionClick = { showAddDialog = true }
                 )
             } else if (filteredTrackers.isEmpty()) {
                  Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No matching trackers found.", style = MaterialTheme.typography.bodyLarge)
+                    Text("No matching milestones found.", style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
                 if (isGridView) {
@@ -299,11 +283,29 @@ fun TrackerGridCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     if (item.lastEntry != null) {
-                        Text(
-                            formatDate(item.lastEntry.dateMillis),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        val elapsedDays = ((System.currentTimeMillis() - item.lastEntry.dateMillis) / (1000 * 60 * 60 * 24)).coerceAtLeast(0)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "${elapsedDays}d",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                )
+                            }
+                            Text(
+                                formatDate(item.lastEntry.dateMillis),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         if (item.lastEntry.note.isNotBlank()) {
                              Text(
                                 item.lastEntry.note,
@@ -382,11 +384,29 @@ fun TrackerListCard(
                             fontWeight = FontWeight.Bold
                         )
                          if (item.lastEntry != null) {
-                            Text(
-                                formatDate(item.lastEntry.dateMillis),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            val elapsedDays = ((System.currentTimeMillis() - item.lastEntry.dateMillis) / (1000 * 60 * 60 * 24)).coerceAtLeast(0)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = "$elapsedDays days",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    formatDate(item.lastEntry.dateMillis),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                      }
                      if (item.lastEntry != null && item.lastEntry.note.isNotBlank()) {

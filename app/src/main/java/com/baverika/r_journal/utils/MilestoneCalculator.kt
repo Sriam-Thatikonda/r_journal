@@ -4,31 +4,52 @@ import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.local.entity.Task
 import com.baverika.r_journal.data.model.MilestoneStats
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object MilestoneCalculator {
 
-    fun calculatePastYearStats(
+    /**
+     * Calculates statistics for the calendar year from January 1st to December 31st.
+     * Defaults to the current calendar year.
+     */
+    fun calculateCurrentYearStats(
         entries: List<JournalEntry>,
-        tasks: List<Task>
+        tasks: List<Task>,
+        targetYear: Int = LocalDate.now().year
     ): MilestoneStats {
-        val now = System.currentTimeMillis()
-        val oneYearAgo = now - (365L * 24L * 60L * 60L * 1000L)
+        val zoneId = ZoneId.systemDefault()
+        val startOfYearDate = LocalDate.of(targetYear, 1, 1)
+        val daysInYear = startOfYearDate.lengthOfYear()
 
-        // 1. Filter entries from past 365 days
-        val pastYearEntries = entries.filter { it.dateMillis in oneYearAgo..now }
+        // 1. Filter entries strictly between Jan 1st and Dec 31st of the target year
+        val currentYearEntries = entries.filter { entry ->
+            val entryDate = Instant.ofEpochMilli(entry.dateMillis)
+                .atZone(zoneId)
+                .toLocalDate()
+            entryDate.year == targetYear
+        }
 
-        if (pastYearEntries.isEmpty()) {
-            val pastYearTasks = tasks.count { it.isCompleted }
+        // Filter completed tasks belonging to the target year (by dueDate, updatedAt, or createdAt)
+        val completedTasksCount = tasks.count { task ->
+            if (!task.isCompleted) return@count false
+            val dueYear = task.dueDate?.let { Instant.ofEpochMilli(it).atZone(zoneId).toLocalDate().year }
+            val updatedYear = if (task.updatedAt > 0L) Instant.ofEpochMilli(task.updatedAt).atZone(zoneId).toLocalDate().year else null
+            val createdYear = Instant.ofEpochMilli(task.createdAt).atZone(zoneId).toLocalDate().year
+            dueYear == targetYear || updatedYear == targetYear || (dueYear == null && updatedYear == null && createdYear == targetYear)
+        }
+
+        if (currentYearEntries.isEmpty()) {
             return MilestoneStats(
+                year = targetYear,
                 totalWordsWritten = 0,
                 mostActiveDay = "No entries yet",
-                totalTasksCompleted = pastYearTasks,
+                totalTasksCompleted = completedTasksCount,
                 topMood = "No mood logged",
                 totalDaysJournaled = 0,
-                totalDaysInPeriod = 365
+                totalDaysInPeriod = daysInYear
             )
         }
 
@@ -44,11 +65,11 @@ object MilestoneCalculator {
         val uniqueJournaledDays = mutableSetOf<String>()
         val moodCounts = mutableMapOf<String, Int>()
 
-        for (entry in pastYearEntries) {
+        for (entry in currentYearEntries) {
             val hasMessages = entry.messages.isNotEmpty() || entry.imageUris.isNotEmpty()
             if (hasMessages) {
                 val dateStr = Instant.ofEpochMilli(entry.dateMillis)
-                    .atZone(ZoneId.systemDefault())
+                    .atZone(zoneId)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
                 uniqueJournaledDays.add(dateStr)
             }
@@ -93,7 +114,7 @@ object MilestoneCalculator {
         // 3. Most Active Day Formatting
         val mostActiveDayStr = if (peakWordCount > 0 && peakEntryDateMillis > 0) {
             val formattedDate = Instant.ofEpochMilli(peakEntryDateMillis)
-                .atZone(ZoneId.systemDefault())
+                .atZone(zoneId)
                 .format(dateFormatter)
             "$formattedDate ($peakWordCount words)"
         } else {
@@ -111,20 +132,24 @@ object MilestoneCalculator {
             "No mood logged"
         }
 
-        // 5. Total Tasks Completed in past year
-        val completedTasksCount = tasks.count { task ->
-            task.isCompleted
-        }
-
         return MilestoneStats(
+            year = targetYear,
             totalWordsWritten = grandTotalWords,
             mostActiveDay = mostActiveDayStr,
             totalTasksCompleted = completedTasksCount,
             topMood = topMoodStr,
             totalDaysJournaled = uniqueJournaledDays.size,
-            totalDaysInPeriod = 365,
+            totalDaysInPeriod = daysInYear,
             totalImagesAttached = grandTotalImages,
             totalAudioNotesRecorded = grandTotalAudioNotes
         )
     }
+
+    /**
+     * Backward-compatible alias for calculateCurrentYearStats.
+     */
+    fun calculatePastYearStats(
+        entries: List<JournalEntry>,
+        tasks: List<Task>
+    ): MilestoneStats = calculateCurrentYearStats(entries, tasks)
 }

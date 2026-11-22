@@ -119,6 +119,7 @@ fun QuickNoteEditorScreen(
 
     Scaffold(
         containerColor = backgroundColor,
+        contentWindowInsets = WindowInsets.statusBars,
         bottomBar = {
             val activeType = state.blocks.getOrNull(state.activeBlockIndex)?.type ?: BlockType.PARAGRAPH
             RichFormattingToolbar(
@@ -145,7 +146,6 @@ fun QuickNoteEditorScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -283,6 +283,7 @@ fun QuickNoteEditorScreen(
             // --- RICH TEXT CONTENT BLOCKS ---
             LazyColumn(
                 state = listState,
+                contentPadding = PaddingValues(bottom = 20.dp),
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()

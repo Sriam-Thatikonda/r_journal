@@ -34,6 +34,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,62 +117,234 @@ fun TaskListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Actions Row (Search, Sort, Filter)
-            Row(
+            val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+            val haptic = LocalHapticFeedback.current
+
+            // Consolidated Smart Header & Quick Controls
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             ) {
-                Text(
-                    text = "Summary",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val total = taskStats.totalTasks
+                    val completed = taskStats.completedTasks
+                    val progress = if (total > 0) completed.toFloat() / total.toFloat() else 0f
+                    val percentage = (progress * 100).toInt()
 
-                // Sort button
-                Box {
-                    IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
-                    }
-                    SortDropdownMenu(
-                        expanded = showSortMenu,
-                        currentSort = currentSort,
-                        onSortSelected = {
-                            viewModel.setSort(it)
-                            showSortMenu = false
-                        },
-                        onDismiss = { showSortMenu = false }
-                    )
-                }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.size(34.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                strokeWidth = 3.5.dp
+                            )
+                            Text(
+                                text = "$percentage%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
 
-                    // Filter button
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        BadgedBox(
-                            badge = {
-                                if (selectedCategoryId != null || selectedPriority != null) {
-                                    Badge { Text("!") }
+                        Column {
+                            Text(
+                                text = "$completed of $total Tasks Done",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "${taskStats.activeTasks} active",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (taskStats.overdueTasks > 0) {
+                                    Text(
+                                        text = "• ${taskStats.overdueTasks} overdue",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFFE53935)
+                                    )
                                 }
                             }
-                        ) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                        }
+                    }
+
+                    // Right Controls: Sort & Filter
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(
+                                    imageVector = getSortIcon(currentSort),
+                                    contentDescription = "Sort tasks",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            SortDropdownMenu(
+                                expanded = showSortMenu,
+                                currentSort = currentSort,
+                                onSortSelected = {
+                                    viewModel.setSort(it)
+                                    showSortMenu = false
+                                },
+                                onDismiss = { showSortMenu = false }
+                            )
+                        }
+
+                        IconButton(onClick = { showFilterSheet = true }) {
+                            BadgedBox(
+                                badge = {
+                                    if (selectedCategoryId != null || selectedPriority != null) {
+                                        Badge { Text("!") }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Filter tasks",
+                                    tint = if (selectedCategoryId != null || selectedPriority != null) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
+            }
 
-            // Statistics Summary Card
-            TaskStatsSummary(stats = taskStats)
+            val orderedFilters = remember {
+                listOf(
+                    TaskFilter.ALL,
+                    TaskFilter.TODAY,
+                    TaskFilter.ACTIVE,
+                    TaskFilter.OVERDUE,
+                    TaskFilter.COMPLETED
+                )
+            }
 
-            // Filter Chips
-            FilterChipsRow(
-                currentFilter = currentFilter,
-                selectedCategoryId = selectedCategoryId,
-                selectedPriority = selectedPriority,
-                onFilterSelected = { viewModel.setFilter(it) },
-                onClearFilters = { viewModel.clearFilters() }
-            )
+            // Smart Segment Tabs Row (All, Today, Active, Overdue, Completed)
+            ScrollableTabRow(
+                selectedTabIndex = orderedFilters.indexOf(currentFilter).coerceAtLeast(0),
+                modifier = Modifier.fillMaxWidth(),
+                edgePadding = 16.dp,
+                divider = {},
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                orderedFilters.forEach { filter ->
+                    val isSelected = currentFilter == filter
+                    val count = when (filter) {
+                        TaskFilter.ALL -> taskStats.totalTasks
+                        TaskFilter.TODAY -> taskStats.completedToday
+                        TaskFilter.ACTIVE -> taskStats.activeTasks
+                        TaskFilter.OVERDUE -> taskStats.overdueTasks
+                        TaskFilter.COMPLETED -> taskStats.completedTasks
+                    }
+
+                    Tab(
+                        selected = isSelected,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.setFilter(filter)
+                        },
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = getFilterDisplayName(filter),
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                ) {
+                                    Text(
+                                        text = "$count",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                        color = if (filter == TaskFilter.OVERDUE && count > 0) {
+                                            Color(0xFFE53935)
+                                        } else if (isSelected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Active Category / Priority Filters Row (if filtered)
+            if (selectedCategoryId != null || selectedPriority != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    selectedCategoryId?.let { catId ->
+                        val cat = categories.find { it.id == catId }
+                        if (cat != null) {
+                            InputChip(
+                                selected = true,
+                                onClick = { viewModel.filterByCategory(null) },
+                                label = { Text(cat.name) },
+                                trailingIcon = { Icon(Icons.Default.Close, contentDescription = "Clear category", modifier = Modifier.size(14.dp)) }
+                            )
+                        }
+                    }
+
+                    selectedPriority?.let { pri ->
+                        InputChip(
+                            selected = true,
+                            onClick = { viewModel.filterByPriority(null) },
+                            label = { Text(pri.displayName) },
+                            trailingIcon = { Icon(Icons.Default.Close, contentDescription = "Clear priority", modifier = Modifier.size(14.dp)) }
+                        )
+                    }
+
+                    TextButton(
+                        onClick = { viewModel.clearFilters() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("Clear", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
 
             // Task List
             if (isLoading) {
@@ -647,7 +824,7 @@ fun SwipeableTaskItem(
 }
 
 /**
- * Custom checkbox with priority-colored border.
+ * Custom checkbox with priority-colored border and bouncy animation.
  */
 @Composable
 private fun TaskCheckbox(
@@ -655,11 +832,13 @@ private fun TaskCheckbox(
     priority: TaskPriority,
     onToggle: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     val priorityColor = Color(priority.colorValue)
     val checkScale by animateFloatAsState(
         targetValue = if (isCompleted) 1f else 0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "check_scale"
     )
@@ -667,12 +846,17 @@ private fun TaskCheckbox(
     Box(
         modifier = Modifier
             .size(36.dp)
-            .clickable(onClick = onToggle),
+            .clickable(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggle()
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(
                     if (isCompleted) priorityColor else Color.Transparent
@@ -684,14 +868,16 @@ private fun TaskCheckbox(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier
-                    .size(16.dp)
-                    .scale(checkScale)
-            )
+            if (isCompleted) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(15.dp)
+                        .scale(checkScale)
+                )
+            }
         }
     }
 }
@@ -719,7 +905,7 @@ private fun PriorityIndicator(priority: TaskPriority) {
 }
 
 /**
- * Due date chip.
+ * Due date chip with chromatic urgency.
  */
 @Composable
 private fun DueDateChip(
@@ -729,42 +915,66 @@ private fun DueDateChip(
     val dateFormat = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
 
-    val formattedDate = remember(dueDate) {
-        val calendar = Calendar.getInstance()
-        val today = Calendar.getInstance()
-        val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-        calendar.timeInMillis = dueDate
+    val calendar = remember(dueDate) {
+        Calendar.getInstance().apply { timeInMillis = dueDate }
+    }
+    val today = remember { Calendar.getInstance() }
+    val tomorrow = remember { Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) } }
 
-        when {
-            isSameDay(calendar, today) -> "Today, ${timeFormat.format(Date(dueDate))}"
-            isSameDay(calendar, tomorrow) -> "Tomorrow"
-            else -> dateFormat.format(Date(dueDate))
-        }
+    val isToday = isSameDay(calendar, today)
+    val isTomorrow = isSameDay(calendar, tomorrow)
+
+    val labelText = when {
+        isOverdue && isToday -> "Overdue • Today, ${timeFormat.format(Date(dueDate))}"
+        isOverdue -> "Overdue • ${dateFormat.format(Date(dueDate))}"
+        isToday -> "Today, ${timeFormat.format(Date(dueDate))}"
+        isTomorrow -> "Tomorrow"
+        else -> dateFormat.format(Date(dueDate))
+    }
+
+    val (containerColor, contentColor, icon) = when {
+        isOverdue -> Triple(
+            Color(0xFFE53935).copy(alpha = 0.16f),
+            Color(0xFFE53935),
+            Icons.Default.Warning
+        )
+        isToday -> Triple(
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f),
+            MaterialTheme.colorScheme.onPrimaryContainer,
+            Icons.Outlined.Schedule
+        )
+        isTomorrow -> Triple(
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+            MaterialTheme.colorScheme.onSecondaryContainer,
+            Icons.Outlined.Schedule
+        )
+        else -> Triple(
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            MaterialTheme.colorScheme.onSurfaceVariant,
+            Icons.Outlined.CalendarToday
+        )
     }
 
     Surface(
-        color = if (isOverdue) {
-            Color(0xFFE53935).copy(alpha = 0.15f)
-        } else {
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-        },
-        shape = RoundedCornerShape(4.dp)
+        color = containerColor,
+        shape = RoundedCornerShape(6.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = if (isOverdue) Icons.Default.Warning else Icons.Outlined.Schedule,
+                imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(12.dp),
-                tint = if (isOverdue) Color(0xFFE53935) else MaterialTheme.colorScheme.onSecondaryContainer
+                tint = contentColor
             )
             Text(
-                text = formattedDate,
+                text = labelText,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isOverdue) Color(0xFFE53935) else MaterialTheme.colorScheme.onSecondaryContainer
+                fontWeight = if (isOverdue || isToday) FontWeight.SemiBold else FontWeight.Normal,
+                color = contentColor
             )
         }
     }
