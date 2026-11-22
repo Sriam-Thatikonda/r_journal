@@ -2,6 +2,8 @@ package com.baverika.r_journal.ui.screens
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,10 +12,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,51 +33,41 @@ import com.baverika.r_journal.ui.theme.LocalAppTheme
 import com.baverika.r_journal.ui.viewmodel.YearInPixelsViewModel
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
 
-/**
- * Theme-adaptive mood colors for the heatmap
- * Colors are designed to be distinguishable and harmonious across all themes
- */
+enum class HeatmapViewMode {
+    MATRIX, RIBBON
+}
+
+data class MoodDescriptor(val name: String, val emoji: String, val colorDark: Color, val colorLight: Color)
+
+val MOOD_DESCRIPTORS = listOf(
+    MoodDescriptor("Happy", "☀️", Color(0xFFFFC107), Color(0xFFFFB300)),
+    MoodDescriptor("Calm", "🌿", Color(0xFF26A69A), Color(0xFF00897B)),
+    MoodDescriptor("Anxious", "⚡", Color(0xFFAB47BC), Color(0xFF8E24AA)),
+    MoodDescriptor("Sad", "🌧️", Color(0xFF42A5F5), Color(0xFF1E88E5)),
+    MoodDescriptor("Tired", "🌙", Color(0xFF78909C), Color(0xFF546E7A))
+)
+
 @Composable
 fun getMoodColors(): Map<String, Color> {
     val currentTheme = LocalAppTheme.current
     val isDarkTheme = currentTheme != AppTheme.LIGHT && currentTheme != AppTheme.CLOUD_DANCER
-    
-    return if (isDarkTheme) {
-        // Dark theme colors - vibrant but not too harsh
-        mapOf(
-            "Happy" to Color(0xFFFFC107),     // Bright Amber/Gold
-            "Calm" to Color(0xFF26A69A),      // Teal
-            "Anxious" to Color(0xFFAB47BC),   // Purple
-            "Sad" to Color(0xFF42A5F5),       // Blue
-            "Tired" to Color(0xFF78909C)      // Blue Grey
-        )
-    } else {
-        // Light theme colors - slightly muted for better readability
-        mapOf(
-            "Happy" to Color(0xFFFFB300),     // Darker Amber
-            "Calm" to Color(0xFF00897B),      // Darker Teal
-            "Anxious" to Color(0xFF8E24AA),   // Darker Purple
-            "Sad" to Color(0xFF1E88E5),       // Darker Blue
-            "Tired" to Color(0xFF546E7A)      // Darker Blue Grey
-        )
-    }
+    return MOOD_DESCRIPTORS.associate { it.name to if (isDarkTheme) it.colorDark else it.colorLight }
 }
 
-/**
- * Get empty cell color based on theme
- */
 @Composable
 fun getEmptyCellColor(): Color {
     val currentTheme = LocalAppTheme.current
     return when (currentTheme) {
         AppTheme.LIGHT -> Color(0xFFEBEDF0)
-        AppTheme.CLOUD_DANCER -> Color(0xFFE4E0D6) // Warm greige cell for Cloud Dancer
+        AppTheme.CLOUD_DANCER -> Color(0xFFE4E0D6)
         AppTheme.MIDNIGHT -> Color(0xFF161B22)
         AppTheme.OCEAN -> Color(0xFF0D2137)
-        AppTheme.ROSEWOOD -> Color(0xFF14161A) // Charcoal glass cell for Space theme
+        AppTheme.ROSEWOOD -> Color(0xFF14161A)
         AppTheme.BLUE_SKY -> Color(0xFF081428)
     }
 }
@@ -89,116 +83,208 @@ fun YearInPixelsScreen(
     val selectedYear by viewModel.selectedYear.collectAsState()
     val moodColors = getMoodColors()
     val emptyCellColor = getEmptyCellColor()
-    
-    // State for mood selection dialog
-    var showMoodDialog by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
-    
-    // Calculate weeks for the selected year
+
+    var viewMode by remember { mutableStateOf(HeatmapViewMode.MATRIX) }
+    var selectedDateForInspection by remember { mutableStateOf<LocalDate?>(null) }
+
     val firstDayOfYear = LocalDate.of(selectedYear, 1, 1)
     val lastDayOfYear = LocalDate.of(selectedYear, 12, 31)
-    val weekFields = WeekFields.of(Locale.getDefault())
-    
-    // Generate all weeks of the year
+
+    // Weeks calculation for 52-week ribbon view
     val weeksData = remember(selectedYear) {
         val weeks = mutableListOf<List<LocalDate?>>()
         var currentDate = firstDayOfYear
-        
-        // Start from the beginning of the first week (may include days from previous year)
         while (currentDate.dayOfWeek != DayOfWeek.SUNDAY) {
             currentDate = currentDate.minusDays(1)
         }
-        
-        // Generate weeks until we pass the end of the year
         while (currentDate <= lastDayOfYear || currentDate.year == selectedYear) {
             val week = mutableListOf<LocalDate?>()
-            for (i in 0..6) { // Sunday to Saturday
+            for (i in 0..6) {
                 val date = currentDate.plusDays(i.toLong())
-                // Only include dates from the selected year
                 week.add(if (date.year == selectedYear) date else null)
             }
             weeks.add(week)
             currentDate = currentDate.plusWeeks(1)
-            
-            // Stop if we've gone past the year
             if (currentDate.year > selectedYear && week.all { it == null || it.year != selectedYear }) {
                 break
             }
         }
         weeks
     }
-    
-    // Month labels for header
-    val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
     val dayLabels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-            // GitHub-style Heatmap Card
+        // --- TOP BAR: YEAR SELECTOR & VIEW MODE TOGGLE ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Year navigation row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { viewModel.updateYear(selectedYear - 1) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Year")
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "$selectedYear",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { viewModel.updateYear(selectedYear + 1) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Next Year")
+                    }
+                }
+
+                // View Mode Segmented Controls
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = viewMode == HeatmapViewMode.MATRIX,
+                        onClick = { viewMode = HeatmapViewMode.MATRIX },
+                        label = { Text("12-Month Matrix") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.GridView,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    FilterChip(
+                        selected = viewMode == HeatmapViewMode.RIBBON,
+                        onClick = { viewMode = HeatmapViewMode.RIBBON },
+                        label = { Text("52-Week Ribbon") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.ViewWeek,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // --- MAIN CANVAS: MATRIX VS RIBBON ---
+        if (viewMode == HeatmapViewMode.MATRIX) {
+            // 12-Month Matrix View (Vertical Grid of Months)
+            TwelveMonthMatrix(
+                year = selectedYear,
+                moodMap = moodMap,
+                moodColors = moodColors,
+                emptyCellColor = emptyCellColor,
+                onDayClick = { date -> selectedDateForInspection = date }
+            )
+        } else {
+            // 52-Week Ribbon View (Horizontal Scrollable Heatmap)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // Scrollable heatmap container
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "52-Week Annual Flow",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Scroll horizontally to explore weekly streaks",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
                     ) {
                         // Day labels column
-                        Column(
-                            modifier = Modifier.padding(end = 4.dp)
-                        ) {
-                            // Spacer for month labels row
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
+                        Column(modifier = Modifier.padding(end = 6.dp)) {
+                            Spacer(modifier = Modifier.height(18.dp))
                             dayLabels.forEach { day ->
                                 Box(
                                     modifier = Modifier
-                                        .size(width = 28.dp, height = 14.dp)
-                                        .padding(vertical = 1.dp),
+                                        .size(width = 28.dp, height = 18.dp),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     Text(
                                         text = day.take(1),
                                         style = MaterialTheme.typography.labelSmall,
-                                        fontSize = 9.sp,
+                                        fontSize = 10.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
-                        
+
                         // Weeks columns
                         Column {
                             // Month labels row
-                            Row(
-                                modifier = Modifier.height(16.dp)
-                            ) {
+                            Row(modifier = Modifier.height(18.dp)) {
                                 var currentMonth = 0
                                 weeksData.forEachIndexed { weekIndex, week ->
                                     val firstDateOfWeek = week.filterNotNull().firstOrNull()
-                                    val showMonthLabel = firstDateOfWeek != null && 
-                                        (weekIndex == 0 || firstDateOfWeek.monthValue != currentMonth)
-                                    
+                                    val showMonthLabel = firstDateOfWeek != null &&
+                                            (weekIndex == 0 || firstDateOfWeek.monthValue != currentMonth)
+
                                     if (firstDateOfWeek != null) {
                                         currentMonth = firstDateOfWeek.monthValue
                                     }
-                                    
+
                                     Box(
                                         modifier = Modifier
-                                            .size(width = 14.dp, height = 16.dp)
+                                            .size(width = 18.dp, height = 18.dp)
                                             .padding(horizontal = 1.dp),
                                         contentAlignment = Alignment.BottomStart
                                     ) {
@@ -206,15 +292,16 @@ fun YearInPixelsScreen(
                                             Text(
                                                 text = monthLabels[firstDateOfWeek.monthValue - 1].take(3),
                                                 style = MaterialTheme.typography.labelSmall,
-                                                fontSize = 8.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     }
                                 }
                             }
-                            
-                            // Heatmap grid
+
+                            // Heatmap cells grid
                             Row {
                                 weeksData.forEach { week ->
                                     Column {
@@ -225,27 +312,22 @@ fun YearInPixelsScreen(
                                             } else {
                                                 Color.Transparent
                                             }
-                                            
+
                                             Box(
                                                 modifier = Modifier
-                                                    .size(12.dp)
-                                                    .padding(1.dp)
-                                                    .background(
-                                                        color = cellColor,
-                                                        shape = RoundedCornerShape(2.dp)
-                                                    )
+                                                    .size(18.dp)
+                                                    .padding(1.5.dp)
+                                                    .clip(RoundedCornerShape(3.dp))
+                                                    .background(cellColor)
                                                     .then(
                                                         if (date != null) {
                                                             Modifier
                                                                 .border(
                                                                     width = 0.5.dp,
-                                                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                                                    shape = RoundedCornerShape(2.dp)
+                                                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                                                                    shape = RoundedCornerShape(3.dp)
                                                                 )
-                                                                .clickable {
-                                                                    selectedDate = date
-                                                                    showMoodDialog = true
-                                                                }
+                                                                .clickable { selectedDateForInspection = date }
                                                         } else Modifier
                                                     )
                                             )
@@ -257,172 +339,209 @@ fun YearInPixelsScreen(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Mood Legend Card
+        }
+
+        // --- MOOD LEGEND CARD ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Mood Legend",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    LegendItem(color = emptyCellColor, label = "No entry", showBorder = true)
+                    MOOD_DESCRIPTORS.forEach { desc ->
+                        LegendItem(
+                            color = moodColors[desc.name] ?: desc.colorDark,
+                            label = "${desc.emoji} ${desc.name}",
+                            showBorder = false
+                        )
+                    }
+                }
+            }
+        }
+
+        // --- YEAR SUMMARY ---
+        val totalEntries = moodMap.count { it.key.year == selectedYear }
+        val moodCounts = moodMap.filter { it.key.year == selectedYear }
+            .values.groupingBy { it }.eachCount()
+
+        if (totalEntries > 0) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Mood Legend",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Legend items in a flow layout
-                    androidx.compose.foundation.layout.FlowRow(
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Empty cell legend
-                        LegendItem(
-                            color = emptyCellColor,
-                            label = "No entry",
-                            showBorder = true
+                        Text(
+                            text = "Annual Mood Summary",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        
-                        // Mood color legends
-                        moodColors.forEach { (mood, color) ->
-                            LegendItem(
-                                color = color,
-                                label = mood,
-                                showBorder = false
+                        Text(
+                            text = "$totalEntries days tracked",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    moodCounts.entries.sortedByDescending { it.value }.forEach { (mood, count) ->
+                        val desc = MOOD_DESCRIPTORS.find { it.name.equals(mood, ignoreCase = true) }
+                        val emoji = desc?.emoji ?: "✨"
+                        val percent = if (totalEntries > 0) (count * 100) / totalEntries else 0
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(moodColors[mood] ?: emptyCellColor)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "$emoji $mood",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "$count days ($percent%)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Stats summary
-            val totalEntries = moodMap.count { it.key.year == selectedYear }
-            val moodCounts = moodMap.filter { it.key.year == selectedYear }
-                .values.groupingBy { it }.eachCount()
-            
-            if (totalEntries > 0) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Year Summary",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Text(
-                            text = "$totalEntries days tracked",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Mood breakdown
-                        moodCounts.entries.sortedByDescending { it.value }.forEach { (mood, count) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .background(
-                                            color = moodColors[mood] ?: emptyCellColor,
-                                            shape = RoundedCornerShape(2.dp)
-                                        )
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = mood,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = "$count days",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
         }
-    
-    // Mood Selection Dialog
-    if (showMoodDialog && selectedDate != null) {
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+
+    // --- DAY INSPECTION & QUICK MOOD SELECTOR DIALOG ---
+    if (selectedDateForInspection != null) {
+        val targetDate = selectedDateForInspection!!
+        val currentMood = moodMap[targetDate]
+        val dateFormatted = targetDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"))
+
         AlertDialog(
-            onDismissRequest = { showMoodDialog = false },
-            title = { 
-                Text(
-                    text = selectedDate!!.format(java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy")),
-                    style = MaterialTheme.typography.titleMedium
-                ) 
+            onDismissRequest = { selectedDateForInspection = null },
+            title = {
+                Column {
+                    Text(
+                        text = dateFormatted,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (!currentMood.isNullOrBlank()) "Logged Mood: $currentMood" else "No mood logged for this day",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             },
             text = {
-                Column {
-                    Text("How was your day?")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Select or update your mood:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(moodColors.toList().size) { index ->
-                            val (mood, color) = moodColors.toList()[index]
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                        items(MOOD_DESCRIPTORS.size) { index ->
+                            val desc = MOOD_DESCRIPTORS[index]
+                            val isSelected = currentMood.equals(desc.name, ignoreCase = true)
+                            val color = moodColors[desc.name] ?: desc.colorDark
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) color.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = BorderStroke(
+                                    if (isSelected) 2.dp else 1.dp,
+                                    if (isSelected) color else MaterialTheme.colorScheme.outlineVariant
+                                ),
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .clickable {
-                                        viewModel.setMood(selectedDate!!, mood)
-                                        showMoodDialog = false
+                                        viewModel.setMood(targetDate, desc.name)
+                                        selectedDateForInspection = null
                                     }
-                                    .padding(8.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .background(color, RoundedCornerShape(4.dp))
-                                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(mood, style = MaterialTheme.typography.labelSmall)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp)
+                                ) {
+                                    Text(text = desc.emoji, fontSize = 22.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = desc.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
+                        }
+                    }
+
+                    if (!currentMood.isNullOrBlank()) {
+                        TextButton(
+                            onClick = {
+                                viewModel.clearMood(targetDate)
+                                selectedDateForInspection = null
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        ) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Clear Mood Entry")
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showMoodDialog = false }) {
+                TextButton(onClick = { selectedDateForInspection = null }) {
                     Text("Close")
                 }
             }
@@ -431,8 +550,142 @@ fun YearInPixelsScreen(
 }
 
 /**
- * Legend item composable for the mood legend
+ * 12-Month Matrix Component displaying mini monthly calendars in a 2-column or 1-column layout
  */
+@Composable
+private fun TwelveMonthMatrix(
+    year: Int,
+    moodMap: Map<LocalDate, String>,
+    moodColors: Map<String, Color>,
+    emptyCellColor: Color,
+    onDayClick: (LocalDate) -> Unit
+) {
+    val months = (1..12).map { YearMonth.of(year, it) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        months.chunked(2).forEach { monthPair ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                monthPair.forEach { ym ->
+                    MiniMonthCard(
+                        yearMonth = ym,
+                        moodMap = moodMap,
+                        moodColors = moodColors,
+                        emptyCellColor = emptyCellColor,
+                        onDayClick = onDayClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (monthPair.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniMonthCard(
+    yearMonth: YearMonth,
+    moodMap: Map<LocalDate, String>,
+    moodColors: Map<String, Color>,
+    emptyCellColor: Color,
+    onDayClick: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val monthTitle = yearMonth.format(DateTimeFormatter.ofPattern("MMMM"))
+    val firstDay = yearMonth.atDay(1)
+    val daysInMonth = yearMonth.lengthOfMonth()
+    val startDayOffset = firstDay.dayOfWeek.value % 7 // Sunday = 0
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = monthTitle,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Day headers: S M T W T F S
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                listOf("S", "M", "T", "W", "T", "F", "S").forEach { initial ->
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 7-column day grid
+            val totalCells = startDayOffset + daysInMonth
+            val rows = (totalCells + 6) / 7
+
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                for (rowIndex in 0 until rows) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        for (colIndex in 0..6) {
+                            val cellIndex = rowIndex * 7 + colIndex
+                            val dayNum = cellIndex - startDayOffset + 1
+
+                            if (dayNum in 1..daysInMonth) {
+                                val date = yearMonth.atDay(dayNum)
+                                val mood = moodMap[date]
+                                val color = moodColors[mood] ?: emptyCellColor
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(color)
+                                        .border(
+                                            0.5.dp,
+                                            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                            RoundedCornerShape(3.dp)
+                                        )
+                                        .clickable { onDayClick(date) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$dayNum",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (mood != null) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            } else {
+                                Box(modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun LegendItem(
     color: Color,
@@ -446,7 +699,8 @@ private fun LegendItem(
         Box(
             modifier = Modifier
                 .size(14.dp)
-                .background(color, RoundedCornerShape(3.dp))
+                .clip(RoundedCornerShape(3.dp))
+                .background(color)
                 .then(
                     if (showBorder) {
                         Modifier.border(

@@ -37,7 +37,8 @@ fun DashboardScreen(
     journalRepo: JournalRepository,
     taskRepo: TaskRepository,
     habitViewModel: HabitViewModel,
-    onYearInPixelsClick: () -> Unit
+    onYearInPixelsClick: () -> Unit,
+    onNavigate: ((String) -> Unit)? = null
 ) {
     var showMilestoneDialog by remember { mutableStateOf(false) }
 
@@ -81,49 +82,51 @@ fun DashboardScreen(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Year Milestone Trigger
+        // --- ZONE 1: HERO PULSE & MOMENTUM ---
+
+        // Year Milestone Trigger Bar
         Surface(
             onClick = { showMilestoneDialog = true },
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
             modifier = Modifier.fillMaxWidth()
         ) {
-                Row(
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "🎉", style = MaterialTheme.typography.titleMedium)
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "${milestoneStats.year} Milestone Card",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        Text(
-                            text = "Tap to view your ${milestoneStats.year} story (Jan 1 – Dec 31)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "Open milestone card",
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    Text(text = "🎉", style = MaterialTheme.typography.titleMedium)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${milestoneStats.year} Milestone Card",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    Text(
+                        text = "Tap to view your ${milestoneStats.year} story (Jan 1 – Dec 31)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
                     )
                 }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Open milestone card",
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
             }
+        }
 
         if (showMilestoneDialog) {
             MilestoneCardDialog(
@@ -132,93 +135,92 @@ fun DashboardScreen(
             )
         }
 
-        // Streak Hero & Journal Metrics
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+        // Streak Hero Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 22.dp, horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp, horizontal = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
-                            contentDescription = null,
-                            modifier = Modifier.size(30.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "${entrySummary.currentStreak}",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-
-                    Text(
-                        text = if (entrySummary.currentStreak == 1) "day streak" else "days streak",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = if (entrySummary.currentStreak > 0) "Keep the momentum going" else "Write today's entry to start a streak",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                    Icon(
+                        imageVector = Icons.Default.LocalFireDepartment,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.EmojiEvents,
-                    label = "Best Streak",
-                    value = "${entrySummary.longestStreak}",
-                    subtitle = if (entrySummary.longestStreak == 1) "day" else "days"
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "${entrySummary.currentStreak}",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.CalendarMonth,
-                    label = "This Month",
-                    value = "${entrySummary.thisMonthCount}",
-                    subtitle = if (entrySummary.thisMonthCount == 1) "entry" else "entries"
+                Text(
+                    text = if (entrySummary.currentStreak == 1) "day streak" else "days streak",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
 
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.AutoMirrored.Filled.MenuBook,
-                    label = "All Entries",
-                    value = "${entrySummary.totalEntries}",
-                    subtitle = if (entrySummary.totalEntries == 1) "entry" else "entries"
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = if (entrySummary.currentStreak > 0) "Keep the momentum going!" else "Write today's entry to ignite your streak",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                 )
             }
         }
 
-        // Today's Habits Section
+        // Stats Triad
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.EmojiEvents,
+                label = "Best Streak",
+                value = "${entrySummary.longestStreak}",
+                subtitle = if (entrySummary.longestStreak == 1) "day" else "days"
+            )
+
+            StatCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.CalendarMonth,
+                label = "This Month",
+                value = "${entrySummary.thisMonthCount}",
+                subtitle = if (entrySummary.thisMonthCount == 1) "entry" else "entries"
+            )
+
+            StatCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.AutoMirrored.Filled.MenuBook,
+                label = "All Entries",
+                value = "${entrySummary.totalEntries}",
+                subtitle = if (entrySummary.totalEntries == 1) "entry" else "entries"
+            )
+        }
+
+        // --- ZONE 2: DAILY FOCUS & HABITS PROGRESS ---
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionTitle("Today's Habits")
 
@@ -226,7 +228,7 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
                 )
             ) {
                 Row(
@@ -237,8 +239,8 @@ fun DashboardScreen(
                 ) {
                     CircularProgressIndicator(
                         progress = { animatedCompletionRate },
-                        modifier = Modifier.size(50.dp),
-                        strokeWidth = 5.dp,
+                        modifier = Modifier.size(52.dp),
+                        strokeWidth = 5.5.dp,
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.16f)
                     )
@@ -327,33 +329,141 @@ fun DashboardScreen(
             }
         }
 
-        // Mood Insights & Year in Pixels
+        // 7-Day Habit History Chart
+        HabitHistoryChart(stats = weeklyStats)
+
+        // Mood Insights
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionTitle("Mood Insights")
-
             StatsSummaryCard(stats = moodStats)
+        }
 
-            OutlinedButton(
-                onClick = onYearInPixelsClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(Icons.Default.GridOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "View Year in Pixels",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
+        // --- ZONE 3: DEEP DIVES & EXPLORATION ---
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionTitle("Deep Dives & Insights")
+
+            // Year in Pixels Action Card
+            DeepDiveActionCard(
+                title = "Year in Pixels",
+                subtitle = "365-day annual mood heatmap & emotional matrix",
+                icon = Icons.Default.GridOn,
+                badge = "Mood Canvas",
+                onClick = onYearInPixelsClick
+            )
+
+            if (onNavigate != null) {
+                // Challenges Action Card
+                DeepDiveActionCard(
+                    title = "Challenge Quests",
+                    subtitle = "Structured multi-day habit sprints and roadmaps",
+                    icon = Icons.Default.TrackChanges,
+                    badge = "Sprint",
+                    onClick = { onNavigate("challenges") }
+                )
+
+                // Craving Quest Card
+                DeepDiveActionCard(
+                    title = "Craving Quests",
+                    subtitle = "Urge surfing, mindful regulation & impulse challenges",
+                    icon = Icons.Default.Shield,
+                    badge = "Mindfulness",
+                    onClick = { onNavigate("craving_quest") }
+                )
+
+                // Life Milestones Card
+                DeepDiveActionCard(
+                    title = "Life Milestones",
+                    subtitle = "Elapsed days, counters and life event timelines",
+                    icon = Icons.Default.HourglassBottom,
+                    badge = "Milestones",
+                    onClick = { onNavigate("life_trackers") }
                 )
             }
         }
 
-        // 7-Day Habit History Chart
-        HabitHistoryChart(stats = weeklyStats)
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
 
-        Spacer(modifier = Modifier.height(12.dp))
+@Composable
+private fun DeepDiveActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    badge: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = badge,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -619,4 +729,4 @@ fun HabitHistoryChart(stats: List<Pair<LocalDate, Int>>) {
             }
         }
     }
-} 
+}

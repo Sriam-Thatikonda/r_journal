@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import java.util.Calendar
-import android.app.DatePickerDialog
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.draw.clip
@@ -86,25 +85,46 @@ fun SettingsScreen(
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
 
-    // Date Picker Logic
-    val calendar = Calendar.getInstance()
-    calendar.set(birthYear, birthMonth - 1, birthDay)
-    
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            birthYear = year
-            birthMonth = month + 1
-            birthDay = dayOfMonth
-            
-            settingsRepo.birthYear = year
-            settingsRepo.birthMonth = month + 1
-            settingsRepo.birthDay = dayOfMonth
-        },
-        birthYear,
-        birthMonth - 1,
-        birthDay
-    )
+    // Compose M3 DatePicker Logic
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+
+    if (showDatePickerDialog) {
+        val initialCal = Calendar.getInstance().apply {
+            set(birthYear, birthMonth - 1, birthDay)
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialCal.timeInMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val cal = Calendar.getInstance().apply { timeInMillis = millis }
+                            birthYear = cal.get(Calendar.YEAR)
+                            birthMonth = cal.get(Calendar.MONTH) + 1
+                            birthDay = cal.get(Calendar.DAY_OF_MONTH)
+
+                            settingsRepo.birthYear = birthYear
+                            settingsRepo.birthMonth = birthMonth
+                            settingsRepo.birthDay = birthDay
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     val passwords by passwordRepo.allPasswords.collectAsState(initial = emptyList())
 
@@ -481,7 +501,7 @@ fun SettingsScreen(
                 icon = Icons.Default.Cake,
                 title = "Birthday",
                 subtitle = "$birthDay/${birthMonth}/$birthYear",
-                onClick = { datePickerDialog.show() }
+                onClick = { showDatePickerDialog = true }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
@@ -535,58 +555,106 @@ private fun ThemeOption(
 ) {
     Surface(
         modifier = modifier
-            .height(64.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .height(76.dp)
+            .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .then(
                 if (isSelected) Modifier.border(
                     width = 2.dp,
                     color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) else if (name == "Space") Modifier.border(
                     width = 1.dp,
                     color = Color(0x33FFFFFF),
-                    shape = RoundedCornerShape(10.dp)
-                ) else Modifier
+                    shape = RoundedCornerShape(14.dp)
+                ) else Modifier.border(
+                    width = 1.dp,
+                    color = if (isLightBackground) Color(0x22000000) else Color(0x22FFFFFF),
+                    shape = RoundedCornerShape(14.dp)
+                )
             ),
         color = backgroundColor,
-        shape = RoundedCornerShape(10.dp),
-        tonalElevation = 2.dp
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = if (isSelected) 4.dp else 1.dp
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().padding(8.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
         ) {
-            // Primary color indicator
-            Box(
+            // Mock screen preview elements
+            Column(
                 modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(primaryColor)
-                    .align(Alignment.TopEnd)
-            )
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Mini mock header bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 24.dp, height = 4.dp)
+                            .clip(CircleShape)
+                            .background(primaryColor)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(primaryColor)
+                    )
+                }
 
-            // Theme name
-            Text(
-                text = name,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = if (isLightBackground)
-                    Color(0xFF2C2520)          // Warm dark brown for light backgrounds
-                else
-                    Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.align(Alignment.BottomStart)
-            )
-
-            // Check mark if selected
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
-                    tint = primaryColor,
+                // Mini mock card
+                Box(
                     modifier = Modifier
-                        .size(14.dp)
-                        .align(Alignment.TopStart)
+                        .fillMaxWidth(0.85f)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            if (isLightBackground) Color(0x18000000) else Color(0x22FFFFFF)
+                        )
                 )
+            }
+
+            // Theme name & Selection badge at bottom
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isLightBackground)
+                        Color(0xFF2C2520)
+                    else
+                        Color.White.copy(alpha = 0.95f)
+                )
+
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(primaryColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = if (isLightBackground) Color.White else Color.Black,
+                            modifier = Modifier.size(11.dp)
+                        )
+                    }
+                }
             }
         }
     }

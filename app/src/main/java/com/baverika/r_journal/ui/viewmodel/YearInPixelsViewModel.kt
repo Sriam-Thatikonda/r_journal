@@ -74,6 +74,19 @@ class YearInPixelsViewModel(
         }
     }
 
+    fun clearMood(date: LocalDate) {
+        viewModelScope.launch {
+            val dateMillis = date.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+            val entry = journalRepository.getOrCreateEntryForDate(dateMillis)
+            val updatedTags = entry.tags.filter { !it.startsWith("#mood-") }
+            val updatedEntry = entry.copy(
+                mood = "",
+                tags = updatedTags
+            )
+            journalRepository.upsertEntry(updatedEntry)
+        }
+    }
+
     fun updateYear(year: Int) {
         _selectedYear.value = year
     }

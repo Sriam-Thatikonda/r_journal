@@ -23,15 +23,19 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.baverika.r_journal.ui.viewmodel.SearchCategory
 import com.baverika.r_journal.ui.viewmodel.SearchViewModel
 import com.baverika.r_journal.ui.viewmodel.UnifiedSearchResult
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel,
@@ -44,6 +48,10 @@ fun SearchScreen(
 
     val focusRequester = remember { FocusRequester() }
     val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
+    val searchSuggestions = listOf(
+        "Today", "#gratitude", "#work", "Health", "#ideas", "Goal", "Habit"
+    )
 
     LaunchedEffect(initialQuery) {
         if (initialQuery.isNotEmpty()) {
@@ -143,18 +151,47 @@ fun SearchScreen(
 
             when {
                 query.isBlank() -> {
-                    com.baverika.r_journal.ui.components.EmptyState(
-                        icon = Icons.Default.Search,
-                        title = "Universal Global Search",
-                        message = "Search journals, notes, tasks, trackers, and quotes"
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        com.baverika.r_journal.ui.components.EmptyState(
+                            icon = Icons.Default.Search,
+                            title = "Universal Global Search",
+                            message = "Find entries across journals, notes, tasks, and trackers"
+                        )
+
+                        Text(
+                            text = "QUICK SUGGESTIONS",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 0.8.sp
+                        )
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            searchSuggestions.forEach { tag ->
+                                SuggestionChip(
+                                    onClick = { viewModel.updateQuery(tag) },
+                                    label = { Text(tag) }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 results.isEmpty() -> {
                     com.baverika.r_journal.ui.components.EmptyState(
                         icon = Icons.Default.SearchOff,
                         title = "No Results Found",
-                        message = "Try different keywords or switch categories"
+                        message = "No matches for \"$query\". Try different keywords or switch categories."
                     )
                 }
 
@@ -173,6 +210,7 @@ fun SearchScreen(
                         items(results, key = { "${it.category.name}_${it.id}" }) { item ->
                             UnifiedSearchResultCard(
                                 item = item,
+                                query = query,
                                 onClick = {
                                     when (item) {
                                         is UnifiedSearchResult.JournalResult -> navController.navigate(
@@ -207,87 +245,158 @@ fun SearchScreen(
 
 @Composable
 fun UnifiedSearchResultCard(
-        item: UnifiedSearchResult,
-        onClick: () -> Unit
+    item: UnifiedSearchResult,
+    query: String = "",
+    onClick: () -> Unit
+) {
+    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+
+    val (icon, badgeEmoji, tint) = when (item.category) {
+        SearchCategory.JOURNAL -> Triple(Icons.Default.Book, "📖", MaterialTheme.colorScheme.primary)
+        SearchCategory.NOTES -> Triple(Icons.Default.Note, "📝", MaterialTheme.colorScheme.secondary)
+        SearchCategory.TASKS -> Triple(Icons.Default.CheckCircle, "☑️", MaterialTheme.colorScheme.tertiary)
+        SearchCategory.TRACKERS -> Triple(Icons.Default.BarChart, "📊", MaterialTheme.colorScheme.error)
+        SearchCategory.QUOTES -> Triple(Icons.Default.FormatQuote, "💬", MaterialTheme.colorScheme.primary)
+        SearchCategory.ALL -> Triple(Icons.Default.Search, "🔍", MaterialTheme.colorScheme.primary)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(if (isSpace) 18.dp else 14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, if (isSpace) Color(0x2EFFFFFF) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 2.dp)
     ) {
-        val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
-        Card(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() },
-            shape = RoundedCornerShape(if (isSpace) 18.dp else 12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surface
-            ),
-            border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else null,
-            elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 2.dp)
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isSpace) Color(0x26FFFFFF) else tint.copy(alpha = 0.15f),
+                modifier = Modifier.size(42.dp)
             ) {
-                val (icon, tint) = when (item.category) {
-                    SearchCategory.JOURNAL -> Icons.Default.Book to MaterialTheme.colorScheme.primary
-                    SearchCategory.NOTES -> Icons.Default.Note to MaterialTheme.colorScheme.secondary
-                    SearchCategory.TASKS -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.tertiary
-                    SearchCategory.TRACKERS -> Icons.Default.BarChart to MaterialTheme.colorScheme.error
-                    SearchCategory.QUOTES -> Icons.Default.FormatQuote to MaterialTheme.colorScheme.primary
-                    SearchCategory.ALL -> Icons.Default.Search to MaterialTheme.colorScheme.primary
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (isSpace) Color(0xFFF3F4F6) else tint,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
+            }
 
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSpace) Color(0x26FFFFFF) else tint.copy(alpha = 0.15f),
-                    modifier = Modifier.size(40.dp)
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = if (isSpace) Color(0xFFF3F4F6) else tint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
+                    HighlightedText(
+                        text = item.title,
+                        query = query,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        color = tint.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = item.category.label,
+                            text = "$badgeEmoji ${item.category.label}",
                             style = MaterialTheme.typography.labelSmall,
                             color = tint,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
+                }
 
-                    if (item.subtitle.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = item.subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                if (item.subtitle.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    HighlightedText(
+                        text = item.subtitle,
+                        query = query,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+fun HighlightedText(
+    text: String,
+    query: String,
+    style: TextStyle,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    highlightColor: Color = MaterialTheme.colorScheme.primary,
+    fontWeight: FontWeight? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    modifier: Modifier = Modifier
+) {
+    if (query.isBlank() || !text.contains(query, ignoreCase = true)) {
+        Text(
+            text = text,
+            style = style,
+            color = color,
+            fontWeight = fontWeight,
+            maxLines = maxLines,
+            overflow = overflow,
+            modifier = modifier
+        )
+        return
+    }
+
+    val annotated = buildAnnotatedString {
+        var currentIndex = 0
+        val lowerText = text.lowercase()
+        val lowerQuery = query.lowercase().trim()
+
+        while (currentIndex < text.length) {
+            val matchIndex = lowerText.indexOf(lowerQuery, currentIndex)
+            if (matchIndex == -1) {
+                append(text.substring(currentIndex))
+                break
+            }
+            if (matchIndex > currentIndex) {
+                append(text.substring(currentIndex, matchIndex))
+            }
+            val matchEnd = (matchIndex + lowerQuery.length).coerceAtMost(text.length)
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor))
+            append(text.substring(matchIndex, matchEnd))
+            pop()
+            currentIndex = matchEnd
+        }
+    }
+
+    Text(
+        text = annotated,
+        style = style,
+        color = color,
+        fontWeight = fontWeight,
+        maxLines = maxLines,
+        overflow = overflow,
+        modifier = modifier
+    )
+}

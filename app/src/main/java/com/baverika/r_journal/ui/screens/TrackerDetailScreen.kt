@@ -1,6 +1,5 @@
 package com.baverika.r_journal.ui.screens
 
-import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -206,6 +205,7 @@ fun EntryCard(entry: LifeTrackerEntry, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EntryDialog(
     entry: LifeTrackerEntry?,
@@ -213,24 +213,41 @@ fun EntryDialog(
     onSave: (Long, String) -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
-    val context = LocalContext.current
     var note by remember { mutableStateOf(entry?.note ?: "") }
     
     val calendar = Calendar.getInstance()
     if (entry != null) calendar.timeInMillis = entry.dateMillis
     
     var selectedDate by remember { mutableStateOf(calendar.timeInMillis) }
-    
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
-            selectedDate = calendar.timeInMillis
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            selectedDate = millis
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -238,7 +255,7 @@ fun EntryDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedButton(
-                    onClick = { datePickerDialog.show() },
+                    onClick = { showDatePickerDialog = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(formatDate(selectedDate))

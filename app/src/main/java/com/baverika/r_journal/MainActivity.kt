@@ -40,6 +40,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -751,13 +752,22 @@ fun MainApp(
             val haptic = LocalHapticFeedback.current
 
             if (fabAction != null && fabIcon != null) {
+                // Liquid Glass Translucent FAB adapted to active theme
+                val glassBorder = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = if (isSpace) 0.5f else 0.65f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                        Color.White.copy(alpha = if (isSpace) 0.15f else 0.2f)
+                    )
+                )
+                val glassFill = MaterialTheme.colorScheme.primary.copy(alpha = if (isSpace) 0.25f else 0.30f)
+
                 Surface(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(androidx.compose.foundation.shape.CircleShape)
-                        .then(
-                            if (isSpace) Modifier.border(1.dp, Color(0x40FFFFFF), androidx.compose.foundation.shape.CircleShape) else Modifier
-                        )
+                        .padding(bottom = 6.dp, end = 2.dp)
+                        .size(76.dp)
+                        .clip(RoundedCornerShape(26.dp))
+                        .border(1.5.dp, glassBorder, RoundedCornerShape(26.dp))
                         .combinedClickable(
                             onClick = fabAction,
                             onLongClick = {
@@ -765,16 +775,31 @@ fun MainApp(
                                 showSpeedDialSheet = true
                             }
                         ),
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    color = if (isSpace) Color(0xCC1A1C22) else MaterialTheme.colorScheme.primary,
-                    contentColor = if (isSpace) Color(0xFFF3F4F6) else MaterialTheme.colorScheme.onPrimary,
-                    shadowElevation = if (isSpace) 2.dp else 6.dp
+                    shape = RoundedCornerShape(26.dp),
+                    color = glassFill,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 6.dp
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = if (isSpace) 0.22f else 0.32f),
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                    )
+                                )
+                            )
                     ) {
-                        Icon(fabIcon, contentDescription = fabDesc, modifier = Modifier.size(26.dp))
+                        Icon(
+                            imageVector = fabIcon,
+                            contentDescription = fabDesc,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(36.dp)
+                        )
                     }
                 }
             }
@@ -866,7 +891,8 @@ fun MainApp(
                             journalRepo = journalRepo,
                             taskRepo = taskRepo,
                             habitViewModel = habitViewModel,
-                            onYearInPixelsClick = { navController.navigate("year_in_pixels") }
+                            onYearInPixelsClick = { navController.navigate("year_in_pixels") },
+                            onNavigate = { route -> navController.navigate(route) }
                         )
                     }
 

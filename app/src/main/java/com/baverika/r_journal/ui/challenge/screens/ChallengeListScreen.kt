@@ -49,12 +49,36 @@ fun ChallengeListScreen(
             }
             is ChallengeListUiState.Success -> {
                 if (state.activeChallenges.isEmpty()) {
-                    Text(
-                        text = "No active challenges.\nTap + to start one!",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "🎯",
+                            style = MaterialTheme.typography.displayMedium
+                        )
+                        Text(
+                            text = "No active challenges",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Start a 30-day or custom habit challenge to build relentless consistency.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Button(
+                            onClick = { navController.navigate("challenge_templates") },
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Browse Challenges")
+                        }
+                    }
                 } else {
                     val today = LocalDate.now()
                     val completedTodayCount = state.activeChallenges.count { it.lastCompletedDate == today }
@@ -131,6 +155,10 @@ fun ChallengeListScreen(
                                 onClick = { navController.navigate("challenge_detail/${challenge.id}") },
                                 onMarkCompleteClick = { viewModel.markChallengeCompleteToday(challenge.id) }
                             )
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
                         }
                     }
                 }

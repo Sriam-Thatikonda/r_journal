@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,14 +75,8 @@ fun PasswordGeneratorScreen(
     var isPinMode by remember { mutableStateOf(false) }
     var numberLength by remember { mutableIntStateOf(4) }
     var generatedPassword by remember { mutableStateOf("") }
-    var isGeneratorExpanded by remember { mutableStateOf(true) }
-    var isSavedExpanded by remember { mutableStateOf(true) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     var isPasswordVisible by remember { mutableStateOf(true) } // Visible by default when generating
-
-    // Auto-collapse generator when searching, restore when cleared
-    LaunchedEffect(searchQuery) {
-        isGeneratorExpanded = searchQuery.isBlank()
-    }
 
     // Initial load and regeneration logic
     LaunchedEffect(numberLength, isPinMode) {
@@ -96,374 +92,326 @@ fun PasswordGeneratorScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Sticky Search Bar Header
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            modifier = Modifier.fillMaxWidth()
+        // Top Tab Navigation: Generator vs Vault
+        TabRow(
+            selectedTabIndex = selectedTabIndex,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                placeholder = {
-                    Text(
-                        "Search vault by site or username...",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Clear",
-                                modifier = Modifier.size(18.dp)
-                            )
+            Tab(
+                selected = selectedTabIndex == 0,
+                onClick = { selectedTabIndex = 0 },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text("Generator", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+            Tab(
+                selected = selectedTabIndex == 1,
+                onClick = { selectedTabIndex = 1 },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text("Vault", fontWeight = FontWeight.Bold)
+                        if (passwords.isNotEmpty()) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (selectedTabIndex == 1) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    text = "${passwords.size}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selectedTabIndex == 1) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
-                },
-                shape = RoundedCornerShape(24.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                }
             )
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 1. GENERATOR CARD SECTION
-            item {
+        if (selectedTabIndex == 0) {
+            // --- TAB 0: GENERATOR & SAVE ---
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Mode Toggle
+                SegmentedControl(
+                    options = listOf("Passphrase", "PIN"),
+                    selectedIndex = if (isPinMode) 1 else 0,
+                    onOptionSelected = { index ->
+                        val newMode = index == 1
+                        if (isPinMode != newMode) {
+                            isPinMode = newMode
+                            numberLength = if (isPinMode) 6 else 4
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    }
+                )
+
+                // Hero Display Card + Length Chips + Strength Bar
+                UnifiedGeneratorCard(
+                    password = generatedPassword,
+                    isVisible = isPasswordVisible,
+                    onToggleVisibility = { isPasswordVisible = !isPasswordVisible },
+                    onCopy = {
+                        clipboardManager.setText(AnnotatedString(generatedPassword))
+                        Toast.makeText(context, "Copied to clipboard!", Toast.LENGTH_SHORT).show()
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    },
+                    onRegenerate = {
+                        generatedPassword = if (isPinMode) {
+                            PassphraseGenerator.generatePin(numberLength)
+                        } else {
+                            PassphraseGenerator.generate(numberLength)
+                        }
+                    },
+                    isPinMode = isPinMode,
+                    currentLength = numberLength,
+                    onLengthChange = {
+                        if (numberLength != it) {
+                            numberLength = it
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    }
+                )
+
+                // Quick Save Section Card
                 ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Generator Header Row
                         Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SaveAlt,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "SAVE TO VAULT",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ModernInput(
+                                value = siteName,
+                                onValueChange = { siteName = it },
+                                placeholder = "Site / App",
+                                icon = Icons.Default.Public,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ModernInput(
+                                value = username,
+                                onValueChange = { username = it },
+                                placeholder = "Username / Email",
+                                icon = Icons.Default.Person,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
+                                    val securePassword = SecurityUtils.encrypt(generatedPassword)
+                                    val type = if (isPinMode) PasswordType.PIN else PasswordType.PASSWORD
+                                    viewModel.addPassword(siteName.trim(), username.trim(), securePassword, type)
+                                    siteName = ""
+                                    username = ""
+                                    generatedPassword = if (isPinMode) {
+                                        PassphraseGenerator.generatePin(numberLength)
+                                    } else {
+                                        PassphraseGenerator.generate(numberLength)
+                                    }
+                                    Toast.makeText(context, "Saved to Vault", Toast.LENGTH_SHORT).show()
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    selectedTabIndex = 1
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { isGeneratorExpanded = !isGeneratorExpanded }
-                                ),
+                                .height(52.dp),
+                            enabled = siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (siteName.isBlank() || username.isBlank()) "Enter Site & Username to Save" else "Save to Vault",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        } else {
+            // --- TAB 1: SAVED VAULT LIST ---
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Search & Sort bar
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 1.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { viewModel.onSearchQueryChanged(it) },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                                Text(
+                                    "Search vault by site or username...",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Clear",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(24.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = "Password Generator",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    if (!isGeneratorExpanded) {
-                                        Text(
-                                            text = if (isPinMode) "$numberLength-digit PIN ready" else "$numberLength-word Passphrase ready",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
+                            Text(
+                                text = if (searchQuery.isBlank()) "${passwords.size} credentials" else "${passwords.size} matches",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                if (!isGeneratorExpanded && generatedPassword.isNotEmpty()) {
-                                    FilledTonalIconButton(
-                                        onClick = {
-                                            clipboardManager.setText(AnnotatedString(generatedPassword))
-                                            Toast.makeText(context, "Copied generated password!", Toast.LENGTH_SHORT).show()
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.ContentCopy,
-                                            contentDescription = "Quick Copy",
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                    }
-                                }
-                                IconButton(
-                                    onClick = { isGeneratorExpanded = !isGeneratorExpanded },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (isGeneratorExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Toggle Generator",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            if (passwords.isNotEmpty()) {
+                                SortControlsDropdown(
+                                    sortOrder = sortOrder,
+                                    onSortChange = { viewModel.onSortOrderChanged(it) }
+                                )
                             }
                         }
+                    }
+                }
 
-                        // Expanded Generator Body
-                        AnimatedVisibility(
-                            visible = isGeneratorExpanded,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
-                        ) {
+                // Vault LazyColumn
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (passwords.isEmpty()) {
+                        item {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    .padding(vertical = 48.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Mode Toggle inside Generator
-                                SegmentedControl(
-                                    options = listOf("Passphrase", "PIN"),
-                                    selectedIndex = if (isPinMode) 1 else 0,
-                                    onOptionSelected = { index ->
-                                        val newMode = index == 1
-                                        if (isPinMode != newMode) {
-                                            isPinMode = newMode
-                                            numberLength = if (isPinMode) 6 else 4
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        }
-                                    }
+                                Icon(
+                                    imageVector = if (searchQuery.isEmpty()) Icons.Default.Lock else Icons.Default.SearchOff,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
                                 )
-
-                                // Hero Display Card + Length Chips + Strength Bar
-                                UnifiedGeneratorCard(
-                                    password = generatedPassword,
-                                    isVisible = isPasswordVisible,
-                                    onToggleVisibility = { isPasswordVisible = !isPasswordVisible },
-                                    onCopy = {
-                                        clipboardManager.setText(AnnotatedString(generatedPassword))
-                                        Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    },
-                                    onRegenerate = {
-                                        generatedPassword = if (isPinMode) {
-                                            PassphraseGenerator.generatePin(numberLength)
-                                        } else {
-                                            PassphraseGenerator.generate(numberLength)
-                                        }
-                                    },
-                                    isPinMode = isPinMode,
-                                    currentLength = numberLength,
-                                    onLengthChange = {
-                                        if (numberLength != it) {
-                                            numberLength = it
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        }
-                                    }
+                                Text(
+                                    text = if (searchQuery.isEmpty()) "Your vault is empty" else "No matching credentials",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-
-                                HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                Text(
+                                    text = if (searchQuery.isEmpty()) "Generate a strong password or PIN to save it securely." else "Try a different site name or username.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    textAlign = TextAlign.Center
                                 )
-
-                                // Quick Save Section
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Text(
-                                        text = "SAVE TO VAULT",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.8.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        ModernInput(
-                                            value = siteName,
-                                            onValueChange = { siteName = it },
-                                            placeholder = "Site / App",
-                                            icon = Icons.Default.Public,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        ModernInput(
-                                            value = username,
-                                            onValueChange = { username = it },
-                                            placeholder = "Username",
-                                            icon = Icons.Default.Person,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-
+                                if (searchQuery.isEmpty()) {
                                     Button(
-                                        onClick = {
-                                            if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
-                                                val securePassword = SecurityUtils.encrypt(generatedPassword)
-                                                val type = if (isPinMode) PasswordType.PIN else PasswordType.PASSWORD
-                                                viewModel.addPassword(siteName.trim(), username.trim(), securePassword, type)
-                                                siteName = ""
-                                                username = ""
-                                                generatedPassword = if (isPinMode) {
-                                                    PassphraseGenerator.generatePin(numberLength)
-                                                } else {
-                                                    PassphraseGenerator.generate(numberLength)
-                                                }
-                                                Toast.makeText(context, "Saved to Vault", Toast.LENGTH_SHORT).show()
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                isGeneratorExpanded = false
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(52.dp),
-                                        enabled = siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank(),
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                                        )
+                                        onClick = { selectedTabIndex = 0 },
+                                        shape = RoundedCornerShape(14.dp)
                                     ) {
-                                        Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = if (siteName.isBlank() || username.isBlank()) "Enter Site & Username to Save" else "Save to Vault",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Generate a Password")
                                     }
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            // 2. UNIFIED VAULT HEADER + SORT ROW
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { isSavedExpanded = !isSavedExpanded }
-                            .padding(vertical = 4.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Saved Vault",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = "${passwords.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                        }
-                        Icon(
-                            imageVector = if (isSavedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    if (isSavedExpanded && passwords.isNotEmpty()) {
-                        SortControlsDropdown(
-                            sortOrder = sortOrder,
-                            onSortChange = { viewModel.onSortOrderChanged(it) }
-                        )
-                    }
-                }
-            }
-
-            // 3. EMPTY STATE OR VAULT LIST
-            if (isSavedExpanded) {
-                if (passwords.isEmpty()) {
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 48.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (searchQuery.isEmpty()) Icons.Default.Lock else Icons.Default.SearchOff,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                modifier = Modifier.size(40.dp)
-                            )
-                            Text(
-                                text = if (searchQuery.isEmpty()) "Your vault is empty" else "No matching credentials",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = if (searchQuery.isEmpty()) "Generate a passphrase or PIN above to save it." else "Try a different site name or username.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    } else {
+                        items(passwords, key = { it.id }) { password ->
+                            PasswordListItem(
+                                password = password,
+                                onDelete = { viewModel.deletePassword(password) },
+                                onUpdate = { viewModel.updatePassword(it) }
                             )
                         }
                     }
-                } else {
-                    items(passwords, key = { it.id }) { password ->
-                        PasswordListItem(
-                            password = password,
-                            onDelete = { viewModel.deletePassword(password) },
-                            onUpdate = { viewModel.updatePassword(it) }
-                        )
-                    }
+
+                    item { Spacer(modifier = Modifier.height(72.dp)) }
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(48.dp)) }
         }
     }
 }
