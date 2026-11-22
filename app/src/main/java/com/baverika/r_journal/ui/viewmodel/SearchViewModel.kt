@@ -10,6 +10,7 @@ import com.baverika.r_journal.data.local.entity.Tracker
 import com.baverika.r_journal.quotes.data.QuoteEntity
 import com.baverika.r_journal.quotes.data.QuoteRepository
 import com.baverika.r_journal.repository.*
+import com.baverika.r_journal.ui.components.extractSearchSnippet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
@@ -30,25 +31,28 @@ sealed class UnifiedSearchResult {
 
     data class JournalResult(
         val entry: JournalEntry,
+        val snippet: String? = null,
         override val id: String = entry.id,
-        override val title: String = entry.localDate.toString(),
-        override val subtitle: String = entry.messages.firstOrNull { it.content.isNotBlank() }?.content ?: "Journal Entry",
+        override val title: String = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy")),
+        override val subtitle: String = snippet ?: (entry.messages.firstOrNull { it.content.isNotBlank() }?.content ?: "Journal Entry"),
         override val category: SearchCategory = SearchCategory.JOURNAL
     ) : UnifiedSearchResult()
 
     data class NoteResult(
         val note: QuickNote,
+        val snippet: String? = null,
         override val id: String = note.id,
         override val title: String = note.title.ifBlank { "Untitled Note" },
-        override val subtitle: String = com.baverika.r_journal.data.model.RichContent.fromContentString(note.content).toPlainText(),
+        override val subtitle: String = snippet ?: com.baverika.r_journal.data.model.RichContent.fromContentString(note.content).toPlainText(),
         override val category: SearchCategory = SearchCategory.NOTES
     ) : UnifiedSearchResult()
 
     data class TaskResult(
         val task: Task,
+        val snippet: String? = null,
         override val id: String = task.id,
         override val title: String = task.title,
-        override val subtitle: String = task.description ?: "",
+        override val subtitle: String = snippet ?: (task.description ?: ""),
         override val category: SearchCategory = SearchCategory.TASKS
     ) : UnifiedSearchResult()
 
@@ -115,24 +119,47 @@ class SearchViewModel(
 
             // 1. Journal Search
             if (category == SearchCategory.ALL || category == SearchCategory.JOURNAL) {
-                journals.filter { entry ->
-                    entry.messages.any { it.content.lowercase().contains(q) } ||
-                    entry.tags.any { it.lowercase().contains(q) }
-                }.forEach { results.add(UnifiedSearchResult.JournalResult(it)) }
+                journals.mapNotNull { entry ->
+                    val allText = entry.messages.joinToString(" ") { it.content }
+                    val matchesText = allText.lowercase().contains(q)
+                    val matchingTags = entry.tags.filter { it.lowercase().contains(q) }
+                    val matchesTags = matchingTags.isNotEmpty()
+
+                    if (matchesText || matchesTags) {
+                        val snippet = when {
+                            matchesText -> extractSearchSnippet(allText, queryStr)
+                            matchesTags -> "Tags: " + matchingTags.joinToString(", ") { "#$it" }
+                            else -> null
+                        }
+                        UnifiedSearchResult.JournalResult(entry = entry, snippet = snippet)
+                    } else null
+                }.forEach { results.add(it) }
             }
 
             // 2. Notes Search
             if (category == SearchCategory.ALL || category == SearchCategory.NOTES) {
-                notes.filter { note ->
-                    note.title.lowercase().contains(q) || note.content.lowercase().contains(q)
-                }.forEach { results.add(UnifiedSearchResult.NoteResult(it)) }
+                notes.mapNotNull { note ->
+                    val plainContent = com.baverika.r_journal.data.model.RichContent.fromContentString(note.content).toPlainText()
+                    val titleMatch = note.title.lowercase().contains(q)
+                    val contentMatch = plainContent.lowercase().contains(q)
+                    if (titleMatch || contentMatch) {
+                        val snippet = if (contentMatch) extractSearchSnippet(plainContent, queryStr) else null
+                        UnifiedSearchResult.NoteResult(note = note, snippet = snippet)
+                    } else null
+                }.forEach { results.add(it) }
             }
 
             // 3. Tasks Search
             if (category == SearchCategory.ALL || category == SearchCategory.TASKS) {
-                tasks.filter { task ->
-                    task.title.lowercase().contains(q) || (task.description?.lowercase()?.contains(q) == true)
-                }.forEach { results.add(UnifiedSearchResult.TaskResult(it)) }
+                tasks.mapNotNull { task ->
+                    val titleMatch = task.title.lowercase().contains(q)
+                    val desc = task.description ?: ""
+                    val descMatch = desc.lowercase().contains(q)
+                    if (titleMatch || descMatch) {
+                        val snippet = if (descMatch) extractSearchSnippet(desc, queryStr) else null
+                        UnifiedSearchResult.TaskResult(task = task, snippet = snippet)
+                    } else null
+                }.forEach { results.add(it) }
             }
 
             // 4. Trackers Search

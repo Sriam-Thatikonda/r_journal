@@ -373,6 +373,14 @@ fun MainApp(
                                         ),
                                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                         singleLine = true,
+                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                            imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                                        ),
+                                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                            onSearch = {
+                                                keyboardController?.hide()
+                                            }
+                                        ),
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .focusRequester(searchFocusRequester)

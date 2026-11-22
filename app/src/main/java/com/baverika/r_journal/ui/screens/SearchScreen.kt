@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.components.HighlightedText
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -341,62 +342,4 @@ fun UnifiedSearchResultCard(
             }
         }
     }
-}
-
-@Composable
-fun HighlightedText(
-    text: String,
-    query: String,
-    style: TextStyle,
-    color: Color = MaterialTheme.colorScheme.onSurface,
-    highlightColor: Color = MaterialTheme.colorScheme.primary,
-    fontWeight: FontWeight? = null,
-    maxLines: Int = Int.MAX_VALUE,
-    overflow: TextOverflow = TextOverflow.Clip,
-    modifier: Modifier = Modifier
-) {
-    if (query.isBlank() || !text.contains(query, ignoreCase = true)) {
-        Text(
-            text = text,
-            style = style,
-            color = color,
-            fontWeight = fontWeight,
-            maxLines = maxLines,
-            overflow = overflow,
-            modifier = modifier
-        )
-        return
-    }
-
-    val annotated = buildAnnotatedString {
-        var currentIndex = 0
-        val lowerText = text.lowercase()
-        val lowerQuery = query.lowercase().trim()
-
-        while (currentIndex < text.length) {
-            val matchIndex = lowerText.indexOf(lowerQuery, currentIndex)
-            if (matchIndex == -1) {
-                append(text.substring(currentIndex))
-                break
-            }
-            if (matchIndex > currentIndex) {
-                append(text.substring(currentIndex, matchIndex))
-            }
-            val matchEnd = (matchIndex + lowerQuery.length).coerceAtMost(text.length)
-            pushStyle(SpanStyle(fontWeight = FontWeight.Bold, color = highlightColor))
-            append(text.substring(matchIndex, matchEnd))
-            pop()
-            currentIndex = matchEnd
-        }
-    }
-
-    Text(
-        text = annotated,
-        style = style,
-        color = color,
-        fontWeight = fontWeight,
-        maxLines = maxLines,
-        overflow = overflow,
-        modifier = modifier
-    )
 }

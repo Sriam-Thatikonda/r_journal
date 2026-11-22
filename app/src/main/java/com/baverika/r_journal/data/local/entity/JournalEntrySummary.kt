@@ -15,8 +15,11 @@ data class JournalEntrySummary(
     // ✅ Pre-calculated UI fields
     val moodEmojis: List<String>,
     val dayOfWeek: String,
-    val dateFormatted: String
+    val dateFormatted: String,
+    val searchableText: String = ""
 ) {
     val localDate: LocalDate
-        get() = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(dateMillis), ZoneId.systemDefault())
+        get() = java.time.Instant.ofEpochMilli(dateMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
 }

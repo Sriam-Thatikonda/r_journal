@@ -20,11 +20,14 @@ class JournalRepository(
 ) {
     val allEntries: Flow<List<JournalEntry>> = journalDao.getAllEntries()
 
-    // ✅ NEW: Lightweight flow for the list view
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    // ✅ Lightweight flow for the list view
     val allEntrySummaries: Flow<List<JournalEntrySummary>> = allEntries
         .map { entries ->
             entries.map { entry ->
+                val allText = entry.messages.joinToString(" ") { it.content }
+                val entryDate = java.time.Instant.ofEpochMilli(entry.dateMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
                 JournalEntrySummary(
                     id = entry.id,
                     dateMillis = entry.dateMillis,
@@ -48,10 +51,9 @@ class JournalRepository(
                                 else -> "😶"
                             }
                         },
-                    dayOfWeek = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(entry.dateMillis), ZoneId.systemDefault())
-                        .format(java.time.format.DateTimeFormatter.ofPattern("EEE")),
-                    dateFormatted = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(entry.dateMillis), ZoneId.systemDefault())
-                        .format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy"))
+                    dayOfWeek = entryDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE")),
+                    dateFormatted = entryDate.format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy")),
+                    searchableText = allText
                 )
             }
         }

@@ -46,6 +46,7 @@ import com.baverika.r_journal.data.local.entity.JournalEntrySummary
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.ui.components.EmptyState
+import com.baverika.r_journal.ui.components.HighlightedText
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
 import java.time.format.DateTimeFormatter
@@ -78,11 +79,33 @@ fun JournalArchiveScreen(
         if (searchQuery.isBlank()) allEntries
         else {
             val q = searchQuery.trim().lowercase(Locale.getDefault())
+            val terms = q.split("\\s+".toRegex()).filter { it.isNotBlank() }
             allEntries.filter { entry ->
-                entry.dateFormatted.lowercase(Locale.getDefault()).contains(q) ||
-                entry.dayOfWeek.lowercase(Locale.getDefault()).contains(q) ||
-                (entry.previewText?.lowercase(Locale.getDefault())?.contains(q) == true) ||
-                entry.moodEmojis.any { it.contains(q) }
+                val fullText = entry.searchableText.lowercase(Locale.getDefault())
+                val dateStr = entry.dateFormatted.lowercase(Locale.getDefault())
+                val dayStr = entry.dayOfWeek.lowercase(Locale.getDefault())
+                val previewStr = entry.previewText?.lowercase(Locale.getDefault()) ?: ""
+                val moodStr = entry.mood?.lowercase(Locale.getDefault()) ?: ""
+                val tagsStr = entry.tags.map { it.lowercase(Locale.getDefault()) }
+
+                // 1. Whole query match against any message, tag, mood, or date
+                fullText.contains(q) ||
+                dateStr.contains(q) ||
+                dayStr.contains(q) ||
+                previewStr.contains(q) ||
+                moodStr.contains(q) ||
+                tagsStr.any { it.contains(q) } ||
+                entry.moodEmojis.any { it.contains(q) } ||
+                // 2. Multi-term match (every word appears somewhere in the entry)
+                (terms.isNotEmpty() && terms.all { term ->
+                    fullText.contains(term) ||
+                    dateStr.contains(term) ||
+                    dayStr.contains(term) ||
+                    previewStr.contains(term) ||
+                    moodStr.contains(term) ||
+                    tagsStr.any { it.contains(term) } ||
+                    entry.moodEmojis.any { it.contains(term) }
+                })
             }
         }
     }
@@ -221,6 +244,7 @@ fun JournalArchiveScreen(
                                         EnhancedJournalCard(
                                             entry = entry,
                                             events = dayEvents,
+                                            searchQuery = searchQuery,
                                             onClick = { onEntryClick(entry) }
                                         )
                                     }
@@ -251,6 +275,7 @@ fun JournalArchiveScreen(
                                         JournalListItemCard(
                                             entry = entry,
                                             events = dayEvents,
+                                            searchQuery = searchQuery,
                                             onClick = { onEntryClick(entry) }
                                         )
                                     }
@@ -283,6 +308,7 @@ fun JournalArchiveScreen(
                                             entry = entry,
                                             events = dayEvents,
                                             isLastInGroup = isLast,
+                                            searchQuery = searchQuery,
                                             onClick = { onEntryClick(entry) }
                                         )
                                     }
@@ -354,6 +380,47 @@ private fun ArchiveSectionHeader(
     }
 }
 
+private fun getMatchingSnippet(entry: JournalEntrySummary, query: String): String? {
+    if (query.isBlank()) return entry.previewText
+    val q = query.trim()
+    val terms = q.split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (terms.isEmpty()) return entry.previewText
+
+    val fullText = entry.searchableText
+    var idx = fullText.indexOf(q, ignoreCase = true)
+    var matchLen = q.length
+
+    if (idx == -1) {
+        for (term in terms) {
+            val termIdx = fullText.indexOf(term, ignoreCase = true)
+            if (termIdx != -1) {
+                idx = termIdx
+                matchLen = term.length
+                break
+            }
+        }
+    }
+
+    if (idx != -1) {
+        val start = (idx - 30).coerceAtLeast(0)
+        val end = (idx + matchLen + 70).coerceAtMost(fullText.length)
+        val prefix = if (start > 0) "…" else ""
+        val suffix = if (end < fullText.length) "…" else ""
+        return prefix + fullText.substring(start, end).trim() + suffix
+    }
+
+    // If query matched in tags, show matching tag(s)
+    val matchingTags = entry.tags.filter { tag ->
+        terms.any { term -> tag.contains(term, ignoreCase = true) }
+    }
+    if (matchingTags.isNotEmpty()) {
+        val tagsStr = matchingTags.joinToString(", ") { "#$it" }
+        return if (!entry.previewText.isNullOrBlank()) "$tagsStr • ${entry.previewText}" else tagsStr
+    }
+
+    return entry.previewText
+}
+
 // ─────────────────────────────────────────────────────────────
 // Grid Card (2-column layout)
 // ─────────────────────────────────────────────────────────────
@@ -361,6 +428,7 @@ private fun ArchiveSectionHeader(
 fun EnhancedJournalCard(
     entry: JournalEntrySummary,
     events: List<Event> = emptyList(),
+    searchQuery: String = "",
     onClick: () -> Unit
 ) {
     val hasImages = entry.hasImages
@@ -412,10 +480,13 @@ fun EnhancedJournalCard(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
+                    HighlightedText(
                         text = entry.dateFormatted,
+                        query = searchQuery,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface,
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -450,9 +521,12 @@ fun EnhancedJournalCard(
             }
 
             // Preview snippet
-            val previewText = entry.previewText
-            Text(
+            val previewText = remember(entry, searchQuery) {
+                getMatchingSnippet(entry, searchQuery)
+            }
+            HighlightedText(
                 text = previewText ?: "No preview",
+                query = searchQuery,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
@@ -461,6 +535,8 @@ fun EnhancedJournalCard(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 },
+                highlightColor = MaterialTheme.colorScheme.primary,
+                highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -515,6 +591,7 @@ fun EnhancedJournalCard(
 private fun JournalListItemCard(
     entry: JournalEntrySummary,
     events: List<Event> = emptyList(),
+    searchQuery: String = "",
     onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -590,10 +667,13 @@ private fun JournalListItemCard(
                             }
                         }
                     } else {
-                        Text(
+                        HighlightedText(
                             text = entry.dateFormatted,
+                            query = searchQuery,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            highlightColor = MaterialTheme.colorScheme.primary,
+                            highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                         )
                     }
 
@@ -613,13 +693,18 @@ private fun JournalListItemCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                val preview = entry.previewText
-                Text(
+                val preview = remember(entry, searchQuery) {
+                    getMatchingSnippet(entry, searchQuery)
+                }
+                HighlightedText(
                     text = preview ?: "No preview available",
+                    query = searchQuery,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (preview != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = if (preview != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    highlightColor = MaterialTheme.colorScheme.primary,
+                    highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -680,6 +765,7 @@ private fun JournalTimelineItemCard(
     entry: JournalEntrySummary,
     events: List<Event> = emptyList(),
     isLastInGroup: Boolean,
+    searchQuery: String = "",
     onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -749,11 +835,14 @@ private fun JournalTimelineItemCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
+                    HighlightedText(
                         text = entry.dateFormatted,
+                        query = searchQuery,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                     )
 
                     if (events.isNotEmpty()) {
@@ -781,14 +870,19 @@ private fun JournalTimelineItemCard(
                     }
                 }
 
-                val preview = entry.previewText
+                val preview = remember(entry, searchQuery) {
+                    getMatchingSnippet(entry, searchQuery)
+                }
                 if (!preview.isNullOrBlank()) {
-                    Text(
+                    HighlightedText(
                         text = preview,
+                        query = searchQuery,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
