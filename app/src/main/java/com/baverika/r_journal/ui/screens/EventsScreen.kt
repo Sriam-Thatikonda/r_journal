@@ -238,15 +238,26 @@ fun EventItem(
 ) {
     val event = item.event
     val daysRemaining = item.daysRemaining
-    val currentYear = LocalDate.now().year
+    val today = LocalDate.now()
+    val eventThisYear = LocalDate.of(today.year, event.month, event.day)
+    val nextOccurrenceYear = if (eventThisYear.isBefore(today)) today.year + 1 else today.year
 
-    val milestoneText = remember(event) {
+    val milestoneText = remember(event, nextOccurrenceYear) {
         if (event.year != null && event.year > 0) {
-            val count = currentYear - event.year
+            val count = nextOccurrenceYear - event.year
             if (count > 0) {
                 when (event.type) {
                     EventType.BIRTHDAY -> "Turning $count"
-                    EventType.ANNIVERSARY -> "${count}th Anniversary"
+                    EventType.ANNIVERSARY -> {
+                        val ordinal = when {
+                            count % 100 in 11..13 -> "${count}th"
+                            count % 10 == 1 -> "${count}st"
+                            count % 10 == 2 -> "${count}nd"
+                            count % 10 == 3 -> "${count}rd"
+                            else -> "${count}th"
+                        }
+                        "$ordinal Anniversary"
+                    }
                     else -> "$count years"
                 }
             } else null
@@ -319,7 +330,9 @@ fun EventItem(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = LocalDate.of(currentYear, event.month, event.day).format(DateTimeFormatter.ofPattern("EEEE, MMMM d")),
+                    text = LocalDate.of(nextOccurrenceYear, event.month, event.day).format(
+                        DateTimeFormatter.ofPattern(if (nextOccurrenceYear == today.year) "EEEE, MMMM d" else "EEEE, MMMM d, yyyy")
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
