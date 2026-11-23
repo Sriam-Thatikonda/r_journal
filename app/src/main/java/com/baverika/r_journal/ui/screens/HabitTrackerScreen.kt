@@ -42,12 +42,13 @@ fun HabitTrackerScreen(
     navController: NavController
 ) {
     val dashboardGrids by viewModel.dashboardHabitGrids.collectAsState()
+    val streaks by viewModel.habitStreaks.collectAsState()
     
     Column(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        // Header for 7 Days
+        // Header for 7 Days (Past 6 days + Today)
         val titleColumnWidth = 112.dp
         Row(
             modifier = Modifier
@@ -77,8 +78,8 @@ fun HabitTrackerScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                (0..6).forEach { i ->
-                    val date = today.plusDays(i.toLong())
+                (6 downTo 0).forEach { i ->
+                    val date = today.minusDays(i.toLong())
                     val isToday = i == 0
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -118,6 +119,7 @@ fun HabitTrackerScreen(
                 items(dashboardGrids) { grid ->
                     HabitRow7Day(
                         grid = grid,
+                        streak = streaks[grid.habit.id] ?: 0,
                         onNameClick = { navController.navigate("habit_year_overview/${grid.habit.id}") },
                         onEditClick = { habit ->
                             navController.navigate("add_habit?habitId=${habit.id}")
@@ -141,6 +143,7 @@ fun HabitTrackerScreen(
 fun HabitRow7Day(
     grid: HabitViewModel.YearlyHabitGrid,
     titleColumnWidth: androidx.compose.ui.unit.Dp = 112.dp,
+    streak: Int = 0,
     onNameClick: () -> Unit,
     onEditClick: (com.baverika.r_journal.data.local.entity.Habit) -> Unit,
     onDeleteClick: (com.baverika.r_journal.data.local.entity.Habit) -> Unit,
@@ -168,14 +171,24 @@ fun HabitRow7Day(
                 .padding(horizontal = 12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            Text(
-                text = grid.habit.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Start,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
+            Column(verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = grid.habit.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                if (streak > 0) {
+                    Text(
+                        text = "🔥 $streak d",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             DropdownMenu(
                 expanded = showMenu,

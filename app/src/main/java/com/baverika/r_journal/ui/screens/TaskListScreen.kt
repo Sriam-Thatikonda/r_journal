@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.components.HighlightedText
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -378,6 +379,7 @@ fun TaskListScreen(
                         SwipeableTaskItem(
                             task = task,
                             category = categories.find { it.id == task.categoryId },
+                            searchQuery = searchQuery,
                             onToggleComplete = {
                                 viewModel.toggleTaskCompletion(
                                     task.id,
@@ -635,6 +637,7 @@ private fun getFilterDisplayName(filter: TaskFilter): String {
 fun SwipeableTaskItem(
     task: Task,
     category: TaskCategory?,
+    searchQuery: String = "",
     onToggleComplete: () -> Unit,
     onClick: () -> Unit,
     onDelete: () -> Unit
@@ -767,26 +770,31 @@ fun SwipeableTaskItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     // Title
-                    Text(
+                    HighlightedText(
                         text = task.title,
+                        query = searchQuery,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
-                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
                         color = if (task.isCompleted) {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         } else {
                             MaterialTheme.colorScheme.onSurface
                         },
+                        highlightColor = MaterialTheme.colorScheme.primary,
+                        highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
 
                     // Description preview
                     if (task.description.isNotBlank()) {
-                        Text(
+                        HighlightedText(
                             text = task.description,
+                            query = searchQuery,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            highlightColor = MaterialTheme.colorScheme.primary,
+                            highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 2.dp)

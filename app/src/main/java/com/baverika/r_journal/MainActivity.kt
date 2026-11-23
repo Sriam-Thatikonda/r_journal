@@ -141,6 +141,12 @@ class MainActivity : FragmentActivity() {
         // Auto-backup disabled by user request
         androidx.work.WorkManager.getInstance(this).cancelUniqueWork("DailyBackup")
 
+        // Initialize notification channels
+        com.baverika.r_journal.notifications.AppNotificationManager.createChannels(this)
+
+        // Schedule proactive notifications (Habits, Backup, Tasks, Journal, Events)
+        com.baverika.r_journal.worker.DailyNudgeWorker.schedule(this)
+
         // Schedule periodic tasks checks & reminders
         com.baverika.r_journal.worker.TaskReminderWorker.scheduleDailySummary(this)
 
@@ -914,7 +920,7 @@ fun MainApp(
 
                     // Calendar
                     composable("calendar") {
-                        CalendarScreen(journalRepo, navController)
+                        CalendarScreen(journalRepo, navController, eventRepo)
                     }
 
                     // Events (Special Dates)

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -45,30 +46,16 @@ fun QuotesScreen(
 
     Scaffold(
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            FloatingActionButton(
+                onClick = { viewModel.showAddDialog() },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape
             ) {
-                // Refresh Widget FAB (larger)
-                LargeFloatingActionButton(
-                    onClick = { viewModel.refreshWidget() },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Refresh Widget",
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-                
-                // Add Quote FAB
-                ExtendedFloatingActionButton(
-                    onClick = { viewModel.showAddDialog() },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Add Quote") },
-                    text = { Text("Add Quote") }
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add Quote",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -78,6 +65,35 @@ fun QuotesScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Header stats and widget sync action
+            if (quotes.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${quotes.size} ${if (quotes.size == 1) "quote" else "quotes"}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = { viewModel.refreshWidget() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Sync Widget", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+
             // Content
             if (quotes.isEmpty()) {
                 EmptyQuotesState(

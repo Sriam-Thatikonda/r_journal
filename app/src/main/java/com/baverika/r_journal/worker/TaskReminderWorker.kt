@@ -6,11 +6,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.work.*
-import com.baverika.r_journal.MainActivity
-import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.notifications.AppNotificationManager
+import com.baverika.r_journal.repository.SettingsRepository
 import java.util.concurrent.TimeUnit
 
 /**
@@ -118,7 +117,7 @@ class TaskReminderWorker(
     }
     
     override suspend fun doWork(): Result {
-        createNotificationChannel()
+        AppNotificationManager.createChannels(applicationContext)
         
         // Sync upcoming special date tasks in background
         try {
@@ -138,6 +137,9 @@ class TaskReminderWorker(
     }
     
     private suspend fun handleTaskReminder(): Result {
+        val settingsRepo = SettingsRepository(applicationContext)
+        if (!settingsRepo.notifTasksEnabled) return Result.success()
+
         val taskId = inputData.getString(KEY_TASK_ID) ?: return Result.failure()
         val taskTitle = inputData.getString(KEY_TASK_TITLE) ?: "Task Reminder"
         
@@ -146,11 +148,10 @@ class TaskReminderWorker(
         val task = db.taskDao().getTaskById(taskId)
         
         if (task != null && !task.isCompleted) {
-            showNotification(
-                id = taskId.hashCode(),
-                title = "Task Reminder",
-                message = taskTitle,
-                taskId = taskId
+            AppNotificationManager.showTaskReminder(
+                context = applicationContext,
+                taskId = taskId,
+                taskTitle = taskTitle
             )
         }
         
@@ -158,6 +159,9 @@ class TaskReminderWorker(
     }
     
     private fun handleOverdueCheck(): Result {
+        val settingsRepo = SettingsRepository(applicationContext)
+        if (!settingsRepo.notifTasksEnabled) return Result.success()
+
         val db = JournalDatabase.getDatabase(applicationContext)
         val overdueTasks = db.taskDao().getUpcomingTasksSync(100)
             .filter { 
@@ -167,12 +171,9 @@ class TaskReminderWorker(
             }
         
         if (overdueTasks.isNotEmpty()) {
-            val count = overdueTasks.size
-            showNotification(
-                id = "overdue_tasks".hashCode(),
-                title = "Overdue Tasks",
-                message = "You have $count overdue task${if (count > 1) "s" else ""}",
-                taskId = null
+            AppNotificationManager.showOverdueTasks(
+                context = applicationContext,
+                count = overdueTasks.size
             )
         }
         
@@ -180,6 +181,9 @@ class TaskReminderWorker(
     }
     
     private fun handleDailySummary(): Result {
+        val settingsRepo = SettingsRepository(applicationContext)
+        if (!settingsRepo.notifTaskSummaryEnabled) return Result.success()
+
         val db = JournalDatabase.getDatabase(applicationContext)
         val allTasks = db.taskDao().getUpcomingTasksSync(100)
         
@@ -197,60 +201,13 @@ class TaskReminderWorker(
         }
         
         if (todayTasks.isNotEmpty()) {
-            val count = todayTasks.size
-            showNotification(
-                id = "daily_summary".hashCode(),
-                title = "Today's Tasks",
-                message = "You have $count task${if (count > 1) "s" else ""} due today",
-                taskId = null
+            AppNotificationManager.showDailyTaskSummary(
+                context = applicationContext,
+                count = todayTasks.size,
+                sampleTitles = todayTasks.map { it.title }
             )
         }
         
         return Result.success()
-    }
-    
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
-                description = "Task reminder notifications"
-            }
-            
-            val notificationManager = applicationContext
-                .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-    
-    private fun showNotification(
-        id: Int,
-        title: String,
-        message: String,
-        taskId: String?
-    ) {
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("navigate_to", if (taskId != null) "edit_task/$taskId" else "tasks")
-        }
-        
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            id,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_task_notification)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-        
-        val notificationManager = applicationContext
-            .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(id, notification)
     }
 }

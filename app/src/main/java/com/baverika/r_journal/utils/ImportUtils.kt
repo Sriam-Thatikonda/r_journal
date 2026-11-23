@@ -296,6 +296,7 @@ object ImportUtils {
             }
 
             // 13. Mine Journal
+            var mineCount = 0
             jsonPayloads.entries.firstOrNull { it.key.endsWith("mine_journal.json") }?.let { (_, content) ->
                 try {
                     val mineEntry = gson.fromJson(content, JournalEntry::class.java)
@@ -330,15 +331,17 @@ object ImportUtils {
                     }
 
                     journalRepo.upsertEntry(mineEntry.copy(messages = restoredMessages))
+                    mineCount = restoredMessages.size
                 } catch (e: Exception) { e.printStackTrace() }
             }
 
             // Clean up temp files
             tempImagesDir.deleteRecursively()
 
+            val mineMsg = if (mineCount > 0) ", $mineCount mine messages" else ""
             onResult(
                 true,
-                "Imported: $journalCount journals, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount life trackers, $countersCount trackers, $challengeCount challenges, $eventCount events, $passwordCount passwords"
+                "Imported: $journalCount journals$mineMsg, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount life trackers, $countersCount trackers, $challengeCount challenges, $eventCount events, $passwordCount passwords"
             )
         } catch (e: Exception) {
             e.printStackTrace()

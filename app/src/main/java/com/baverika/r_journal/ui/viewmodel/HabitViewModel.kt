@@ -188,14 +188,15 @@ class HabitViewModel(
     .flowOn(Dispatchers.Default)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Dashboard Data (Today + 6 days)
+    // Dashboard Data (Past 6 days + Today = 7 days total)
     val dashboardHabitGrids: StateFlow<List<YearlyHabitGrid>> = flow {
         val today = LocalDate.now()
-        // Today + 6 days = 7 days total
-        val days = (0..6).map { today.plusDays(it.toLong()) }
+        // Chronological: 6 days ago -> today
+        val days = (6 downTo 0).map { today.minusDays(it.toLong()) }
         
-        val startMillis = today.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
-        val end = today.plusDays(6)
+        val start = today.minusDays(6)
+        val startMillis = start.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+        val end = today
         val endMillis = end.atStartOfDay(ZoneId.systemDefault()).plusDays(1).minusNanos(1).toEpochSecond() * 1000
 
         val daysWithMillis = days.map { date ->
@@ -234,6 +235,27 @@ class HabitViewModel(
     }
     .flowOn(Dispatchers.Default)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Live streak calculation per habit
+    val habitStreaks: StateFlow<Map<String, Int>> = repository.allHabitLogs.map { logs ->
+        val completedByHabit = logs.filter { it.isCompleted }.groupBy { it.habitId }
+        val today = LocalDate.now()
+        val zone = ZoneId.systemDefault()
+
+        completedByHabit.mapValues { (_, habitLogs) ->
+            val completedDates = habitLogs.map {
+                java.time.Instant.ofEpochMilli(it.dateMillis).atZone(zone).toLocalDate()
+            }.toSet()
+
+            var streak = 0
+            var checkDate = if (completedDates.contains(today)) today else today.minusDays(1)
+            while (completedDates.contains(checkDate)) {
+                streak++
+                checkDate = checkDate.minusDays(1)
+            }
+            streak
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     // Restored methods
     fun addHabit(title: String, description: String, frequency: List<Int>, color: Int) {

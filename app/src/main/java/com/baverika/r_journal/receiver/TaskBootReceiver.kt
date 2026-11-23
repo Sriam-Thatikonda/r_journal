@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.worker.DailyNudgeWorker
 import com.baverika.r_journal.worker.TaskReminderWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ class TaskBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             TaskReminderWorker.scheduleDailySummary(context)
+            DailyNudgeWorker.schedule(context)
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     com.baverika.r_journal.utils.EventTaskGenerator.ensureEventTasksCreated(context)

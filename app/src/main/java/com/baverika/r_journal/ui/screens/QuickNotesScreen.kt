@@ -38,6 +38,7 @@ import com.baverika.r_journal.data.model.NoteColor
 import com.baverika.r_journal.data.model.RichBlock
 import com.baverika.r_journal.data.model.RichContent
 import com.baverika.r_journal.data.model.SpanType
+import com.baverika.r_journal.ui.components.HighlightedText
 import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel
 import com.baverika.r_journal.utils.ColorUtils
 import java.time.LocalDateTime
@@ -150,6 +151,7 @@ fun QuickNotesScreen(
                             items(pinnedNotes, key = { it.id }) { note ->
                                 QuickNoteCard(
                                     note = note,
+                                    searchQuery = searchQuery,
                                     onDelete = { noteToDelete = it },
                                     onPin = { viewModel.togglePin(it) },
                                     onClick = { navController.navigate("edit_quick_note/${note.id}") },
@@ -164,6 +166,7 @@ fun QuickNotesScreen(
                         items(unpinnedNotes, key = { it.id }) { note ->
                             QuickNoteCard(
                                 note = note,
+                                searchQuery = searchQuery,
                                 onDelete = { noteToDelete = it },
                                 onPin = { viewModel.togglePin(it) },
                                 onClick = { navController.navigate("edit_quick_note/${note.id}") },
@@ -188,6 +191,7 @@ fun QuickNotesScreen(
                             items(pinnedNotes, key = { it.id }) { note ->
                                 QuickNoteCard(
                                     note = note,
+                                    searchQuery = searchQuery,
                                     onDelete = { noteToDelete = it },
                                     onPin = { viewModel.togglePin(it) },
                                     onClick = { navController.navigate("edit_quick_note/${note.id}") },
@@ -200,6 +204,7 @@ fun QuickNotesScreen(
                         items(unpinnedNotes, key = { it.id }) { note ->
                             QuickNoteCard(
                                 note = note,
+                                searchQuery = searchQuery,
                                 onDelete = { noteToDelete = it },
                                 onPin = { viewModel.togglePin(it) },
                                 onClick = { navController.navigate("edit_quick_note/${note.id}") },
@@ -284,6 +289,7 @@ fun QuickNoteCard(
     onPin: (QuickNote) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    searchQuery: String = "",
     backgroundAlpha: Float = 1.0f,
     onToggleChecklist: ((QuickNote, String) -> Unit)? = null
 ) {
@@ -337,13 +343,16 @@ fun QuickNoteCard(
                         Spacer(modifier = Modifier.width(6.dp))
                     }
                     if (note.title.isNotBlank()) {
-                        Text(
+                        HighlightedText(
                             text = note.title,
+                            query = searchQuery,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            color = textColor
+                            color = textColor,
+                            highlightColor = MaterialTheme.colorScheme.primary,
+                            highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                         )
                     }
                 }
@@ -380,6 +389,7 @@ fun QuickNoteCard(
                     content = note.content,
                     textColor = textColor,
                     secondaryTextColor = secondaryTextColor,
+                    searchQuery = searchQuery,
                     onToggleChecklist = onToggleChecklist?.let { callback -> { blockId -> callback(note, blockId) } }
                 )
             }
@@ -408,6 +418,7 @@ fun ParsedContent(
     content: String,
     textColor: Color,
     secondaryTextColor: Color,
+    searchQuery: String = "",
     onToggleChecklist: ((String) -> Unit)? = null
 ) {
     val trimmed = content.trim()
@@ -415,8 +426,8 @@ fun ParsedContent(
         val richContent = remember(content) { RichContent.fromContentString(content) }
         Column(modifier = Modifier.fillMaxWidth()) {
             richContent.blocks.take(8).forEachIndexed { index, block ->
-                val annotatedText = remember(block.text, block.spans, block.isChecked, textColor) {
-                    buildBlockAnnotatedString(block, textColor, block.type == BlockType.CHECKLIST && block.isChecked)
+                val annotatedText = remember(block.text, block.spans, block.isChecked, textColor, searchQuery) {
+                    buildBlockAnnotatedString(block, textColor, block.type == BlockType.CHECKLIST && block.isChecked, searchQuery)
                 }
                 when (block.type) {
                     BlockType.CHECKLIST -> {
@@ -562,11 +573,14 @@ fun ParsedContent(
                     }
                     // Regular text
                     line.isNotBlank() -> {
-                        Text(
+                        HighlightedText(
                             text = line,
+                            query = searchQuery,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp),
                             color = textColor,
+                            highlightColor = MaterialTheme.colorScheme.primary,
+                            highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -580,7 +594,8 @@ fun ParsedContent(
 private fun buildBlockAnnotatedString(
     block: RichBlock,
     defaultColor: Color,
-    forceStrikeThrough: Boolean
+    forceStrikeThrough: Boolean,
+    searchQuery: String = ""
 ): AnnotatedString {
     val raw = block.text
     val builder = AnnotatedString.Builder(raw)
@@ -591,6 +606,28 @@ private fun buildBlockAnnotatedString(
             0,
             raw.length
         )
+    }
+
+    if (searchQuery.isNotBlank()) {
+        val lowerRaw = raw.lowercase()
+        val terms = searchQuery.trim().lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
+        for (term in terms) {
+            var startIndex = 0
+            while (startIndex < raw.length) {
+                val idx = lowerRaw.indexOf(term, startIndex)
+                if (idx == -1) break
+                val endIdx = (idx + term.length).coerceAtMost(raw.length)
+                builder.addStyle(
+                    SpanStyle(
+                        fontWeight = FontWeight.ExtraBold,
+                        background = Color(0x55FFEB3B)
+                    ),
+                    idx,
+                    endIdx
+                )
+                startIndex = endIdx
+            }
+        }
     }
 
     for (span in block.spans) {

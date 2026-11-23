@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.baverika.r_journal.data.local.entity.Password
 import com.baverika.r_journal.data.local.entity.PasswordHistoryItem
 import com.baverika.r_journal.data.local.entity.PasswordType
+import com.baverika.r_journal.ui.components.HighlightedText
 import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
 import com.baverika.r_journal.ui.viewmodel.SortOrder
 import com.baverika.r_journal.utils.PassphraseGenerator
@@ -403,6 +404,7 @@ fun PasswordGeneratorScreen(
                         items(passwords, key = { it.id }) { password ->
                             PasswordListItem(
                                 password = password,
+                                searchQuery = searchQuery,
                                 onDelete = { viewModel.deletePassword(password) },
                                 onUpdate = { viewModel.updatePassword(it) }
                             )
@@ -857,6 +859,7 @@ private fun SortControlsDropdown(
 @Composable
 private fun PasswordListItem(
     password: Password,
+    searchQuery: String = "",
     onDelete: () -> Unit,
     onUpdate: (Password) -> Unit
 ) {
@@ -1251,10 +1254,13 @@ private fun PasswordListItem(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
+                        HighlightedText(
                             text = password.siteName,
+                            query = searchQuery,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
+                            highlightColor = MaterialTheme.colorScheme.primary,
+                            highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -1321,10 +1327,13 @@ private fun PasswordListItem(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
+                        HighlightedText(
                             text = password.username,
+                            query = searchQuery,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                            highlightColor = MaterialTheme.colorScheme.primary,
+                            highlightBackground = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

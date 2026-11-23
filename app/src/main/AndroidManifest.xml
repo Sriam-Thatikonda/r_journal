@@ -169,5 +169,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Notification Action Receiver for task completion and snooze -->
+        <receiver
+            android:name=".receiver.NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.baverika.r_journal.ACTION_TASK_MARK_DONE" />
+                <action android:name="com.baverika.r_journal.ACTION_TASK_SNOOZE" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

@@ -1,9 +1,13 @@
 package com.baverika.r_journal.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +46,6 @@ import com.baverika.r_journal.ui.theme.OceanColors
 import com.baverika.r_journal.ui.theme.RosewoodColors
 import com.baverika.r_journal.ui.theme.BlueSkyColors
 import com.baverika.r_journal.ui.theme.CloudDancerColors
-import com.baverika.r_journal.utils.PasswordExportUtils
 import com.baverika.r_journal.BuildConfig
 import com.baverika.r_journal.widget.WidgetUpdateUtils
 import kotlinx.coroutines.launch
@@ -57,7 +60,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 @Composable
 fun SettingsScreen(
     settingsRepo: SettingsRepository,
-    passwordRepo: PasswordRepository,
+    passwordRepo: PasswordRepository? = null,
     journalRepo: JournalRepository,
     taskRepo: TaskRepository,
     navController: NavController,
@@ -81,9 +84,28 @@ fun SettingsScreen(
     var birthMonth by remember { mutableIntStateOf(settingsRepo.birthMonth) }
     var birthYear by remember { mutableIntStateOf(settingsRepo.birthYear) }
     var widgetOpacity by remember { mutableFloatStateOf(settingsRepo.widgetOpacity.toFloat()) }
-    
-    var isExporting by remember { mutableStateOf(false) }
-    var isImporting by remember { mutableStateOf(false) }
+
+    var notifTasks by remember { mutableStateOf(settingsRepo.notifTasksEnabled) }
+    var notifTaskSummary by remember { mutableStateOf(settingsRepo.notifTaskSummaryEnabled) }
+    var notifHabits by remember { mutableStateOf(settingsRepo.notifHabitsEnabled) }
+    var notifJournal by remember { mutableStateOf(settingsRepo.notifJournalEnabled) }
+    var notifEvents by remember { mutableStateOf(settingsRepo.notifEventsEnabled) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            Toast.makeText(context, "Notification permission is required to receive reminders", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val requestNotifPermissionIfNeeded: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     // Compose M3 DatePicker Logic
     var showDatePickerDialog by remember { mutableStateOf(false) }
@@ -123,21 +145,6 @@ fun SettingsScreen(
             }
         ) {
             DatePicker(state = datePickerState)
-        }
-    }
-
-    val passwords by passwordRepo.allPasswords.collectAsState(initial = emptyList())
-
-    val passwordImportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            isImporting = true
-            scope.launch {
-                val (_, message) = PasswordExportUtils.importPasswords(context, it, passwordRepo)
-                isImporting = false
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            }
         }
     }
 
@@ -295,6 +302,126 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
+            // --- Notifications & Reminders Section ---
+            Text(
+                text = "Notifications & Reminders",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Habit Evening Review
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Daily Habit Evening Review", style = MaterialTheme.typography.bodyLarge)
+                    Text("Nudges in the evening if scheduled habits are pending", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = notifHabits,
+                    onCheckedChange = {
+                        notifHabits = it
+                        settingsRepo.notifHabitsEnabled = it
+                        if (it) requestNotifPermissionIfNeeded()
+                    }
+                )
+            }
+
+            // Task Due Reminders
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Task Due Reminders", style = MaterialTheme.typography.bodyLarge)
+                    Text("Alarms with Mark Done & Snooze action buttons", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = notifTasks,
+                    onCheckedChange = {
+                        notifTasks = it
+                        settingsRepo.notifTasksEnabled = it
+                        if (it) requestNotifPermissionIfNeeded()
+                    }
+                )
+            }
+
+            // Morning Task Briefing
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Morning Task Briefing", style = MaterialTheme.typography.bodyLarge)
+                    Text("Morning summary of tasks scheduled for today", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = notifTaskSummary,
+                    onCheckedChange = {
+                        notifTaskSummary = it
+                        settingsRepo.notifTaskSummaryEnabled = it
+                        if (it) requestNotifPermissionIfNeeded()
+                    }
+                )
+            }
+
+            // Daily Journal Prompt
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Daily Journal Prompt", style = MaterialTheme.typography.bodyLarge)
+                    Text("Evening reflection reminder (skips if already written)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = notifJournal,
+                    onCheckedChange = {
+                        notifJournal = it
+                        settingsRepo.notifJournalEnabled = it
+                        if (it) requestNotifPermissionIfNeeded()
+                    }
+                )
+            }
+
+            // Birthday & Special Events
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Birthday & Event Alerts", style = MaterialTheme.typography.bodyLarge)
+                    Text("Morning alerts on birthdays and anniversaries", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = notifEvents,
+                    onCheckedChange = {
+                        notifEvents = it
+                        settingsRepo.notifEventsEnabled = it
+                        if (it) requestNotifPermissionIfNeeded()
+                    }
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
+
             // --- Data Management Section ---
             Text(
                 text = "Data Management & Backups",
@@ -357,7 +484,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Auto Backup Reminder", style = MaterialTheme.typography.bodyLarge)
-                    Text("Remind when database backup is due", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Sends notification when backup is due", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(7, 14, 30, 0).forEach { days ->
@@ -366,6 +493,7 @@ fun SettingsScreen(
                             onClick = {
                                 backupDays = days
                                 settingsRepo.backupReminderDays = days
+                                if (days > 0) requestNotifPermissionIfNeeded()
                             },
                             label = { Text(if (days == 0) "Off" else "${days}d") }
                         )
@@ -389,57 +517,6 @@ fun SettingsScreen(
                 subtitle = "Restore from JSON backup file",
                 onClick = { navController.navigate("import") }
             )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
-
-            // --- Password Management Section ---
-            Text(
-                text = "Password Manager",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            SettingsItem(
-                icon = Icons.Default.Upload,
-                title = "Export Passwords",
-                subtitle = if (passwords.isEmpty()) "No passwords saved" else "${passwords.size} passwords",
-                enabled = passwords.isNotEmpty() && !isExporting,
-                onClick = {
-                    isExporting = true
-                    scope.launch {
-                        val (_, message) = PasswordExportUtils.exportPasswords(context, passwords)
-                        isExporting = false
-                        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                    }
-                }
-            )
-
-            SettingsItem(
-                icon = Icons.Default.Download,
-                title = "Import Passwords",
-                subtitle = "Restore from backup",
-                enabled = !isImporting,
-                onClick = {
-                    passwordImportLauncher.launch(arrayOf("application/json", "*/*"))
-                }
-            )
-
-            if (isExporting || isImporting) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if (isExporting) "Exporting..." else "Importing...",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 

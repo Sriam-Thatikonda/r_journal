@@ -18,7 +18,57 @@ class SettingsRepository(context: Context) {
         private const val KEY_WIDGET_OPACITY = "widget_opacity"
         private const val KEY_LAST_BACKUP_TIMESTAMP = "last_backup_timestamp"
         private const val KEY_BACKUP_REMINDER_DAYS = "backup_reminder_days"
+        private const val KEY_NOTIF_TASKS_ENABLED = "notif_tasks_enabled"
+        private const val KEY_NOTIF_TASK_SUMMARY_ENABLED = "notif_task_summary_enabled"
+        private const val KEY_NOTIF_HABITS_ENABLED = "notif_habits_enabled"
+        private const val KEY_NOTIF_JOURNAL_ENABLED = "notif_journal_enabled"
+        private const val KEY_NOTIF_EVENTS_ENABLED = "notif_events_enabled"
+        private const val KEY_LAST_BACKUP_NOTIFIED_TIMESTAMP = "last_backup_notified_timestamp"
+        private const val KEY_LAST_HABIT_NOTIFIED_DATE = "last_habit_notified_date"
+        private const val KEY_LAST_TASK_SUMMARY_NOTIFIED_DATE = "last_task_summary_notified_date"
+        private const val KEY_LAST_JOURNAL_NOTIFIED_DATE = "last_journal_notified_date"
+        private const val KEY_LAST_EVENT_NOTIFIED_DATE = "last_event_notified_date"
     }
+
+    var notifTasksEnabled: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_TASKS_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIF_TASKS_ENABLED, value).apply()
+
+    var notifTaskSummaryEnabled: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_TASK_SUMMARY_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIF_TASK_SUMMARY_ENABLED, value).apply()
+
+    var notifHabitsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_HABITS_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIF_HABITS_ENABLED, value).apply()
+
+    var notifJournalEnabled: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_JOURNAL_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIF_JOURNAL_ENABLED, value).apply()
+
+    var notifEventsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_NOTIF_EVENTS_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIF_EVENTS_ENABLED, value).apply()
+
+    var lastBackupNotifiedTimestamp: Long
+        get() = prefs.getLong(KEY_LAST_BACKUP_NOTIFIED_TIMESTAMP, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_BACKUP_NOTIFIED_TIMESTAMP, value).apply()
+
+    var lastHabitNotifiedDate: String
+        get() = prefs.getString(KEY_LAST_HABIT_NOTIFIED_DATE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_HABIT_NOTIFIED_DATE, value).apply()
+
+    var lastTaskSummaryNotifiedDate: String
+        get() = prefs.getString(KEY_LAST_TASK_SUMMARY_NOTIFIED_DATE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_TASK_SUMMARY_NOTIFIED_DATE, value).apply()
+
+    var lastJournalNotifiedDate: String
+        get() = prefs.getString(KEY_LAST_JOURNAL_NOTIFIED_DATE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_JOURNAL_NOTIFIED_DATE, value).apply()
+
+    var lastEventNotifiedDate: String
+        get() = prefs.getString(KEY_LAST_EVENT_NOTIFIED_DATE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_EVENT_NOTIFIED_DATE, value).apply()
 
     var lastBackupTimestamp: Long
         get() = prefs.getLong(KEY_LAST_BACKUP_TIMESTAMP, 0L)
