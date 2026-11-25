@@ -4,8 +4,8 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,24 +19,56 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.baverika.r_journal.MainActivity
 import com.baverika.r_journal.data.local.database.JournalDatabase
 import com.baverika.r_journal.data.local.entity.Tracker
+import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.repository.TrackerRepository
-import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.RJournalTheme
+import com.baverika.r_journal.utils.BiometricHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class TrackerWidgetConfigureActivity : ComponentActivity() {
+class TrackerWidgetConfigureActivity : FragmentActivity() {
 
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+    private lateinit var settingsRepo: SettingsRepository
+    private var isLocked by mutableStateOf(true)
+    private var lockErrorMessage by mutableStateOf<String?>(null)
+
+    override fun onStart() {
+        super.onStart()
+        MainActivity.updateSecureWindowFlag(this, settingsRepo.isBiometricEnabled)
+        if (isLocked && settingsRepo.isBiometricEnabled && BiometricHelper.isBiometricAvailable(this)) {
+            lockErrorMessage = null
+            BiometricHelper.authenticate(
+                activity = this,
+                onSuccess = {
+                    isLocked = false
+                    lockErrorMessage = null
+                },
+                onError = { /* Keep locked until authenticated */ }
+            )
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && settingsRepo.isBiometricEnabled) {
+            isLocked = true
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Set RESULT_CANCELED. This will cause the widget host to cancel out of the widget placement if the user backs out.
         setResult(RESULT_CANCELED)
+
+        settingsRepo = SettingsRepository(this)
+        isLocked = settingsRepo.isBiometricEnabled
+        MainActivity.updateSecureWindowFlag(this, settingsRepo.isBiometricEnabled)
 
         val extras = intent.extras
         if (extras != null) {
@@ -52,16 +84,64 @@ class TrackerWidgetConfigureActivity : ComponentActivity() {
         }
 
         setContent {
-            RJournalTheme(theme = AppTheme.MIDNIGHT) {
+            RJournalTheme(theme = settingsRepo.appTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TrackerConfigurationScreen(
-                        onTrackerSelected = { tracker ->
-                            selectTracker(tracker)
+                    if (isLocked && settingsRepo.isBiometricEnabled) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "R-Journal Locked",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = lockErrorMessage ?: "Unlock to configure this widget",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (lockErrorMessage != null) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Button(
+                                onClick = {
+                                    if (BiometricHelper.isBiometricAvailable(this@TrackerWidgetConfigureActivity)) {
+                                        lockErrorMessage = null
+                                        BiometricHelper.authenticate(
+                                            activity = this@TrackerWidgetConfigureActivity,
+                                            onSuccess = {
+                                                isLocked = false
+                                                lockErrorMessage = null
+                                            },
+                                            onError = {
+                                                lockErrorMessage = "Authentication cancelled or failed."
+                                            }
+                                        )
+                                    } else {
+                                        lockErrorMessage = "Biometric or device credential unlock is unavailable."
+                                    }
+                                }
+                            ) {
+                                Text("Unlock")
+                            }
                         }
-                    )
+                    } else {
+                        TrackerConfigurationScreen(
+                            onTrackerSelected = { tracker ->
+                                selectTracker(tracker)
+                            }
+                        )
+                    }
                 }
             }
         }

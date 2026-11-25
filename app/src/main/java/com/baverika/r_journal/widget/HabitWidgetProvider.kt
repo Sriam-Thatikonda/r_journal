@@ -11,6 +11,7 @@ import android.widget.RemoteViews
 import com.baverika.r_journal.MainActivity
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.receiver.WidgetActionReceiver
 import com.baverika.r_journal.repository.JournalRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,22 +48,27 @@ class HabitWidgetProvider : AppWidgetProvider() {
     }
 
     private fun toggleHabit(context: Context, habitId: String, isCompleted: Boolean) {
+        val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
-            val db = JournalDatabase.getDatabase(context)
-            val repository = JournalRepository(db.journalDao())
-            
-            val today = LocalDate.now()
-            val dateMillis = today.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
-            
-            repository.toggleHabitCompletion(habitId, dateMillis, isCompleted)
-            
-            // Update widget
-            withContext(Dispatchers.Main) {
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-                val appWidgetIds = appWidgetManager.getAppWidgetIds(
-                    ComponentName(context, HabitWidgetProvider::class.java)
-                )
-                onUpdate(context, appWidgetManager, appWidgetIds)
+            try {
+                val db = JournalDatabase.getDatabase(context)
+                val repository = JournalRepository(db.journalDao())
+
+                val today = LocalDate.now()
+                val dateMillis = today.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+
+                repository.toggleHabitCompletion(habitId, dateMillis, isCompleted)
+
+                // Update widget
+                withContext(Dispatchers.Main) {
+                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                    val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                        ComponentName(context, HabitWidgetProvider::class.java)
+                    )
+                    onUpdate(context, appWidgetManager, appWidgetIds)
+                }
+            } finally {
+                pendingResult.finish()
             }
         }
     }
@@ -137,7 +143,7 @@ class HabitWidgetProvider : AppWidgetProvider() {
                             )
                             
                             // Set click intent
-                            val toggleIntent = Intent(context, HabitWidgetProvider::class.java).apply {
+                            val toggleIntent = Intent(context, WidgetActionReceiver::class.java).apply {
                                 action = ACTION_TOGGLE_HABIT
                                 putExtra(EXTRA_HABIT_ID, habit.id)
                                 putExtra(EXTRA_IS_COMPLETED, !isCompleted)

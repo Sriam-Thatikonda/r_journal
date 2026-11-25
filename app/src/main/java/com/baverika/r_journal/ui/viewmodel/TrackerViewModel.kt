@@ -27,6 +27,12 @@ class TrackerViewModel(
         initialValue = emptyList()
     )
 
+    init {
+        viewModelScope.launch {
+            repository.resetDueTrackersIfNeeded()
+        }
+    }
+
     private fun updateWidget() {
         val context = getApplication<Application>()
         val intent = Intent(context, TrackerWidgetProvider::class.java)

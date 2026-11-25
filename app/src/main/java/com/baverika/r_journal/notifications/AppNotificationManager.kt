@@ -91,6 +91,19 @@ object AppNotificationManager {
         )
     }
 
+    private fun createPublicVersion(
+        context: Context,
+        channelId: String,
+        title: String,
+        subText: String = "Notification content hidden"
+    ): android.app.Notification {
+        return NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_task_notification)
+            .setContentTitle(title)
+            .setContentText(subText)
+            .build()
+    }
+
     // --- 1. TASKS ---
 
     fun showTaskReminder(
@@ -100,6 +113,7 @@ object AppNotificationManager {
     ) {
         createChannels(context)
         val notifId = taskId.hashCode()
+        val safeReqBase = (notifId and 0x3FFFFFFF) * 2
         val contentIntent = createNavPendingIntent(context, "edit_task/$taskId", notifId)
 
         // Mark Done Action
@@ -110,7 +124,7 @@ object AppNotificationManager {
         }
         val donePendingIntent = PendingIntent.getBroadcast(
             context,
-            notifId * 2 + 1,
+            safeReqBase + 1,
             doneIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -124,7 +138,7 @@ object AppNotificationManager {
         }
         val snoozePendingIntent = PendingIntent.getBroadcast(
             context,
-            notifId * 2 + 2,
+            safeReqBase + 2,
             snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -135,6 +149,8 @@ object AppNotificationManager {
             .setContentText(taskTitle)
             .setStyle(NotificationCompat.BigTextStyle().bigText(taskTitle))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_TASKS, "Task Reminder"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .addAction(R.drawable.ic_task_notification, "Mark Done", donePendingIntent)
@@ -160,6 +176,8 @@ object AppNotificationManager {
             .setContentText("You have $count task${if (count > 1) "s" else ""} scheduled for today")
             .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_TASKS, "Today's Tasks"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
@@ -177,6 +195,8 @@ object AppNotificationManager {
             .setContentTitle("Overdue Tasks")
             .setContentText("You have $count overdue task${if (count > 1) "s" else ""}")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_TASKS, "Overdue Tasks"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
@@ -200,6 +220,8 @@ object AppNotificationManager {
             .setContentText("You have $pendingCount habit${if (pendingCount > 1) "s" else ""} remaining today")
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_HABITS, "Habit Check-in"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
@@ -225,6 +247,8 @@ object AppNotificationManager {
             .setContentText("Last backup was $daysSince days ago")
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_BACKUP, "Backup Reminder"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .addAction(R.drawable.ic_task_notification, "Back Up Now", exportActionIntent)
@@ -249,6 +273,8 @@ object AppNotificationManager {
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_JOURNAL, "Daily Reflection"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
@@ -261,7 +287,7 @@ object AppNotificationManager {
 
     fun showEventAlert(context: Context, eventTitle: String, description: String, eventId: String) {
         createChannels(context)
-        val notifId = NOTIF_ID_EVENT_PREFIX + Math.abs(eventId.hashCode() % 1000)
+        val notifId = NOTIF_ID_EVENT_PREFIX + ((eventId.hashCode() and 0x7FFFFFFF) % 1000)
         val contentIntent = createNavPendingIntent(context, "events", notifId)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_EVENTS)
@@ -270,6 +296,8 @@ object AppNotificationManager {
             .setContentText(description)
             .setStyle(NotificationCompat.BigTextStyle().bigText(description))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(createPublicVersion(context, CHANNEL_EVENTS, "Event Reminder"))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()

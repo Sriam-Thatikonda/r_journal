@@ -19,6 +19,7 @@ class ScreenUnlockReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_USER_PRESENT) {
+            val pendingResult = goAsync()
             Log.d(TAG, "Screen unlocked - checking if widget should refresh")
             
             CoroutineScope(Dispatchers.IO).launch {
@@ -34,6 +35,8 @@ class ScreenUnlockReceiver : BroadcastReceiver() {
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error refreshing widget on screen unlock", e)
+                } finally {
+                    pendingResult.finish()
                 }
             }
         }

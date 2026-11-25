@@ -43,19 +43,39 @@ class EventViewModel(
         }
     }
 
+    fun updateEvent(event: Event) {
+        viewModelScope.launch {
+            repository.updateEvent(event)
+            if (taskRepository != null) {
+                val events = repository.getAllEventsList()
+                EventTaskGenerator.ensureEventTasksCreated(events, taskRepository, context)
+            } else if (context != null) {
+                EventTaskGenerator.ensureEventTasksCreated(context)
+            }
+        }
+    }
+
     fun deleteEvent(event: Event) {
         viewModelScope.launch {
             repository.deleteEvent(event)
         }
     }
 
+    private fun safeEventDate(year: Int, month: Int, day: Int): LocalDate {
+        return if (month == 2 && day == 29 && !java.time.Year.isLeap(year.toLong())) {
+            LocalDate.of(year, 2, 28)
+        } else {
+            LocalDate.of(year, month, day)
+        }
+    }
+
     private fun calculateDaysRemaining(day: Int, month: Int): Long {
         val today = LocalDate.now()
         val currentYear = today.year
-        var eventDate = LocalDate.of(currentYear, month, day)
+        var eventDate = safeEventDate(currentYear, month, day)
 
         if (eventDate.isBefore(today)) {
-            eventDate = eventDate.plusYears(1)
+            eventDate = safeEventDate(currentYear + 1, month, day)
         }
 
         return ChronoUnit.DAYS.between(today, eventDate)

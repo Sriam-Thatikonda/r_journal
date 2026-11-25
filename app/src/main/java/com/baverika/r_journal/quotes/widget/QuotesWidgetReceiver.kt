@@ -13,6 +13,7 @@ import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.database.JournalDatabase
 import com.baverika.r_journal.quotes.data.QuoteRepository
 import com.baverika.r_journal.quotes.settings.WidgetSettingsDataStore
+import com.baverika.r_journal.receiver.WidgetActionReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -110,7 +111,6 @@ class QuotesWidgetReceiver : AppWidgetProvider() {
 
                     // Get a random quote (different from last shown)
                     val quote = repository.getRandomQuote(lastShownId)
-                    Log.d(TAG, "Got quote: ${quote?.text?.take(30) ?: "null"}")
 
                     // Store the new quote ID
                     quote?.let {
@@ -145,7 +145,7 @@ class QuotesWidgetReceiver : AppWidgetProvider() {
 
 
                         // Set refresh button click - use different unique request code
-                        val refreshIntent = Intent(context, QuotesWidgetReceiver::class.java).apply {
+                        val refreshIntent = Intent(context, WidgetActionReceiver::class.java).apply {
                             action = ACTION_REFRESH_WIDGET
                         }
                         val refreshPendingIntent = PendingIntent.getBroadcast(

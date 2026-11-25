@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Pictures directory for camera photos -->
+    <!-- Internal cache directory for temporary camera captures -->
+    <cache-path
+        name="camera_temp"
+        path="camera_temp/" />
+
+    <!-- Internal app-private pictures directory -->
+    <files-path
+        name="internal_pictures"
+        path="Pictures/" />
+
+    <!-- Legacy external pictures directory for existing media -->
     <external-files-path
         name="pictures"
         path="Pictures/" />
 
-    <!-- Root external files directory for other files if needed -->
+    <!-- Legacy root external files directory for existing files if needed -->
     <external-files-path
         name="external_files"
         path="." />

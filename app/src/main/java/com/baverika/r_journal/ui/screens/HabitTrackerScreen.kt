@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -249,6 +251,8 @@ fun HeatmapBlock(
     isLarge: Boolean = false,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+
     val backgroundColor = when (state.status) {
         HabitViewModel.HabitStatus.DONE -> color
         HabitViewModel.HabitStatus.DISABLED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -270,7 +274,10 @@ fun HeatmapBlock(
             .clip(RoundedCornerShape(radius))
             .background(backgroundColor)
             .border(1.dp, borderColor, RoundedCornerShape(radius))
-            .clickable(enabled = state.status != HabitViewModel.HabitStatus.DISABLED) { onClick() },
+            .clickable(enabled = state.status != HabitViewModel.HabitStatus.DISABLED) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            },
         contentAlignment = Alignment.Center
     ) {
         if (state.status == HabitViewModel.HabitStatus.DONE && isLarge) {

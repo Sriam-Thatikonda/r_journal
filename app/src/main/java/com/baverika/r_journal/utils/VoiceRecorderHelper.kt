@@ -4,11 +4,11 @@ import android.content.Context
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.os.Build
-import android.os.Environment
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 /**
  * Helper class for recording voice notes.
@@ -47,12 +47,11 @@ class VoiceRecorderHelper(private val context: Context) {
      */
     fun startRecording(): Boolean {
         return try {
-            val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
-                ?: context.filesDir
-            
+            val storageDir = File(context.filesDir, "VoiceNotes").apply { mkdirs() }
+
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                 .format(Date())
-            val fileName = "VOICE_${timeStamp}.m4a"
+            val fileName = "VOICE_${timeStamp}_${UUID.randomUUID().toString().take(6)}.m4a"
             val file = File(storageDir, fileName)
             currentFilePath = file.absolutePath
             

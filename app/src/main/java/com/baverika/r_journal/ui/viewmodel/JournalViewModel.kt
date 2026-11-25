@@ -120,10 +120,6 @@ class JournalViewModel(
     val canEditMood: Boolean
         get() = true
 
-    init {
-        loadTodaysEntry()
-    }
-
     fun loadTodaysEntry() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -132,10 +128,6 @@ class JournalViewModel(
                 val local = repo.getOrCreateTodaysEntry()
                 currentEntry = local
                 _currentDateMillis.value = local.dateMillis  // update reactive events filter
-
-                Log.d("VM", "Loaded entry messages (LOCAL): " +
-                        local.messages.joinToString { "${it.id}:${it.replyToMessageId}:${it.replyPreview}" })
-
             } finally {
                 _isLoading.value = false
             }
@@ -193,13 +185,15 @@ class JournalViewModel(
 
         var savedImagePath: String? = null
         imageUri?.let { uriString ->
+            val uri: Uri = Uri.parse(uriString)
             try {
-                val uri: Uri = Uri.parse(uriString)
                 savedImagePath = saveImageToPrivateStorage(uri)
             } catch (e: Exception) {
                 e.printStackTrace()
                 // Image save failed - add message without image
                 savedImagePath = null
+            } finally {
+                deleteTempCameraFileIfOwned(uri)
             }
         }
 
@@ -239,11 +233,31 @@ class JournalViewModel(
         saveCurrentEntry()
     }
 
+    private fun deleteTempCameraFileIfOwned(uri: Uri) {
+        try {
+            val cameraTempDir = File(appContext.cacheDir, "camera_temp")
+            val cameraTempCanonical = cameraTempDir.canonicalPath + File.separator
+            val candidate: File? = when {
+                uri.scheme == "content" && uri.authority == "${appContext.packageName}.fileprovider" -> {
+                    val lastSeg = uri.lastPathSegment
+                    if (lastSeg != null) File(cameraTempDir, lastSeg) else null
+                }
+                uri.scheme == "file" && uri.path != null -> File(uri.path!!)
+                else -> null
+            }
+            if (candidate != null && candidate.canonicalPath.startsWith(cameraTempCanonical) && candidate.exists()) {
+                candidate.delete()
+            }
+        } catch (_: Exception) {
+            // Best-effort cleanup of temp camera capture
+        }
+    }
+
     private fun saveImageToPrivateStorage(imageUri: Uri): String? {
         return try {
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "IMG_$timeStamp.jpg"
-            val storageDir: File? = appContext.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+            val fileName = "IMG_${timeStamp}_${UUID.randomUUID().toString().take(6)}.jpg"
+            val storageDir = File(appContext.filesDir, "Pictures").apply { mkdirs() }
             val imageFile = File(storageDir, fileName)
 
             // Load and compress the image
@@ -348,6 +362,18 @@ class JournalViewModel(
                 val imageFile = File(imagePath)
                 if (imageFile.exists()) {
                     imageFile.delete()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // If deleted message had voice note, try delete file
+        message.voiceNoteUri?.let { voicePath ->
+            try {
+                val voiceFile = File(voicePath)
+                if (voiceFile.exists()) {
+                    voiceFile.delete()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

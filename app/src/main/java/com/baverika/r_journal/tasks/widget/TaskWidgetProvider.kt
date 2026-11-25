@@ -11,6 +11,7 @@ import android.widget.RemoteViews
 import com.baverika.r_journal.MainActivity
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.receiver.WidgetActionReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -106,7 +107,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         views.setEmptyView(R.id.task_widget_list, R.id.task_widget_empty)
         
         // Click template for list items
-        val toggleIntent = Intent(context, TaskWidgetProvider::class.java).apply {
+        val toggleIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_TOGGLE_TASK
         }
         val togglePendingIntent = PendingIntent.getBroadcast(
@@ -131,7 +132,7 @@ class TaskWidgetProvider : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.task_widget_title, openAppPendingIntent)
         
         // Quick Add Click
-        val quickAddIntent = Intent(context, TaskWidgetProvider::class.java).apply {
+        val quickAddIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_QUICK_ADD_TASK
         }
         val quickAddPendingIntent = PendingIntent.getBroadcast(

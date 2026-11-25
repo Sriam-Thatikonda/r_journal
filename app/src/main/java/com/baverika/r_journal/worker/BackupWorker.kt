@@ -29,8 +29,8 @@ class BackupWorker(
                 return Result.failure()
             }
 
-            // Target: App-specific external storage (Backups folder) using the same path as DbRestoreUtils
-            val backupRoot = File(applicationContext.getExternalFilesDir(null), "Backups")
+            // Target: App-private internal storage (Backups folder) using the same path as DbRestoreUtils
+            val backupRoot = File(applicationContext.filesDir, "Backups")
             if (!backupRoot.exists()) {
                 backupRoot.mkdirs()
             }
@@ -42,21 +42,13 @@ class BackupWorker(
             // Copy DB file
             dbFile.copyTo(destDbFile, overwrite = true)
             
-            // Copy WAL/SHM if they exist (Critical for data integrity in WAL mode)
-            // Note: For a restore to work simply, typically we just need the main DB if it was checkpointed, 
-            // but relying on that is risky.
-            // DbRestoreUtils expects a single .db file. 
-            // The Safest way for a single-file backup is to checkpoint properly or include -wal in the backup naming scheme 
-            // or ZIP them.
-            // However, DbRestoreUtils just copies the .db file back. If WAL is active, this might result in data loss 
-            // of the latest transactions. 
-            // To fix this properly for a single file restore: trigger a checkpoint before copy.
-            checkpointWal(applicationContext, dbName)
+            // Trigger a checkpoint before final copy so WAL changes are flushed to main DB file.
+            checkpointWal(applicationContext)
 
             // Re-copy after checkpoint to ensure everything is in the main .db file
             dbFile.copyTo(destDbFile, overwrite = true)
 
-            Log.d("BackupWorker", "Backup created at: ${destDbFile.absolutePath}")
+            Log.d("BackupWorker", "Backup created: ${destDbFile.name}")
 
             // Retention Policy: Keep only 5 most recent backup FILES
             cleanOldBackups(backupRoot)
@@ -68,16 +60,11 @@ class BackupWorker(
         }
     }
 
-    private fun checkpointWal(context: Context, dbName: String) {
+    private fun checkpointWal(context: Context) {
         try {
-            // Force a WAL checkpoint to move data to the main DB file
-            val db = androidx.room.Room.databaseBuilder(
-                context, 
-                com.baverika.r_journal.data.local.database.JournalDatabase::class.java, 
-                dbName
-            ).build()
+            // Force a WAL checkpoint on the singleton database to flush data cleanly
+            val db = com.baverika.r_journal.data.local.database.JournalDatabase.getDatabase(context)
             db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
-            db.close()
         } catch (e: Exception) {
             Log.e("BackupWorker", "Checkpoint failed", e)
         }

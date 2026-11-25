@@ -277,4 +277,30 @@ class QuickNoteEditorViewModelTest {
         assertEquals(listOf("item-1", "item-2", "item-3"), blocks.map { it.id })
         assertFalse(blocks.first { it.id == "item-2" }.isChecked)
     }
+
+    @Test
+    fun deleteNote_preventsSubsequentSaveImmediatelyFromResurrectingNote() = runTest(testDispatcher) {
+        val note = QuickNote(
+            id = "note-delete-test",
+            title = "Note to delete",
+            content = RichContent(blocks = listOf(RichBlock(text = "Secret content"))).toJson()
+        )
+        fakeDao.insertNote(note)
+
+        val viewModel = QuickNoteEditorViewModel(repository, initialNoteId = "note-delete-test")
+        testDispatcher.scheduler.runCurrent()
+
+        viewModel.onTitleChanged("Edited just before delete")
+        var deletedCallbackCalled = false
+        viewModel.deleteNote {
+            deletedCallbackCalled = true
+        }
+        // Simulate DisposableEffect.onDispose calling saveImmediately() after delete
+        viewModel.saveImmediately()
+        testDispatcher.scheduler.advanceTimeBy(1000)
+        testDispatcher.scheduler.runCurrent()
+
+        assertTrue(deletedCallbackCalled)
+        assertNull(fakeDao.getNoteById("note-delete-test"))
+    }
 }

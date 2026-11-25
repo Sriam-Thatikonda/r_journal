@@ -218,10 +218,7 @@ fun ChatBubble(
                                 .clip(RoundedCornerShape(16.dp))
                                 .combinedClickable(
                                     onClick = {
-                                        val encodedPath = URLEncoder.encode(
-                                            imagePath,
-                                            StandardCharsets.UTF_8.toString()
-                                        )
+                                        val encodedPath = Uri.encode(imagePath)
                                         navController.navigate("image_viewer/$encodedPath")
                                     },
                                     onLongClick = onLongClick

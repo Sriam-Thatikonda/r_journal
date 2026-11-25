@@ -222,8 +222,18 @@ fun EntryDialog(
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
     if (showDatePickerDialog) {
+        val utcTz = TimeZone.getTimeZone("UTC")
+        val selectedLocalCal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+        val initialUtcCal = Calendar.getInstance(utcTz).apply {
+            clear()
+            set(
+                selectedLocalCal.get(Calendar.YEAR),
+                selectedLocalCal.get(Calendar.MONTH),
+                selectedLocalCal.get(Calendar.DAY_OF_MONTH)
+            )
+        }
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate
+            initialSelectedDateMillis = initialUtcCal.timeInMillis
         )
         DatePickerDialog(
             onDismissRequest = { showDatePickerDialog = false },
@@ -231,7 +241,14 @@ fun EntryDialog(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            selectedDate = millis
+                            val utcCal = Calendar.getInstance(utcTz).apply { timeInMillis = millis }
+                            val localCal = Calendar.getInstance().apply {
+                                timeInMillis = selectedDate
+                                set(Calendar.YEAR, utcCal.get(Calendar.YEAR))
+                                set(Calendar.MONTH, utcCal.get(Calendar.MONTH))
+                                set(Calendar.DAY_OF_MONTH, utcCal.get(Calendar.DAY_OF_MONTH))
+                            }
+                            selectedDate = localCal.timeInMillis
                         }
                         showDatePickerDialog = false
                     }

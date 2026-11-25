@@ -12,11 +12,15 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,7 +30,9 @@ import com.baverika.r_journal.repository.QuickNoteRepository
 import com.baverika.r_journal.repository.PasswordRepository
 import com.baverika.r_journal.utils.ExportUtils
 import com.baverika.r_journal.utils.PdfExportUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -86,6 +92,46 @@ fun ExportScreen(
     var exportSuccess by remember { mutableStateOf<Boolean?>(null) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var showVaultPassphraseDialog by remember { mutableStateOf(false) }
+    var vaultPassphrase by remember { mutableStateOf("") }
+    var passphraseVisible by remember { mutableStateOf(false) }
+
+    val startZipExport: (String?) -> Unit = { passphrase ->
+        isExporting = true
+        scope.launch {
+            val (success, message) = withContext(Dispatchers.IO) {
+                val trackerHistory = if (exportTrackers) trackerRepo.getAllHistorySync() else emptyList()
+                val challengeEntities = if (exportChallenges) challengeRepo.getAllChallengesSync() else emptyList()
+                val mineEntry = if (exportMine) journalRepo.getEntryById("mine") else null
+                ExportUtils.exportAll(
+                    context,
+                    if (exportJournals) journals else emptyList(),
+                    if (exportNotes) notes else emptyList(),
+                    if (exportTasks) taskCategories else emptyList(),
+                    if (exportTasks) tasks else emptyList(),
+                    if (exportHabits) habits else emptyList(),
+                    if (exportHabits) habitLogs else emptyList(),
+                    if (exportQuotes) quotes else emptyList(),
+                    if (exportLifeTrackers) lifeTrackers else emptyList(),
+                    if (exportLifeTrackers) lifeTrackerEntries else emptyList(),
+                    if (exportEvents) events else emptyList(),
+                    if (exportPasswords) passwords else emptyList(),
+                    if (exportTrackers) trackers else emptyList(),
+                    trackerHistory,
+                    challengeEntities,
+                    mineEntry,
+                    passphrase
+                )
+            }
+            isExporting = false
+            exportSuccess = success
+            exportMessage = message
+            if (success) {
+                com.baverika.r_journal.repository.SettingsRepository(context).lastBackupTimestamp = System.currentTimeMillis()
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -283,35 +329,12 @@ fun ExportScreen(
 
                     Button(
                         onClick = {
-                            isExporting = true
-                            scope.launch {
-                                val trackerHistory = if (exportTrackers) trackerRepo.getAllHistorySync() else emptyList()
-                                val challengeEntities = if (exportChallenges) challengeRepo.getAllChallengesSync() else emptyList()
-                                val mineEntry = if (exportMine) journalRepo.getEntryById("mine") else null
-                                val (success, message) = ExportUtils.exportAll(
-                                    context,
-                                    if (exportJournals) journals else emptyList(),
-                                    if (exportNotes) notes else emptyList(),
-                                    if (exportTasks) taskCategories else emptyList(),
-                                    if (exportTasks) tasks else emptyList(),
-                                    if (exportHabits) habits else emptyList(),
-                                    if (exportHabits) habitLogs else emptyList(),
-                                    if (exportQuotes) quotes else emptyList(),
-                                    if (exportLifeTrackers) lifeTrackers else emptyList(),
-                                    if (exportLifeTrackers) lifeTrackerEntries else emptyList(),
-                                    if (exportEvents) events else emptyList(),
-                                    if (exportPasswords) passwords else emptyList(),
-                                    if (exportTrackers) trackers else emptyList(),
-                                    trackerHistory,
-                                    challengeEntities,
-                                    mineEntry
-                                )
-                                isExporting = false
-                                exportSuccess = success
-                                exportMessage = message
-                                if (success) {
-                                    com.baverika.r_journal.repository.SettingsRepository(context).lastBackupTimestamp = System.currentTimeMillis()
-                                }
+                            if (exportPasswords && passwords.isNotEmpty()) {
+                                vaultPassphrase = ""
+                                passphraseVisible = false
+                                showVaultPassphraseDialog = true
+                            } else {
+                                startZipExport(null)
                             }
                         },
                         enabled = hasAnySelected,
@@ -330,13 +353,15 @@ fun ExportScreen(
                         onClick = {
                             isExporting = true
                             scope.launch {
-                                val mineEntry = if (exportMine) journalRepo.getEntryById("mine") else null
-                                val (success, message) = PdfExportUtils.exportToPdf(
-                                    context,
-                                    if (exportJournals) journals else emptyList(),
-                                    if (exportNotes) notes else emptyList(),
-                                    mineEntry
-                                )
+                                val (success, message) = withContext(Dispatchers.IO) {
+                                    val mineEntry = if (exportMine) journalRepo.getEntryById("mine") else null
+                                    PdfExportUtils.exportToPdf(
+                                        context,
+                                        if (exportJournals) journals else emptyList(),
+                                        if (exportNotes) notes else emptyList(),
+                                        mineEntry
+                                    )
+                                }
                                 isExporting = false
                                 exportSuccess = success
                                 exportMessage = message
@@ -355,6 +380,61 @@ fun ExportScreen(
                     }
                 }
             }
+        }
+
+        if (showVaultPassphraseDialog) {
+            AlertDialog(
+                onDismissRequest = { showVaultPassphraseDialog = false },
+                title = { Text("Protect Vault Export?") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Optional: enter a passphrase to encrypt your exported Vault passwords. Leaving it blank writes passwords unencrypted inside the ZIP.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedTextField(
+                            value = vaultPassphrase,
+                            onValueChange = { vaultPassphrase = it },
+                            label = { Text("Backup Passphrase (Optional)") },
+                            singleLine = true,
+                            visualTransformation = if (passphraseVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { passphraseVisible = !passphraseVisible }) {
+                                    Icon(
+                                        imageVector = if (passphraseVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (passphraseVisible) "Hide passphrase" else "Show passphrase"
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val chosenPassphrase = vaultPassphrase
+                            vaultPassphrase = ""
+                            showVaultPassphraseDialog = false
+                            startZipExport(chosenPassphrase)
+                        },
+                        enabled = vaultPassphrase.isNotBlank()
+                    ) {
+                        Text("Encrypt & Export")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            vaultPassphrase = ""
+                            showVaultPassphraseDialog = false
+                            startZipExport(null)
+                        }
+                    ) {
+                        Text("Export Without Passphrase")
+                    }
+                }
+            )
         }
 
         SnackbarHost(

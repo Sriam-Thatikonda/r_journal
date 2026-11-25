@@ -54,6 +54,7 @@ import com.baverika.r_journal.data.local.entity.ChatMessage
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
 import com.baverika.r_journal.ui.viewmodel.JournalViewModel
+import com.baverika.r_journal.utils.ExternalLauncherGuard
 import com.baverika.r_journal.utils.VoiceRecorderHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -117,14 +118,16 @@ fun JournalChatScaffold(
 
     // Camera launcher
     val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && tempImageFile != null) {
+        val file = tempImageFile
+        if (success && file != null) {
             val photoURI: Uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
-                tempImageFile!!
+                file
             )
             selectedImageUris = selectedImageUris + photoURI
         } else {
+            file?.delete()
             tempImageFile = null
         }
     }
@@ -138,6 +141,7 @@ fun JournalChatScaffold(
                     "${context.packageName}.fileprovider",
                     file
                 )
+                ExternalLauncherGuard.markLaunched()
                 takePictureLauncher.launch(photoURI)
             }
         }
@@ -598,14 +602,19 @@ fun JournalChatScaffold(
                                     "${context.packageName}.fileprovider",
                                     file
                                 )
+                                ExternalLauncherGuard.markLaunched()
                                 takePictureLauncher.launch(photoURI)
                             }
                         }
-                        else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        else -> {
+                            ExternalLauncherGuard.markLaunched()
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
                     }
                     showMediaPicker = false
                 },
                 onChooseFromGallery = {
+                    ExternalLauncherGuard.markLaunched()
                     pickImageLauncher.launch("image/*")
                     showMediaPicker = false
                 }
@@ -631,6 +640,6 @@ fun JournalChatScaffold(
 
 fun createTempImageFile(context: Context): File {
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+    val storageDir = File(context.cacheDir, "camera_temp").apply { mkdirs() }
     return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
 }

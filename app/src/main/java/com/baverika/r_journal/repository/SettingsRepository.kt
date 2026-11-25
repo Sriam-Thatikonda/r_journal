@@ -115,6 +115,8 @@ class SettingsRepository(context: Context) {
             prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, value).apply()
         }
 
+    fun hasExplicitBiometricSetting(): Boolean = prefs.contains(KEY_BIOMETRIC_ENABLED)
+
     var appTheme: AppTheme
         get() {
             val themeName = prefs.getString(KEY_APP_THEME, AppTheme.MIDNIGHT.name) ?: AppTheme.MIDNIGHT.name

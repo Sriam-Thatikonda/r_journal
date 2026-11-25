@@ -75,6 +75,8 @@ fun AddEditTaskScreen(
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var hasReminder by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf<Long?>(null) }
+    var selectedReminderOffset by remember { mutableStateOf<Long?>(null) }
+    var loadedTask by remember { mutableStateOf<Task?>(null) }
     
     var isEditing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -92,6 +94,7 @@ fun AddEditTaskScreen(
             isEditing = true
             isLoading = true
             viewModel.getTaskById(taskId)?.let { task ->
+                loadedTask = task
                 title = task.title
                 description = task.description
                 dueDate = task.dueDate
@@ -103,6 +106,13 @@ fun AddEditTaskScreen(
                 selectedCategoryId = task.categoryId
                 reminderTime = task.reminderTime
                 hasReminder = task.reminderTime != null
+                if (task.dueDate != null && task.reminderTime != null) {
+                    val diff = task.dueDate - task.reminderTime
+                    val presets = listOf(30L * 60 * 1000, 60L * 60 * 1000, 24L * 60 * 60 * 1000)
+                    if (diff in presets) {
+                        selectedReminderOffset = diff
+                    }
+                }
             }
             isLoading = false
         }
@@ -153,18 +163,38 @@ fun AddEditTaskScreen(
             return
         }
         titleError = null
-        
-        val taskToSave = Task(
-            id = taskId ?: UUID.randomUUID().toString(),
-            title = title.trim(),
-            description = description.trim(),
-            dueDate = fullDueDateTime,
-            priority = priority,
-            categoryId = selectedCategoryId,
-            reminderTime = if (hasReminder) reminderTime else null,
-            createdAt = if (isEditing) System.currentTimeMillis() else System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
-        )
+
+        val computedReminderTime: Long? = when {
+            !hasReminder || fullDueDateTime == null -> null
+            selectedReminderOffset != null -> fullDueDateTime - selectedReminderOffset!!
+            else -> reminderTime
+        }
+
+        val now = System.currentTimeMillis()
+        val baseTask = loadedTask
+        val taskToSave = if (isEditing && baseTask != null) {
+            baseTask.copy(
+                title = title.trim(),
+                description = description.trim(),
+                dueDate = fullDueDateTime,
+                priority = priority,
+                categoryId = selectedCategoryId,
+                reminderTime = computedReminderTime,
+                updatedAt = now
+            )
+        } else {
+            Task(
+                id = taskId ?: UUID.randomUUID().toString(),
+                title = title.trim(),
+                description = description.trim(),
+                dueDate = fullDueDateTime,
+                priority = priority,
+                categoryId = selectedCategoryId,
+                reminderTime = computedReminderTime,
+                createdAt = now,
+                updatedAt = now
+            )
+        }
         
         if (isEditing) {
             viewModel.updateTask(taskToSave)
@@ -440,6 +470,11 @@ fun AddEditTaskScreen(
                                 checked = hasReminder,
                                 onCheckedChange = { isEnabled ->
                                     hasReminder = isEnabled
+                                    if (isEnabled && selectedReminderOffset == null && reminderTime == null && fullDueDateTime != null) {
+                                        val defaultOffset = 30L * 60 * 1000
+                                        selectedReminderOffset = defaultOffset
+                                        reminderTime = fullDueDateTime - defaultOffset
+                                    }
                                     if (isEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                         if (ContextCompat.checkSelfPermission(
                                                 context,
@@ -472,10 +507,14 @@ fun AddEditTaskScreen(
                                         "1 hour" to 60L * 60 * 1000,
                                         "1 day" to 24L * 60 * 60 * 1000
                                     ).forEach { (label, offset) ->
-                                        val reminderMillis = (fullDueDateTime ?: 0) - offset
+                                        val dueMillis = fullDueDateTime ?: 0L
+                                        val reminderMillis = dueMillis - offset
                                         FilterChip(
-                                            selected = reminderTime == reminderMillis,
-                                            onClick = { reminderTime = reminderMillis },
+                                            selected = selectedReminderOffset == offset || (selectedReminderOffset == null && reminderTime == reminderMillis),
+                                            onClick = {
+                                                selectedReminderOffset = offset
+                                                reminderTime = reminderMillis
+                                            },
                                             label = { Text(label) }
                                         )
                                     }

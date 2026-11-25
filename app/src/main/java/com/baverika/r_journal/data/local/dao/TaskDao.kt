@@ -208,6 +208,9 @@ interface TaskDao {
     """)
     fun getUpcomingTasksSync(limit: Int = 7): List<Task>
     
+    @Query("SELECT * FROM tasks WHERE isCompleted = 0 AND reminderTime IS NOT NULL AND reminderTime > :now")
+    suspend fun getActiveTasksWithFutureReminders(now: Long): List<Task>
+
     @Query("UPDATE tasks SET isCompleted = :isCompleted, updatedAt = :updatedAt WHERE id = :taskId")
     fun updateTaskCompletionSync(taskId: String, isCompleted: Boolean, updatedAt: Long = System.currentTimeMillis())
     

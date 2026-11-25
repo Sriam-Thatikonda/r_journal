@@ -4,26 +4,37 @@ import com.baverika.r_journal.data.local.dao.TrackerDao
 import com.baverika.r_journal.data.local.entity.Tracker
 import com.baverika.r_journal.data.local.entity.TrackerHistory
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.*
 
 class TrackerRepository(private val dao: TrackerDao) {
 
-    val allTrackersFlow: Flow<List<Tracker>> = dao.getAllTrackersFlow().map { list ->
-        list.map { verifyAndResetTracker(it) }
+    private val resetMutex = Mutex()
+
+    val allTrackersFlow: Flow<List<Tracker>> = dao.getAllTrackersFlow()
+
+    suspend fun resetDueTrackersIfNeeded() {
+        resetMutex.withLock {
+            dao.getAllTrackers().forEach { tracker ->
+                verifyAndResetTracker(tracker)
+            }
+        }
     }
 
     suspend fun getAllTrackersSync(): List<Tracker> {
-        return dao.getAllTrackers().map { verifyAndResetTracker(it) }
+        return resetMutex.withLock {
+            dao.getAllTrackers().map { verifyAndResetTracker(it) }
+        }
     }
 
-    fun getTrackerByIdFlow(id: String): Flow<Tracker?> = dao.getTrackerByIdFlow(id).map { tracker ->
-        tracker?.let { verifyAndResetTracker(it) }
-    }
+    fun getTrackerByIdFlow(id: String): Flow<Tracker?> = dao.getTrackerByIdFlow(id)
 
     suspend fun getTrackerById(id: String): Tracker? {
-        return dao.getTrackerById(id)?.let { verifyAndResetTracker(it) }
+        return resetMutex.withLock {
+            dao.getTrackerById(id)?.let { verifyAndResetTracker(it) }
+        }
     }
 
     suspend fun insertTracker(tracker: Tracker) = dao.insertTracker(tracker)

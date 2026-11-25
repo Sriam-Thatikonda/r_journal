@@ -174,8 +174,8 @@ fun AddCravingQuestScreen(
                     onClick = {
                         if (isJunk) {
                             showLocationSelector = true
-                        } else {
-                            if (foodName.isNotBlank()) {
+                        } else if (foodName.isNotBlank()) {
+                            viewModel.addSimpleCraving(foodName) {
                                 navController.popBackStack()
                             }
                         }

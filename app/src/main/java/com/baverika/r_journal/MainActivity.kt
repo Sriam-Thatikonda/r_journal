@@ -3,7 +3,11 @@
 package com.baverika.r_journal
 
 import android.app.Application
+import android.content.Intent
 import android.os.Bundle
+import android.view.WindowManager
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -89,7 +93,57 @@ class MainActivity : FragmentActivity() {
         data object QuickNotes : BottomNavItem("quick_notes", Icons.AutoMirrored.Filled.Note, "Notes")
         data object Tasks : BottomNavItem("tasks", Icons.Filled.Checklist, "Tasks")
     }
-    
+
+    private var isLocked by mutableStateOf(true)
+    private var lockErrorMessage by mutableStateOf<String?>(null)
+    private lateinit var settingsRepo: SettingsRepository
+
+    companion object {
+        fun updateSecureWindowFlag(activity: android.app.Activity?, enabled: Boolean) {
+            activity ?: return
+            if (enabled) {
+                activity.window.setFlags(
+                    WindowManager.LayoutParams.FLAG_SECURE,
+                    WindowManager.LayoutParams.FLAG_SECURE
+                )
+            } else {
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        updateSecureWindowFlag(this, settingsRepo.isBiometricEnabled)
+        if (isLocked && settingsRepo.isBiometricEnabled && com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this)) {
+            lockErrorMessage = null
+            com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                activity = this,
+                onSuccess = {
+                    isLocked = false
+                    lockErrorMessage = null
+                },
+                onError = { /* Keep locked; user can tap Unlock */ }
+            )
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (
+            !isChangingConfigurations &&
+            settingsRepo.isBiometricEnabled &&
+            !com.baverika.r_journal.utils.ExternalLauncherGuard.consumeIfAwaiting()
+        ) {
+            isLocked = true
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -98,7 +152,8 @@ class MainActivity : FragmentActivity() {
         val quickNoteRepo = QuickNoteRepository(db.quickNoteDao())
         val eventRepo = EventRepository(db.eventDao())
         val passwordRepo = PasswordRepository(db.passwordDao())
-        val settingsRepo = SettingsRepository(this)
+        settingsRepo = SettingsRepository(this)
+        updateSecureWindowFlag(this, settingsRepo.isBiometricEnabled)
         
         // Quote feature repositories
         val quoteRepo = com.baverika.r_journal.quotes.data.QuoteRepository(db.quoteDao())
@@ -121,18 +176,19 @@ class MainActivity : FragmentActivity() {
 
 
         // Biometric Lock State
-        var isLocked by mutableStateOf(true)
-
-        // Check if biometric is available, if not, unlock immediately
-        if (!settingsRepo.isBiometricEnabled || !com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this)) {
+        val biometricAvailable = com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this)
+        if (!settingsRepo.isBiometricEnabled) {
             isLocked = false
-        } else {
-            // Prompt for auth
-            com.baverika.r_journal.utils.BiometricHelper.authenticate(
-                activity = this,
-                onSuccess = { isLocked = false },
-                onError = { /* Keep locked, maybe show retry button */ }
-            )
+        } else if (!biometricAvailable) {
+            if (!settingsRepo.hasExplicitBiometricSetting()) {
+                // First install on a device without screen lock configured
+                settingsRepo.isBiometricEnabled = false
+                updateSecureWindowFlag(this, false)
+                isLocked = false
+            } else {
+                isLocked = true
+                lockErrorMessage = "Enable a screen lock or biometric in Android Settings to unlock."
+            }
         }
 
 
@@ -176,13 +232,31 @@ class MainActivity : FragmentActivity() {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("Journal Locked", style = MaterialTheme.typography.headlineMedium)
+                            lockErrorMessage?.let { msg ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = msg,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 32.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
                             Spacer(modifier = Modifier.height(32.dp))
                             Button(onClick = {
-                                com.baverika.r_journal.utils.BiometricHelper.authenticate(
-                                    activity = this@MainActivity,
-                                    onSuccess = { isLocked = false },
-                                    onError = {}
-                                )
+                                if (com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this@MainActivity)) {
+                                    lockErrorMessage = null
+                                    com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                                        activity = this@MainActivity,
+                                        onSuccess = {
+                                            isLocked = false
+                                            lockErrorMessage = null
+                                        },
+                                        onError = {}
+                                    )
+                                } else {
+                                    lockErrorMessage = "Enable a screen lock or biometric in Android Settings to unlock."
+                                }
                             }) {
                                 Text("Unlock")
                             }
@@ -314,6 +388,13 @@ fun MainApp(
                 searchFocusRequester.requestFocus()
                 keyboardController?.show()
             }
+        }
+
+        // Intercept back gesture when search is active to clear search instead of exiting the screen
+        BackHandler(enabled = isSearchActive || topBarSearchQuery.isNotEmpty()) {
+            isSearchActive = false
+            topBarSearchQuery = ""
+            keyboardController?.hide()
         }
 
         Scaffold(
@@ -548,13 +629,37 @@ fun MainApp(
                                 }
                                 if (currentRoute == "archive") {
                                     // Biometric Toggle
-                                    var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
-                                    
+                                    var isBiometricEnabled by remember(currentRoute) { mutableStateOf(settingsRepo.isBiometricEnabled) }
+                                    val activity = context as? FragmentActivity
+
                                     IconToggleButton(
                                         checked = isBiometricEnabled,
                                         onCheckedChange = { enabled ->
-                                            isBiometricEnabled = enabled
-                                            settingsRepo.isBiometricEnabled = enabled
+                                            if (enabled) {
+                                                if (com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(context)) {
+                                                    isBiometricEnabled = true
+                                                    settingsRepo.isBiometricEnabled = true
+                                                    MainActivity.updateSecureWindowFlag(activity, true)
+                                                } else {
+                                                    Toast.makeText(context, "Set up a screen lock or biometric in Android Settings first.", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else if (activity != null && com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(context)) {
+                                                com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                                                    activity = activity,
+                                                    title = "Disable Biometric Lock",
+                                                    subtitle = "Confirm your identity to turn off app lock",
+                                                    onSuccess = {
+                                                        isBiometricEnabled = false
+                                                        settingsRepo.isBiometricEnabled = false
+                                                        MainActivity.updateSecureWindowFlag(activity, false)
+                                                    },
+                                                    onError = {}
+                                                )
+                                            } else {
+                                                isBiometricEnabled = false
+                                                settingsRepo.isBiometricEnabled = false
+                                                MainActivity.updateSecureWindowFlag(activity, false)
+                                            }
                                         }
                                     ) {
                                         Icon(
@@ -1092,26 +1197,20 @@ fun MainApp(
                     // Image viewer screen
                     composable("image_viewer/{encodedPath}") { backStackEntry ->
                         val encodedPath = backStackEntry.arguments?.getString("encodedPath")
-                        encodedPath?.let {
-                            val decodedPath = remember(it) {
-                                try {
-                                    java.net.URLDecoder.decode(it, "UTF-8")
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            }
+                        val decodedPath = remember(encodedPath) {
+                            encodedPath?.takeIf { it.isNotBlank() }
+                        }
 
-                            when {
-                                decodedPath != null -> {
-                                    ImageViewerScreen(
-                                        imageUri = decodedPath,
-                                        onDismiss = { navController.popBackStack() }
-                                    )
-                                }
-                                else -> {
-                                    LaunchedEffect(Unit) {
-                                        navController.popBackStack()
-                                    }
+                        when {
+                            decodedPath != null -> {
+                                ImageViewerScreen(
+                                    imageUri = decodedPath,
+                                    onDismiss = { navController.popBackStack() }
+                                )
+                            }
+                            else -> {
+                                LaunchedEffect(Unit) {
+                                    navController.popBackStack()
                                 }
                             }
                         }

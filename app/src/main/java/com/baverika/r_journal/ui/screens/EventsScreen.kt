@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
@@ -47,6 +48,7 @@ fun EventsScreen(
 ) {
     val events by viewModel.allEvents.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingEvent by remember { mutableStateOf<Event?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -147,6 +149,7 @@ fun EventsScreen(
                         EventItem(
                             item = item,
                             isUrgent = true,
+                            onEdit = { editingEvent = item.event },
                             onDelete = { viewModel.deleteEvent(item.event) }
                         )
                     }
@@ -160,6 +163,7 @@ fun EventsScreen(
                         EventItem(
                             item = item,
                             isUrgent = false,
+                            onEdit = { editingEvent = item.event },
                             onDelete = { viewModel.deleteEvent(item.event) }
                         )
                     }
@@ -173,6 +177,7 @@ fun EventsScreen(
                         EventItem(
                             item = item,
                             isUrgent = false,
+                            onEdit = { editingEvent = item.event },
                             onDelete = { viewModel.deleteEvent(item.event) }
                         )
                     }
@@ -180,20 +185,38 @@ fun EventsScreen(
             }
         }
 
-        if (showAddDialog) {
-            AddEventDialog(
-                onDismiss = { showAddDialog = false },
-                onAdd = { title, day, month, year, type ->
-                    viewModel.addEvent(
-                        Event(
-                            title = title,
-                            day = day,
-                            month = month,
-                            year = year,
-                            type = type
-                        )
-                    )
+        if (showAddDialog || editingEvent != null) {
+            AddEditEventDialog(
+                initialEvent = editingEvent,
+                onDismiss = {
                     showAddDialog = false
+                    editingEvent = null
+                },
+                onSave = { title, day, month, year, type ->
+                    val targetEvent = editingEvent
+                    if (targetEvent != null) {
+                        viewModel.updateEvent(
+                            targetEvent.copy(
+                                title = title,
+                                day = day,
+                                month = month,
+                                year = year,
+                                type = type
+                            )
+                        )
+                    } else {
+                        viewModel.addEvent(
+                            Event(
+                                title = title,
+                                day = day,
+                                month = month,
+                                year = year,
+                                type = type
+                            )
+                        )
+                    }
+                    showAddDialog = false
+                    editingEvent = null
                 }
             )
         }
@@ -230,16 +253,25 @@ private fun EventSectionHeader(title: String, count: Int) {
     }
 }
 
+private fun safeEventDate(year: Int, month: Int, day: Int): LocalDate {
+    return if (month == 2 && day == 29 && !java.time.Year.isLeap(year.toLong())) {
+        LocalDate.of(year, 2, 28)
+    } else {
+        LocalDate.of(year, month, day)
+    }
+}
+
 @Composable
 fun EventItem(
     item: EventUiModel,
     isUrgent: Boolean = false,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val event = item.event
     val daysRemaining = item.daysRemaining
     val today = LocalDate.now()
-    val eventThisYear = LocalDate.of(today.year, event.month, event.day)
+    val eventThisYear = safeEventDate(today.year, event.month, event.day)
     val nextOccurrenceYear = if (eventThisYear.isBefore(today)) today.year + 1 else today.year
 
     val milestoneText = remember(event, nextOccurrenceYear) {
@@ -265,6 +297,7 @@ fun EventItem(
     }
 
     Card(
+        onClick = onEdit,
         elevation = CardDefaults.cardElevation(defaultElevation = if (isUrgent) 3.dp else 1.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -330,7 +363,7 @@ fun EventItem(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = LocalDate.of(nextOccurrenceYear, event.month, event.day).format(
+                    text = safeEventDate(nextOccurrenceYear, event.month, event.day).format(
                         DateTimeFormatter.ofPattern(if (nextOccurrenceYear == today.year) "EEEE, MMMM d" else "EEEE, MMMM d, yyyy")
                     ),
                     style = MaterialTheme.typography.bodyMedium,
@@ -364,16 +397,34 @@ fun EventItem(
                     )
                 }
 
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(32.dp).padding(top = 4.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.padding(top = 2.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                        modifier = Modifier.size(16.dp)
-                    )
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Special Date",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Special Date",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -382,13 +433,22 @@ fun EventItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEventDialog(
+fun AddEditEventDialog(
+    initialEvent: Event? = null,
     onDismiss: () -> Unit,
-    onAdd: (String, Int, Int, Int?, EventType) -> Unit
+    onSave: (title: String, day: Int, month: Int, year: Int?, type: EventType) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var selectedType by remember { mutableStateOf(EventType.BIRTHDAY) }
+    var title by remember(initialEvent) { mutableStateOf(initialEvent?.title ?: "") }
+    var selectedDate by remember(initialEvent) {
+        mutableStateOf(
+            if (initialEvent != null) {
+                safeEventDate(initialEvent.year ?: LocalDate.now().year, initialEvent.month, initialEvent.day)
+            } else {
+                LocalDate.now()
+            }
+        )
+    }
+    var selectedType by remember(initialEvent) { mutableStateOf(initialEvent?.type ?: EventType.BIRTHDAY) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
@@ -405,7 +465,7 @@ fun AddEventDialog(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
                             selectedDate = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(java.time.ZoneId.systemDefault())
+                                .atZone(java.time.ZoneOffset.UTC)
                                 .toLocalDate()
                         }
                         showDatePicker = false
@@ -426,7 +486,7 @@ fun AddEventDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Special Date") },
+        title = { Text(if (initialEvent != null) "Edit Special Date" else "Add Special Date") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
@@ -488,12 +548,12 @@ fun AddEventDialog(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        onAdd(title, selectedDate.dayOfMonth, selectedDate.monthValue, selectedDate.year, selectedType)
+                        onSave(title, selectedDate.dayOfMonth, selectedDate.monthValue, selectedDate.year, selectedType)
                     }
                 },
                 enabled = title.isNotBlank()
             ) {
-                Text("Save")
+                Text(if (initialEvent != null) "Update" else "Save")
             }
         },
         dismissButton = {

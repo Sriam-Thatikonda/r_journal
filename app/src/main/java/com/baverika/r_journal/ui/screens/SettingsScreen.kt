@@ -50,11 +50,15 @@ import com.baverika.r_journal.BuildConfig
 import com.baverika.r_journal.widget.WidgetUpdateUtils
 import kotlinx.coroutines.launch
 
+import androidx.fragment.app.FragmentActivity
+import com.baverika.r_journal.MainActivity
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.TaskRepository
+import com.baverika.r_journal.utils.BiometricHelper
 import com.baverika.r_journal.utils.MilestoneCalculator
 import com.baverika.r_journal.ui.components.MilestoneCardDialog
 import androidx.compose.material.icons.filled.EmojiEvents
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +115,9 @@ fun SettingsScreen(
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
     if (showDatePickerDialog) {
-        val initialCal = Calendar.getInstance().apply {
+        val utcTz = TimeZone.getTimeZone("UTC")
+        val initialCal = Calendar.getInstance(utcTz).apply {
+            clear()
             set(birthYear, birthMonth - 1, birthDay)
         }
         val datePickerState = rememberDatePickerState(
@@ -123,7 +129,7 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            val cal = Calendar.getInstance().apply { timeInMillis = millis }
+                            val cal = Calendar.getInstance(utcTz).apply { timeInMillis = millis }
                             birthYear = cal.get(Calendar.YEAR)
                             birthMonth = cal.get(Calendar.MONTH) + 1
                             birthDay = cal.get(Calendar.DAY_OF_MONTH)
@@ -293,9 +299,45 @@ fun SettingsScreen(
                 }
                 Switch(
                     checked = isBiometricEnabled,
-                    onCheckedChange = {
-                        isBiometricEnabled = it
-                        settingsRepo.isBiometricEnabled = it
+                    onCheckedChange = { wantEnabled ->
+                        val activity = context as? FragmentActivity
+                        if (wantEnabled) {
+                            if (BiometricHelper.isBiometricAvailable(context)) {
+                                isBiometricEnabled = true
+                                settingsRepo.isBiometricEnabled = true
+                                MainActivity.updateSecureWindowFlag(activity, true)
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Set up a screen lock or biometric on this device first",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } else {
+                            if (activity != null && BiometricHelper.isBiometricAvailable(context)) {
+                                BiometricHelper.authenticate(
+                                    activity = activity,
+                                    title = "Disable Biometric Lock",
+                                    subtitle = "Confirm your identity to turn off app lock",
+                                    onSuccess = {
+                                        isBiometricEnabled = false
+                                        settingsRepo.isBiometricEnabled = false
+                                        MainActivity.updateSecureWindowFlag(activity, false)
+                                    },
+                                    onError = {
+                                        Toast.makeText(
+                                            context,
+                                            "Authentication required to disable Biometric Lock",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
+                            } else {
+                                isBiometricEnabled = false
+                                settingsRepo.isBiometricEnabled = false
+                                MainActivity.updateSecureWindowFlag(activity, false)
+                            }
+                        }
                     }
                 )
             }
@@ -464,7 +506,6 @@ fun SettingsScreen(
                         }
                         Button(
                             onClick = {
-                                settingsRepo.lastBackupTimestamp = System.currentTimeMillis()
                                 navController.navigate("export")
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -506,7 +547,6 @@ fun SettingsScreen(
                 title = "Export Data",
                 subtitle = "Backup journals, notes, tasks and settings",
                 onClick = {
-                    settingsRepo.lastBackupTimestamp = System.currentTimeMillis()
                     navController.navigate("export")
                 }
             )

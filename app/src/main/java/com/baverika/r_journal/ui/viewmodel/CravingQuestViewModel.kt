@@ -40,6 +40,20 @@ class CravingQuestViewModel(private val repository: CravingQuestRepository) : Vi
         }
     }
 
+    fun addSimpleCraving(food: String, onSaved: () -> Unit) {
+        viewModelScope.launch {
+            val newLog = CravingLogEntity(
+                food = food.trim(),
+                location = "N/A",
+                quest = "Logged non-junk craving",
+                difficulty = "None",
+                questCompleted = true
+            )
+            repository.insertLog(newLog)
+            onSaved()
+        }
+    }
+
     fun toggleQuestCompleted(log: CravingLogEntity) {
         if (isReadOnly(log)) return
         viewModelScope.launch {

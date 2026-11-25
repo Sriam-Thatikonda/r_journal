@@ -73,10 +73,10 @@ fun ChallengeListScreen(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Button(
-                            onClick = { navController.navigate("challenge_templates") },
+                            onClick = { navController.navigate("create_challenge") },
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Text("Browse Challenges")
+                            Text("Create Challenge")
                         }
                     }
                 } else {

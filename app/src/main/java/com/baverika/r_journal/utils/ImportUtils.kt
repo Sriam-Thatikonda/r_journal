@@ -28,6 +28,25 @@ import java.util.zip.ZipInputStream
 
 object ImportUtils {
 
+    fun containsEncryptedPasswords(context: Context, uri: Uri): Boolean {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                ZipInputStream(stream).use { zis ->
+                    var entry = zis.nextEntry
+                    while (entry != null) {
+                        if (!entry.isDirectory && entry.name.endsWith("passwords.enc.json")) {
+                            return true
+                        }
+                        entry = zis.nextEntry
+                    }
+                    false
+                }
+            } ?: false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun importFromUri(
         context: Context,
         uri: Uri,
@@ -41,6 +60,7 @@ object ImportUtils {
         trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
         challengeRepo: com.baverika.r_journal.repository.ChallengeRepository,
         coroutineScope: CoroutineScope,
+        vaultPassphrase: String? = null,
         onResult: (Boolean, String) -> Unit
     ) {
         coroutineScope.launch(Dispatchers.IO) {
@@ -59,6 +79,7 @@ object ImportUtils {
                         passwordRepo,
                         trackerRepo,
                         challengeRepo,
+                        vaultPassphrase,
                         onResult
                     )
                 } ?: throw Exception("Could not open input stream for URI: $uri")
@@ -82,6 +103,7 @@ object ImportUtils {
         passwordRepo: PasswordRepository,
         trackerRepo: com.baverika.r_journal.repository.TrackerRepository,
         challengeRepo: com.baverika.r_journal.repository.ChallengeRepository,
+        vaultPassphrase: String?,
         onResult: (Boolean, String) -> Unit
     ) {
         try {
@@ -121,19 +143,23 @@ object ImportUtils {
                 })
                 .create()
 
+            val tempCanonicalRoot = tempImagesDir.canonicalPath + File.separator
             ZipInputStream(inputStream).use { zis ->
                 var zipEntry = zis.nextEntry
 
-                // First pass: Extract all images and voice notes to temp storage
+                // First pass: Extract all images and voice notes to temp storage safely (preserve relative paths)
                 while (zipEntry != null) {
                     if (!zipEntry.isDirectory && (zipEntry.name.startsWith("images/") || zipEntry.name.startsWith("voice_notes/"))) {
                         try {
-                            val tempFile = File(tempImagesDir, File(zipEntry.name).name)
-                            FileOutputStream(tempFile).use { fos ->
-                                zis.copyTo(fos)
+                            val tempFile = File(tempImagesDir, zipEntry.name)
+                            if (tempFile.canonicalPath.startsWith(tempCanonicalRoot)) {
+                                tempFile.parentFile?.mkdirs()
+                                FileOutputStream(tempFile).use { fos ->
+                                    zis.copyTo(fos)
+                                }
+                                imageMap[zipEntry.name] = tempFile
+                                imageCount++
                             }
-                            imageMap[zipEntry.name] = tempFile
-                            imageCount++
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -255,18 +281,47 @@ object ImportUtils {
                 } catch (e: Exception) { e.printStackTrace() }
             }
 
-            // 9. Passwords (no FK dependencies)
-            jsonPayloads.entries.firstOrNull { it.key.endsWith("passwords.json") }?.let { (_, content) ->
+            // 9. Passwords (supports passphrase-encrypted passwords.enc.json and legacy passwords.json)
+            var vaultImportError: String? = null
+            val encryptedPasswordsBlob = jsonPayloads.entries.firstOrNull { it.key.endsWith("passwords.enc.json") }?.value
+            val legacyPasswordsJson = jsonPayloads.entries.firstOrNull { it.key.endsWith("passwords.json") }?.value
+
+            val resolvedPasswordsJson: String? = when {
+                encryptedPasswordsBlob != null -> {
+                    if (vaultPassphrase.isNullOrBlank()) {
+                        vaultImportError = "Vault passwords skipped (no backup passphrase entered)."
+                        null
+                    } else {
+                        try {
+                            SecurityUtils.decryptWithPassphrase(encryptedPasswordsBlob, vaultPassphrase)
+                        } catch (e: Exception) {
+                            vaultImportError = "Vault passwords could not be decrypted (incorrect passphrase)."
+                            null
+                        }
+                    }
+                }
+                legacyPasswordsJson != null -> legacyPasswordsJson
+                else -> null
+            }
+
+            resolvedPasswordsJson?.let { content ->
                 try {
                     val passwords = gson.fromJson(content, Array<Password>::class.java)
-                    passwords.forEach {
-                        val encryptedPassword = it.copy(
-                            passwordValue = SecurityUtils.encrypt(it.passwordValue)
+                    passwords.forEach { pw ->
+                        val encryptedHistory = pw.history.map { hItem ->
+                            hItem.copy(passwordValue = SecurityUtils.encrypt(hItem.passwordValue))
+                        }
+                        val encryptedPassword = pw.copy(
+                            passwordValue = SecurityUtils.encrypt(pw.passwordValue),
+                            history = encryptedHistory
                         )
                         passwordRepo.insertPassword(encryptedPassword)
                     }
                     passwordCount = passwords.size
-                } catch (e: Exception) { e.printStackTrace() }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    vaultImportError = "Failed to import vault passwords: ${e.message}"
+                }
             }
 
             // 10. Trackers (parent of tracker_history)
@@ -300,8 +355,8 @@ object ImportUtils {
             jsonPayloads.entries.firstOrNull { it.key.endsWith("mine_journal.json") }?.let { (_, content) ->
                 try {
                     val mineEntry = gson.fromJson(content, JournalEntry::class.java)
-                    val imageStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-                    val voiceStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+                    val imageStorageDir = File(context.filesDir, "Pictures").apply { mkdirs() }
+                    val voiceStorageDir = File(context.filesDir, "VoiceNotes").apply { mkdirs() }
 
                     val restoredMessages = mineEntry.messages.map { msg ->
                         var newImageUri = msg.imageUri
@@ -339,9 +394,10 @@ object ImportUtils {
             tempImagesDir.deleteRecursively()
 
             val mineMsg = if (mineCount > 0) ", $mineCount mine messages" else ""
+            val vaultNote = if (vaultImportError != null) "\n\nNote: $vaultImportError" else ""
             onResult(
                 true,
-                "Imported: $journalCount journals$mineMsg, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount life trackers, $countersCount trackers, $challengeCount challenges, $eventCount events, $passwordCount passwords"
+                "Imported: $journalCount journals$mineMsg, $quickNoteCount notes, $taskCount tasks, $habitCount habits, $quoteCount quotes, $trackerCount life trackers, $countersCount trackers, $challengeCount challenges, $eventCount events, $passwordCount passwords$vaultNote"
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -390,20 +446,21 @@ object ImportUtils {
             val tagsString = metaData["tags"]
             val tags = if (tagsString != null) {
                 tagsString.removePrefix("[").removeSuffix("]")
-                    .split(",").map { it.trim().removeSurrounding("\"") }
+                    .split(",").map { it.trim().removeSurrounding("\"") }.filter { it.isNotBlank() }
             } else {
                 emptyList()
             }
 
             // Parse messages with image restoration
             val messages = mutableListOf<ChatMessage>()
-            val imageStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            val imageStorageDir = File(context.filesDir, "Pictures").apply { mkdirs() }
+            val voiceStorageDir = File(context.filesDir, "VoiceNotes").apply { mkdirs() }
 
             for (line in contentLines) {
                 if (line.isBlank()) continue
 
-                // Parse message line
-                val messageRegex = Regex("""\*\*\[([^\]]+)\] \((\d{2}:\d{2}:\d{2})\):\*\* (.+)""")
+                // Parse message line (supports image-only headers with empty content)
+                val messageRegex = Regex("""\*\*\[([^\]]+)\] \((\d{2}:\d{2}:\d{2})\):\*\*(?: (.*))?""")
                 val matchResult = messageRegex.find(line)
 
                 if (matchResult != null) {
@@ -429,7 +486,7 @@ object ImportUtils {
                 val imageMatch = imageRegex.find(line)
 
                 if (imageMatch != null && messages.isNotEmpty()) {
-                    val imageName = imageMatch.groupValues[1]
+                    val imageName = File(imageMatch.groupValues[1]).name
                     val zipImagePath = "images/${localDate}/$imageName"
 
                     // Find the temp image file and copy it to permanent storage
@@ -455,10 +512,9 @@ object ImportUtils {
 
                 if (voiceMatch != null && messages.isNotEmpty()) {
                     val durationSec = voiceMatch.groupValues[1].toLongOrNull() ?: 0L
-                    val voiceName = voiceMatch.groupValues[2]
+                    val voiceName = File(voiceMatch.groupValues[2]).name
                     val zipVoicePath = "voice_notes/${localDate}/$voiceName"
 
-                    val voiceStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
                     imageMap[zipVoicePath]?.let { tempVoiceFile ->
                         try {
                             val permanentFile = File(voiceStorageDir, voiceName)
@@ -466,6 +522,7 @@ object ImportUtils {
 
                             val lastMessage = messages.last()
                             messages[messages.lastIndex] = lastMessage.copy(
+                                content = if (lastMessage.content == "🎤 Voice Note") "" else lastMessage.content,
                                 voiceNoteUri = permanentFile.absolutePath,
                                 voiceNoteDuration = durationSec * 1000
                             )

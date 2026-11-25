@@ -64,6 +64,7 @@ class QuickNoteEditorViewModel(
     private val redoStack = mutableListOf<EditorSnapshot>()
 
     private var autoSaveJob: Job? = null
+    private var isDeleted = false
 
     init {
         if (!initialNoteId.isNullOrBlank()) {
@@ -434,16 +435,20 @@ class QuickNoteEditorViewModel(
     }
 
     private fun scheduleAutoSave() {
+        if (isDeleted) return
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
             delay(500)
+            if (isDeleted) return@launch
             recordSnapshot()
             saveImmediately()
         }
     }
 
     fun saveImmediately() {
+        if (isDeleted) return
         viewModelScope.launch {
+            if (isDeleted) return@launch
             val current = _state.value
             val hasContent = current.title.isNotBlank() || current.blocks.any { it.text.isNotBlank() }
             if (!hasContent && current.isNewNote) {
@@ -469,6 +474,8 @@ class QuickNoteEditorViewModel(
     }
 
     fun deleteNote(onDeleted: () -> Unit) {
+        isDeleted = true
+        autoSaveJob?.cancel()
         viewModelScope.launch {
             val current = _state.value
             val note = QuickNote(

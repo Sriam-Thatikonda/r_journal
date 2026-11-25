@@ -14,13 +14,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.QuickNoteRepository
 import com.baverika.r_journal.repository.PasswordRepository
 import com.baverika.r_journal.utils.DbRestoreUtils
+import com.baverika.r_journal.utils.ExternalLauncherGuard
 import com.baverika.r_journal.utils.ImportUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,8 +55,37 @@ fun ImportScreen(
     var backups by remember { mutableStateOf<List<File>>(emptyList()) }
     var showRestoreDialog by remember { mutableStateOf<File?>(null) }
 
+    var pendingEncryptedZipUri by remember { mutableStateOf<Uri?>(null) }
+    var importPassphrase by remember { mutableStateOf("") }
+    var importPassphraseVisible by remember { mutableStateOf(false) }
+
+    val startZipImport: (Uri, String?) -> Unit = { targetUri, vaultPassphrase ->
+        isImporting = true
+        ImportUtils.importFromUri(
+            context = context,
+            uri = targetUri,
+            journalRepo = journalRepo,
+            quickNoteRepo = quickNoteRepo,
+            taskRepo = taskRepo,
+            quoteRepo = quoteRepo,
+            lifeTrackerRepo = lifeTrackerRepo,
+            eventRepo = eventRepo,
+            passwordRepo = passwordRepo,
+            trackerRepo = trackerRepo,
+            challengeRepo = challengeRepo,
+            coroutineScope = scope,
+            vaultPassphrase = vaultPassphrase
+        ) { success, message ->
+            isImporting = false
+            importSuccess = success
+            importMessage = message
+        }
+    }
+
     LaunchedEffect(Unit) {
-        backups = DbRestoreUtils.getBackups(context)
+        backups = withContext(Dispatchers.IO) {
+            DbRestoreUtils.getBackups(context)
+        }
     }
 
     // Launcher for picking a ZIP file
@@ -59,24 +93,17 @@ fun ImportScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let { pickedUri ->
-            isImporting = true
-            ImportUtils.importFromUri(
-                context = context,
-                uri = pickedUri,
-                journalRepo = journalRepo,
-                quickNoteRepo = quickNoteRepo,
-                taskRepo = taskRepo,
-                quoteRepo = quoteRepo,
-                lifeTrackerRepo = lifeTrackerRepo,
-                eventRepo = eventRepo,
-                passwordRepo = passwordRepo,
-                trackerRepo = trackerRepo,
-                challengeRepo = challengeRepo,
-                coroutineScope = scope
-            ) { success, message ->
-                isImporting = false
-                importSuccess = success
-                importMessage = message
+            scope.launch {
+                val hasEncryptedVault = withContext(Dispatchers.IO) {
+                    ImportUtils.containsEncryptedPasswords(context, pickedUri)
+                }
+                if (hasEncryptedVault) {
+                    importPassphrase = ""
+                    importPassphraseVisible = false
+                    pendingEncryptedZipUri = pickedUri
+                } else {
+                    startZipImport(pickedUri, null)
+                }
             }
         }
     }
@@ -133,7 +160,16 @@ fun ImportScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { pickZipLauncher.launch(arrayOf("application/zip")) },
+                                onClick = {
+                                    ExternalLauncherGuard.markLaunched()
+                                    pickZipLauncher.launch(
+                                        arrayOf(
+                                            "application/zip",
+                                            "application/x-zip-compressed",
+                                            "application/octet-stream"
+                                        )
+                                    )
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.FolderOpen, contentDescription = null)
@@ -171,6 +207,65 @@ fun ImportScreen(
             }
         }
 
+        // Passphrase prompt for encrypted Vault exports
+        pendingEncryptedZipUri?.let { encryptedZipUri ->
+            AlertDialog(
+                onDismissRequest = {
+                    importPassphrase = ""
+                    pendingEncryptedZipUri = null
+                },
+                title = { Text("Encrypted Vault Detected") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "This backup contains passphrase-protected Vault passwords. Enter the backup passphrase to import them, or skip Vault passwords.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedTextField(
+                            value = importPassphrase,
+                            onValueChange = { importPassphrase = it },
+                            label = { Text("Backup Passphrase") },
+                            singleLine = true,
+                            visualTransformation = if (importPassphraseVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { importPassphraseVisible = !importPassphraseVisible }) {
+                                    Icon(
+                                        imageVector = if (importPassphraseVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (importPassphraseVisible) "Hide passphrase" else "Show passphrase"
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val pass = importPassphrase
+                            importPassphrase = ""
+                            pendingEncryptedZipUri = null
+                            startZipImport(encryptedZipUri, pass)
+                        },
+                        enabled = importPassphrase.isNotBlank()
+                    ) {
+                        Text("Decrypt & Import")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            importPassphrase = ""
+                            pendingEncryptedZipUri = null
+                            startZipImport(encryptedZipUri, null)
+                        }
+                    ) {
+                        Text("Skip Vault")
+                    }
+                }
+            )
+        }
+
         // Restore Confirmation Dialog
         if (showRestoreDialog != null) {
             AlertDialog(
@@ -185,22 +280,25 @@ fun ImportScreen(
                             val fileToRestore = showRestoreDialog!!
                             showRestoreDialog = null
                             isImporting = true
-                            
-                            // Perform restore
-                            val success = DbRestoreUtils.restoreBackup(context, fileToRestore)
-                            
-                            if (success) {
-                                // Restart App
-                                val packageManager = context.packageManager
-                                val intent = packageManager.getLaunchIntentForPackage(context.packageName)
-                                val componentName = intent?.component
-                                val mainIntent = android.content.Intent.makeRestartActivityTask(componentName)
-                                context.startActivity(mainIntent)
-                                Runtime.getRuntime().exit(0)
-                            } else {
-                                isImporting = false
-                                importSuccess = false
-                                importMessage = "Failed to restore database file."
+
+                            scope.launch {
+                                val success = withContext(Dispatchers.IO) {
+                                    DbRestoreUtils.restoreBackup(context, fileToRestore)
+                                }
+
+                                if (success) {
+                                    // Restart App
+                                    val packageManager = context.packageManager
+                                    val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+                                    val componentName = intent?.component
+                                    val mainIntent = android.content.Intent.makeRestartActivityTask(componentName)
+                                    context.startActivity(mainIntent)
+                                    Runtime.getRuntime().exit(0)
+                                } else {
+                                    isImporting = false
+                                    importSuccess = false
+                                    importMessage = "Failed to restore database file."
+                                }
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)

@@ -2,15 +2,17 @@
 
 package com.baverika.r_journal.utils
 
+import android.content.ContentValues
 import android.content.Context
 import android.os.Build
 import android.os.Environment
-import androidx.annotation.RequiresApi
+import android.provider.MediaStore
 import com.baverika.r_journal.data.local.entity.JournalEntry
 import com.baverika.r_journal.data.local.entity.QuickNote
 import com.baverika.r_journal.data.local.entity.Password
 import java.io.File
 import java.io.FileInputStream
+import java.io.OutputStream
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -28,7 +30,6 @@ object ExportUtils {
      * Exports all journal entries and quick notes to a single organized ZIP file.
      * Includes images in organized folders.
      */
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     fun exportAll(
         context: Context,
         journals: List<JournalEntry>,
@@ -45,20 +46,13 @@ object ExportUtils {
         trackers: List<com.baverika.r_journal.data.local.entity.Tracker>,
         trackerHistory: List<com.baverika.r_journal.data.local.entity.TrackerHistory>,
         challenges: List<com.baverika.r_journal.data.ChallengeEntity>,
-        mineEntry: JournalEntry? = null
+        mineEntry: JournalEntry? = null,
+        vaultPassphrase: String? = null
     ): Pair<Boolean, String?> {
         return try {
-            // 1. Determine export directory
-            val exportDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!exportDir.exists()) {
-                exportDir.mkdirs()
-            }
-
-            // 2. Create unique filename
             val timestamp = LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
             val zipFileName = "r_journal_export_$timestamp.zip"
-            val zipFile = File(exportDir, zipFileName)
 
             val gson = com.google.gson.GsonBuilder()
                 .registerTypeAdapter(LocalDate::class.java, JsonSerializer<LocalDate> { src, _, _ ->
@@ -82,8 +76,8 @@ object ExportUtils {
                 .setPrettyPrinting()
                 .create()
 
-            // 3. Create ZIP and write content
-            ZipOutputStream(zipFile.outputStream()).use { zos ->
+            val writeZip: (OutputStream) -> Unit = { outputStream ->
+                ZipOutputStream(outputStream).use { zos ->
                 // Export journal entries
                 journals.forEach { entry ->
                     // Write journal entry markdown
@@ -232,11 +226,10 @@ object ExportUtils {
                     zos.closeEntry()
                 }
 
-                // Export Passwords (JSON) - DECRYPTED for portability
+                // Export Passwords (JSON) - encrypted with passphrase when provided
+                val isVaultEncrypted = !vaultPassphrase.isNullOrBlank()
                 if (passwords.isNotEmpty()) {
                     try {
-                        // We must decrypt for the export to be useful on other devices
-                        // WARNING: This puts plain text passwords in the JSON
                         val exportablePasswords = passwords.map { password ->
                             val decoded = try {
                                 SecurityUtils.decrypt(password.passwordValue)
@@ -253,11 +246,20 @@ object ExportUtils {
                             }
                             password.copy(passwordValue = decoded, history = decodedHistory)
                         }
-                        zos.putNextEntry(ZipEntry("data/passwords.json"))
-                        zos.write(gson.toJson(exportablePasswords).toByteArray())
-                        zos.closeEntry()
+                        val passwordsJson = gson.toJson(exportablePasswords)
+                        if (isVaultEncrypted) {
+                            val encryptedBlob = SecurityUtils.encryptWithPassphrase(passwordsJson, vaultPassphrase!!)
+                            zos.putNextEntry(ZipEntry("data/passwords.enc.json"))
+                            zos.write(encryptedBlob.toByteArray(Charsets.UTF_8))
+                            zos.closeEntry()
+                        } else {
+                            zos.putNextEntry(ZipEntry("data/passwords.json"))
+                            zos.write(passwordsJson.toByteArray(Charsets.UTF_8))
+                            zos.closeEntry()
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
+                        throw e
                     }
                 }
 
@@ -285,31 +287,62 @@ object ExportUtils {
 
                 // Add a README file
                 val readme = buildReadme(
-                    journals.size, 
-                    notes.size, 
-                    tasks.size, 
-                    habits.size, 
+                    journals.size,
+                    notes.size,
+                    tasks.size,
+                    habits.size,
                     quotes.size,
                     lifeTrackers.size,
                     events.size,
                     passwords.size,
                     trackers.size,
                     trackerHistory.size,
-                    challenges.size
+                    challenges.size,
+                    isVaultEncrypted
                 )
                 zos.putNextEntry(ZipEntry("README.txt"))
                 zos.write(readme.toByteArray())
                 zos.closeEntry()
+                }
             }
 
-            Pair(true, "Exported to: ${zipFile.absolutePath}")
+            val savedLocation: String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, zipFileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/zip")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw IllegalStateException("Failed to create Downloads entry")
+                try {
+                    resolver.openOutputStream(itemUri)?.use { out ->
+                        writeZip(out)
+                    } ?: throw IllegalStateException("Failed to open Downloads output stream")
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(itemUri, contentValues, null, null)
+                    "Downloads/$zipFileName"
+                } catch (e: Exception) {
+                    resolver.delete(itemUri, null, null)
+                    throw e
+                }
+            } else {
+                val exportDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!exportDir.exists()) exportDir.mkdirs()
+                val zipFile = File(exportDir, zipFileName)
+                zipFile.outputStream().use { writeZip(it) }
+                zipFile.absolutePath
+            }
+
+            Pair(true, "Exported to: $savedLocation")
         } catch (e: Exception) {
             e.printStackTrace()
             Pair(false, "Export failed: ${e.message}")
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun buildJournalEntryMarkdown(entry: JournalEntry): String {
         return buildString {
             append("---\n")
@@ -381,8 +414,19 @@ object ExportUtils {
         passwordCount: Int,
         trackerCount: Int,
         trackerHistoryCount: Int,
-        challengeCount: Int
+        challengeCount: Int,
+        isVaultEncrypted: Boolean
     ): String {
+        val vaultNote = if (isVaultEncrypted) {
+            "Encrypted with backup passphrase (passwords.enc.json)"
+        } else {
+            "CAUTION: Exported unencrypted inside this archive (passwords.json)"
+        }
+        val vaultFileLine = if (isVaultEncrypted) {
+            "passwords.enc.json    - Passphrase-encrypted saved passwords"
+        } else {
+            "passwords.json        - All saved passwords in JSON format"
+        }
         return """
             R-Journal Export
             ================
@@ -400,7 +444,7 @@ object ExportUtils {
             - $trackerHistoryCount tracker history records
             - $challengeCount challenges
             - $eventCount special dates/events
-            - $passwordCount passwords (CAUTION: Exported unencrypted inside this archive)
+            - $passwordCount passwords ($vaultNote)
             
             Structure:
             /data
@@ -416,7 +460,7 @@ object ExportUtils {
               tracker_history.json  - All tracker history records in JSON format
               challenges.json       - All challenges in JSON format
               events.json           - All special dates/events in JSON format
-              passwords.json        - All saved passwords in JSON format
+              $vaultFileLine
             /images
               /[date]               - Images organized by journal entry date
             

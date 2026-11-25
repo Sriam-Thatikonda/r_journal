@@ -376,5 +376,16 @@ abstract class JournalDatabase : RoomDatabase() {
                 instance
             }
         }
+
+        fun closeAndResetInstance() {
+            synchronized(this) {
+                try {
+                    INSTANCE?.close()
+                } catch (_: Exception) {
+                    // Ignore close errors during restore
+                }
+                INSTANCE = null
+            }
+        }
     }
 }

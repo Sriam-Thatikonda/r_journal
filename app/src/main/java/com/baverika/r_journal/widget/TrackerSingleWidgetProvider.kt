@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.RemoteViews
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.receiver.WidgetActionReceiver
 import com.baverika.r_journal.repository.TrackerRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -113,7 +114,7 @@ class TrackerSingleWidgetProvider : AppWidgetProvider() {
 
                         // Unique request code per appWidgetId so PendingIntents don't collide
                         val requestCode = appWidgetId + 20000
-                        val incrementIntent = Intent(context, TrackerSingleWidgetProvider::class.java).apply {
+                        val incrementIntent = Intent(context, WidgetActionReceiver::class.java).apply {
                             action = ACTION_INCREMENT_SINGLE_TRACKER
                             putExtra(EXTRA_TRACKER_ID, tracker.id)
                             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)

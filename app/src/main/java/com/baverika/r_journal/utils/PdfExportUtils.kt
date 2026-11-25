@@ -1,12 +1,15 @@
 package com.baverika.r_journal.utils
 
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.Layout
@@ -202,16 +205,40 @@ object PdfExportUtils {
 
             document.finishPage(page)
 
-            // Save File
-            val exportDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!exportDir.exists()) exportDir.mkdirs()
-            
+            // Save File to Downloads via MediaStore on API 29+ (scoped storage safe)
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
             val fileName = "My_Journal_Book_$timestamp.pdf"
-            val file = File(exportDir, fileName)
 
-            document.writeTo(FileOutputStream(file))
-            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: return Pair(false, "PDF Export failed: could not create Downloads entry")
+                try {
+                    resolver.openOutputStream(itemUri)?.use { out ->
+                        document.writeTo(out)
+                    } ?: throw IllegalStateException("Failed to open Downloads output stream")
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(itemUri, contentValues, null, null)
+                } catch (e: Exception) {
+                    resolver.delete(itemUri, null, null)
+                    throw e
+                }
+            } else {
+                val exportDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!exportDir.exists()) exportDir.mkdirs()
+                val file = File(exportDir, fileName)
+                FileOutputStream(file).use { out ->
+                    document.writeTo(out)
+                }
+            }
+
             return Pair(true, "Saved to Downloads: $fileName")
 
         } catch (e: Exception) {

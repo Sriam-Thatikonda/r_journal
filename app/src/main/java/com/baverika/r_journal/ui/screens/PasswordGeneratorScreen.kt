@@ -48,6 +48,7 @@ import com.baverika.r_journal.data.local.entity.PasswordType
 import com.baverika.r_journal.ui.components.HighlightedText
 import com.baverika.r_journal.ui.viewmodel.PasswordViewModel
 import com.baverika.r_journal.ui.viewmodel.SortOrder
+import com.baverika.r_journal.utils.ClipboardUtils
 import com.baverika.r_journal.utils.PassphraseGenerator
 import com.baverika.r_journal.utils.SecurityUtils
 import kotlinx.coroutines.delay
@@ -169,8 +170,8 @@ fun PasswordGeneratorScreen(
                     isVisible = isPasswordVisible,
                     onToggleVisibility = { isPasswordVisible = !isPasswordVisible },
                     onCopy = {
-                        clipboardManager.setText(AnnotatedString(generatedPassword))
-                        Toast.makeText(context, "Copied to clipboard!", Toast.LENGTH_SHORT).show()
+                        ClipboardUtils.copySensitiveText(context, "Generated Password", generatedPassword)
+                        Toast.makeText(context, "Copied to clipboard! (Auto-clears in 30s)", Toast.LENGTH_SHORT).show()
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
                     onRegenerate = {
@@ -242,19 +243,23 @@ fun PasswordGeneratorScreen(
                         Button(
                             onClick = {
                                 if (siteName.isNotBlank() && username.isNotBlank() && generatedPassword.isNotBlank()) {
-                                    val securePassword = SecurityUtils.encrypt(generatedPassword)
-                                    val type = if (isPinMode) PasswordType.PIN else PasswordType.PASSWORD
-                                    viewModel.addPassword(siteName.trim(), username.trim(), securePassword, type)
-                                    siteName = ""
-                                    username = ""
-                                    generatedPassword = if (isPinMode) {
-                                        PassphraseGenerator.generatePin(numberLength)
-                                    } else {
-                                        PassphraseGenerator.generate(numberLength)
+                                    try {
+                                        val securePassword = SecurityUtils.encrypt(generatedPassword)
+                                        val type = if (isPinMode) PasswordType.PIN else PasswordType.PASSWORD
+                                        viewModel.addPassword(siteName.trim(), username.trim(), securePassword, type)
+                                        siteName = ""
+                                        username = ""
+                                        generatedPassword = if (isPinMode) {
+                                            PassphraseGenerator.generatePin(numberLength)
+                                        } else {
+                                            PassphraseGenerator.generate(numberLength)
+                                        }
+                                        Toast.makeText(context, "Saved to Vault", Toast.LENGTH_SHORT).show()
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        selectedTabIndex = 1
+                                    } catch (e: SecurityException) {
+                                        Toast.makeText(context, "Encryption failed. Could not save password safely.", Toast.LENGTH_LONG).show()
                                     }
-                                    Toast.makeText(context, "Saved to Vault", Toast.LENGTH_SHORT).show()
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    selectedTabIndex = 1
                                 }
                             },
                             modifier = Modifier
@@ -1131,8 +1136,8 @@ private fun PasswordListItem(
                                         }
                                         IconButton(
                                             onClick = {
-                                                clipboardManager.setText(AnnotatedString(decryptedPastPw))
-                                                Toast.makeText(context, "Copied past password!", Toast.LENGTH_SHORT).show()
+                                                ClipboardUtils.copySensitiveText(context, "Vault Password", decryptedPastPw)
+                                                Toast.makeText(context, "Copied past password! (Auto-clears in 30s)", Toast.LENGTH_SHORT).show()
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             },
                                             modifier = Modifier.size(32.dp)
@@ -1179,16 +1184,21 @@ private fun PasswordListItem(
                                 password.history
                             }
 
-                            onUpdate(
-                                password.copy(
-                                    siteName = editSite.trim(),
-                                    username = editUsername.trim(),
-                                    passwordValue = SecurityUtils.encrypt(editPassword),
-                                    history = updatedHistory,
-                                    updatedAt = System.currentTimeMillis()
+                            try {
+                                val encryptedEditPassword = SecurityUtils.encrypt(editPassword)
+                                onUpdate(
+                                    password.copy(
+                                        siteName = editSite.trim(),
+                                        username = editUsername.trim(),
+                                        passwordValue = encryptedEditPassword,
+                                        history = updatedHistory,
+                                        updatedAt = System.currentTimeMillis()
+                                    )
                                 )
-                            )
-                            showEditSheet = false
+                                showEditSheet = false
+                            } catch (e: SecurityException) {
+                                Toast.makeText(context, "Encryption failed. Password not updated.", Toast.LENGTH_LONG).show()
+                            }
                         },
                         modifier = Modifier
                             .weight(1f)
@@ -1365,13 +1375,9 @@ private fun PasswordListItem(
 
                     FilledTonalIconButton(
                         onClick = {
-                            clipboardManager.setText(AnnotatedString(decryptedPassword))
+                            ClipboardUtils.copySensitiveText(context, "Vault Password", decryptedPassword)
                             Toast.makeText(context, "Password copied! (Auto-clears in 30s)", Toast.LENGTH_SHORT).show()
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            coroutineScope.launch {
-                                delay(30_000L)
-                                clipboardManager.setText(AnnotatedString(""))
-                            }
                         },
                         modifier = Modifier.size(38.dp),
                         colors = IconButtonDefaults.filledTonalIconButtonColors(

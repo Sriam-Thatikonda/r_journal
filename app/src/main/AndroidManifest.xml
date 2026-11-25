@@ -52,7 +52,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.baverika.r_journal.ACTION_TOGGLE_HABIT" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -71,23 +70,11 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.baverika.r_journal.ACTION_REFRESH_QUOTE_WIDGET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/quote_widget_info" />
         </receiver>
-
-        <!-- Screen Unlock Receiver for quote widget refresh -->
-        <receiver
-            android:name=".quotes.widget.ScreenUnlockReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.USER_PRESENT" />
-            </intent-filter>
-        </receiver>
-
-
 
         <!-- Task List Widget -->
         <receiver
@@ -96,8 +83,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.baverika.r_journal.ACTION_TOGGLE_TASK" />
-                <action android:name="com.baverika.r_journal.ACTION_QUICK_ADD_TASK" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -111,7 +96,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.baverika.r_journal.ACTION_INCREMENT_TRACKER" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -148,12 +132,16 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.baverika.r_journal.ACTION_INCREMENT_SINGLE_TRACKER" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/tracker_single_widget_info" />
         </receiver>
+
+        <!-- Internal non-exported receiver for AppWidget interaction PendingIntents -->
+        <receiver
+            android:name=".receiver.WidgetActionReceiver"
+            android:exported="false" />
 
         <service
             android:name=".tasks.widget.TaskWidgetService"
