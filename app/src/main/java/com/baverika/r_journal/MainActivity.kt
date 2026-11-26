@@ -578,6 +578,8 @@ fun MainApp(
             AmbientBackdrop(
                 modifier = Modifier
                     .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .imePadding()
                     .fillMaxSize()
             ) {
                 NavHost(
