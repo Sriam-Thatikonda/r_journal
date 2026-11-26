@@ -8,22 +8,24 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import androidx.compose.ui.graphics.SolidColor
 import com.baverika.r_journal.ui.components.HighlightedText
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -48,7 +50,7 @@ fun SearchScreen(
     val results by viewModel.searchResults.collectAsState()
 
     val focusRequester = remember { FocusRequester() }
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     val searchSuggestions = listOf(
         "Today", "#gratitude", "#work", "Health", "#ideas", "Goal", "Habit"
@@ -65,10 +67,11 @@ fun SearchScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isSpace) Color(0xE6000000) else MaterialTheme.colorScheme.surface
+                    containerColor = tokens.barGlass
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -79,13 +82,10 @@ fun SearchScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(
-                                if (isSpace) Modifier
-                                    .background(Color(0x8014161B), RoundedCornerShape(20.dp))
-                                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                                else Modifier
-                            ),
+                            .clip(CircleShape)
+                            .background(tokens.inputContainer)
+                            .border(1.dp, tokens.borderDefault, CircleShape)
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         if (query.isEmpty()) {
@@ -250,7 +250,7 @@ fun UnifiedSearchResultCard(
     query: String = "",
     onClick: () -> Unit
 ) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     val (icon, badgeEmoji, tint) = when (item.category) {
         SearchCategory.JOURNAL -> Triple(Icons.Default.Book, "📖", MaterialTheme.colorScheme.primary)
@@ -264,13 +264,14 @@ fun UnifiedSearchResultCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale()
             .clickable { onClick() },
-        shape = RoundedCornerShape(if (isSpace) 18.dp else 14.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surface
+            containerColor = tokens.cardContainer
         ),
-        border = BorderStroke(1.dp, if (isSpace) Color(0x2EFFFFFF) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 2.dp)
+        border = tokens.strokeSubtle,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -280,14 +281,14 @@ fun UnifiedSearchResultCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = if (isSpace) Color(0x26FFFFFF) else tint.copy(alpha = 0.15f),
+                color = tint.copy(alpha = 0.14f),
                 modifier = Modifier.size(42.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isSpace) Color(0xFFF3F4F6) else tint,
+                        tint = tint,
                         modifier = Modifier.size(22.dp)
                     )
                 }

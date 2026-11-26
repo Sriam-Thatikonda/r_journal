@@ -15,6 +15,8 @@ import androidx.lifecycle.viewModelScope
 import com.baverika.r_journal.data.local.entity.ChatMessage
 import com.baverika.r_journal.data.local.entity.Event
 import com.baverika.r_journal.data.local.entity.JournalEntry
+import com.baverika.r_journal.data.model.MoodCatalog
+import com.baverika.r_journal.data.model.MoodSelectionState
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.utils.EventTaskGenerator
@@ -428,41 +430,39 @@ class JournalViewModel(
         return messageDate != entryDate
     }
 
-    // Support multiple mood selection with 1-3 limit
-    fun toggleMood(mood: String) {
-        // ✅ Allow editing mood for any entry
-        // if (!canEditMood) return
-
-        val moodTag = "#mood-$mood"
-        val currentMoodTags = currentEntry.tags.filter { it.startsWith("#mood-") }
-
-        val updatedTags = if (moodTag in currentEntry.tags) {
-            // Deselect mood - remove it
-            currentEntry.tags.filterNot { it == moodTag }
-        } else {
-            // Select mood - add it (if under limit)
-            if (currentMoodTags.size >= 3) {
-                // Already at limit, don't add
-                return
-            }
-            currentEntry.tags + moodTag
-        }
-
-        // Update mood field to reflect selected moods
-        val selectedMoods = updatedTags.filter { it.startsWith("#mood-") }
-            .map { it.removePrefix("#mood-") }
-        val moodString = if (selectedMoods.isNotEmpty()) selectedMoods.joinToString(",") else null
-
+    fun setPrimaryMood(moodId: String) {
+        val updatedTags = MoodCatalog.applyPrimaryMood(currentEntry.tags, moodId)
+        val moodString = MoodCatalog.moodSummaryString(updatedTags)
         currentEntry = currentEntry.copy(tags = updatedTags, mood = moodString)
         saveCurrentEntry()
     }
 
+    fun toggleSecondaryMood(moodId: String) {
+        val updatedTags = MoodCatalog.applySecondaryMood(currentEntry.tags, moodId)
+        if (updatedTags == currentEntry.tags) return
+        val moodString = MoodCatalog.moodSummaryString(updatedTags)
+        currentEntry = currentEntry.copy(tags = updatedTags, mood = moodString)
+        saveCurrentEntry()
+    }
+
+    fun clearMoods() {
+        val updatedTags = MoodCatalog.clearMoods(currentEntry.tags)
+        currentEntry = currentEntry.copy(tags = updatedTags, mood = null)
+        saveCurrentEntry()
+    }
+
+    fun getMoodSelection(): MoodSelectionState {
+        return MoodCatalog.extractSelection(currentEntry.tags)
+    }
+
+    // Backwards-compatible single-tap toggle delegates to primary mood
+    fun toggleMood(mood: String) {
+        setPrimaryMood(mood)
+    }
+
     // Get currently selected moods
     fun getSelectedMoods(): Set<String> {
-        return currentEntry.tags
-            .filter { it.startsWith("#mood-") }
-            .map { it.removePrefix("#mood-") }
-            .toSet()
+        return MoodCatalog.extractSelection(currentEntry.tags).allSelectedIds.toSet()
     }
 
     private fun saveCurrentEntry() {

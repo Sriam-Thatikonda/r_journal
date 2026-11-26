@@ -10,6 +10,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 import com.baverika.r_journal.data.local.entity.JournalEntrySummary
+import com.baverika.r_journal.data.model.MoodCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -40,17 +41,7 @@ class JournalRepository(
                     // ✅ Pre-calculate UI strings here (Background Thread)
                     moodEmojis = entry.tags
                         .filter { it.startsWith("#mood-") }
-                        .map { tag ->
-                            when (tag.removePrefix("#mood-")) {
-                                "happy" -> "\uD83D\uDE0A"
-                                "calm" -> "\uD83D\uDE0C"
-                                "anxious" -> "\uD83D\uDE30"
-                                "sad" -> "\uD83D\uDE22"
-                                "tired" -> "\uD83D\uDE34"
-                                "excited" -> "\uD83E\uDD29"
-                                else -> "😶"
-                            }
-                        },
+                        .map { tag -> MoodCatalog.emojiForTagOrId(tag) },
                     dayOfWeek = entryDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE")),
                     dateFormatted = entryDate.format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy")),
                     searchableText = allText
@@ -70,16 +61,7 @@ class JournalRepository(
         val zoneId = ZoneId.systemDefault()
 
         // Helper to get score from mood tag
-        fun getMoodScore(tag: String): Int {
-            return when (tag.removePrefix("#mood-")) {
-                "happy", "excited" -> 5
-                "calm" -> 4
-                "tired" -> 3
-                "anxious" -> 2
-                "sad" -> 1
-                else -> 0
-            }
-        }
+        fun getMoodScore(tag: String): Int = MoodCatalog.scoreForTagOrId(tag)
 
         // Helper to calculate average for a list of entries
         fun calculateAverage(filteredEntries: List<JournalEntry>): Float {

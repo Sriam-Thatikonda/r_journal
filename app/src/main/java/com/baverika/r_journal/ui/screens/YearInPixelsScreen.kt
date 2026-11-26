@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.baverika.r_journal.data.model.MoodCatalog
 import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
 import com.baverika.r_journal.ui.viewmodel.YearInPixelsViewModel
@@ -44,18 +45,19 @@ enum class HeatmapViewMode {
 
 data class MoodDescriptor(val name: String, val emoji: String, val colorDark: Color, val colorLight: Color)
 
-val MOOD_DESCRIPTORS = listOf(
-    MoodDescriptor("Happy", "☀️", Color(0xFFFFC107), Color(0xFFFFB300)),
-    MoodDescriptor("Calm", "🌿", Color(0xFF26A69A), Color(0xFF00897B)),
-    MoodDescriptor("Anxious", "⚡", Color(0xFFAB47BC), Color(0xFF8E24AA)),
-    MoodDescriptor("Sad", "🌧️", Color(0xFF42A5F5), Color(0xFF1E88E5)),
-    MoodDescriptor("Tired", "🌙", Color(0xFF78909C), Color(0xFF546E7A))
-)
+val MOOD_DESCRIPTORS: List<MoodDescriptor> = MoodCatalog.all.map {
+    MoodDescriptor(
+        name = it.heatmapName,
+        emoji = it.emoji,
+        colorDark = it.colorDark,
+        colorLight = it.colorLight
+    )
+}
 
 @Composable
 fun getMoodColors(): Map<String, Color> {
     val currentTheme = LocalAppTheme.current
-    val isDarkTheme = currentTheme != AppTheme.LIGHT && currentTheme != AppTheme.CLOUD_DANCER
+    val isDarkTheme = currentTheme.isDark
     return MOOD_DESCRIPTORS.associate { it.name to if (isDarkTheme) it.colorDark else it.colorLight }
 }
 
@@ -63,12 +65,10 @@ fun getMoodColors(): Map<String, Color> {
 fun getEmptyCellColor(): Color {
     val currentTheme = LocalAppTheme.current
     return when (currentTheme) {
-        AppTheme.LIGHT -> Color(0xFFEBEDF0)
-        AppTheme.CLOUD_DANCER -> Color(0xFFE4E0D6)
-        AppTheme.MIDNIGHT -> Color(0xFF161B22)
+        AppTheme.IVORY -> Color(0xFFE4E0D6)
+        AppTheme.OBSIDIAN -> Color(0xFF161B22)
         AppTheme.OCEAN -> Color(0xFF0D2137)
-        AppTheme.ROSEWOOD -> Color(0xFF14161A)
-        AppTheme.BLUE_SKY -> Color(0xFF081428)
+        AppTheme.SPACE -> Color(0xFF14161A)
     }
 }
 

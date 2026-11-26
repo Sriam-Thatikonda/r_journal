@@ -15,6 +15,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,12 +34,17 @@ fun CravingLogCard(
         .atZone(ZoneId.systemDefault())
         .format(formatter)
 
+    val tokens = LocalDesignTokens.current
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .pressScale(),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        )
+            containerColor = tokens.cardContainer
+        ),
+        border = tokens.strokeSubtle
     ) {
         Column(
             modifier = Modifier

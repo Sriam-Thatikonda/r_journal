@@ -9,81 +9,58 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.verticalScroll
-//import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.automirrored.filled.Note
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import kotlinx.coroutines.launch
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
-//import androidx.compose.ui.platform.LocalLifecycleOwner
-//import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.baverika.r_journal.data.local.database.JournalDatabase
+import com.baverika.r_journal.repository.ChallengeRepository
+import com.baverika.r_journal.repository.CravingQuestRepository
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
-import com.baverika.r_journal.repository.QuickNoteRepository
-
-import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.repository.PasswordRepository
-import com.baverika.r_journal.repository.CravingQuestRepository
-import com.baverika.r_journal.repository.ChallengeRepository
+import com.baverika.r_journal.repository.QuickNoteRepository
+import com.baverika.r_journal.repository.SettingsRepository
+import com.baverika.r_journal.ui.components.AmbientBackdrop
+import com.baverika.r_journal.ui.components.FloatingBottomDock
+import com.baverika.r_journal.ui.components.PremiumDrawerContent
+import com.baverika.r_journal.ui.components.PremiumFab
+import com.baverika.r_journal.ui.components.PremiumLockScreen
+import com.baverika.r_journal.ui.components.PremiumSpeedDialSheet
+import com.baverika.r_journal.ui.components.PremiumTopBar
+import com.baverika.r_journal.ui.screens.*
+import com.baverika.r_journal.ui.theme.AppFontStyle
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.RJournalTheme
+import com.baverika.r_journal.ui.theme.RouteTransitions
 import com.baverika.r_journal.ui.viewmodel.CravingQuestViewModel
 import com.baverika.r_journal.ui.viewmodel.CravingQuestViewModelFactory
-
-import com.baverika.r_journal.ui.screens.*
-import com.baverika.r_journal.ui.theme.RJournalTheme
 import com.baverika.r_journal.ui.viewmodel.EventViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import com.baverika.r_journal.ui.viewmodel.HabitViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.JournalViewModelFactory
-import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
-
-import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
 import com.baverika.r_journal.ui.viewmodel.PasswordViewModelFactory
-
+import com.baverika.r_journal.ui.viewmodel.QuickNoteViewModelFactory
+import com.baverika.r_journal.ui.viewmodel.SearchViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
@@ -145,6 +122,7 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         val db = JournalDatabase.getDatabase(this)
@@ -213,59 +191,33 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
+            var currentFontStyle by remember { mutableStateOf(settingsRepo.appFontStyle) }
 
-            RJournalTheme(theme = currentTheme) {
+            RJournalTheme(theme = currentTheme, fontStyle = currentFontStyle) {
 
                 if (isLocked) {
-                    // Lock Screen
-                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Locked",
-                                modifier = Modifier.size(80.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Journal Locked", style = MaterialTheme.typography.headlineMedium)
-                            lockErrorMessage?.let { msg ->
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = msg,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 32.dp),
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    PremiumLockScreen(
+                        errorMessage = lockErrorMessage,
+                        onUnlockClick = {
+                            if (com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this@MainActivity)) {
+                                lockErrorMessage = null
+                                com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                                    activity = this@MainActivity,
+                                    onSuccess = {
+                                        isLocked = false
+                                        lockErrorMessage = null
+                                    },
+                                    onError = {}
                                 )
-                            }
-                            Spacer(modifier = Modifier.height(32.dp))
-                            Button(onClick = {
-                                if (com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(this@MainActivity)) {
-                                    lockErrorMessage = null
-                                    com.baverika.r_journal.utils.BiometricHelper.authenticate(
-                                        activity = this@MainActivity,
-                                        onSuccess = {
-                                            isLocked = false
-                                            lockErrorMessage = null
-                                        },
-                                        onError = {}
-                                    )
-                                } else {
-                                    lockErrorMessage = "Enable a screen lock or biometric in Android Settings to unlock."
-                                }
-                            }) {
-                                Text("Unlock")
+                            } else {
+                                lockErrorMessage = "Enable a screen lock or biometric in Android Settings to unlock."
                             }
                         }
-                    }
+                    )
                 } else {
                     // Check if launched from widget with navigation intent
                     val initialRoute = intent?.getStringExtra("navigate_to") ?: "archive"
-                    
+
                     MainApp(
                         journalRepo = journalRepo,
                         quickNoteRepo = quickNoteRepo,
@@ -280,11 +232,10 @@ class MainActivity : FragmentActivity() {
                         challengeRepo = challengeRepo,
                         settingsRepo = settingsRepo,
                         initialRoute = initialRoute,
-                        onThemeChanged = { newTheme -> currentTheme = newTheme }
+                        onThemeChanged = { newTheme -> currentTheme = newTheme },
+                        onFontStyleChanged = { newFontStyle -> currentFontStyle = newFontStyle }
                     )
                 }
-
-
             }
         }
     }
@@ -306,13 +257,15 @@ fun MainApp(
     challengeRepo: ChallengeRepository,
     settingsRepo: SettingsRepository = SettingsRepository(LocalContext.current),
     initialRoute: String = "archive",
-    onThemeChanged: (com.baverika.r_journal.ui.theme.AppTheme) -> Unit = {}
+    onThemeChanged: (AppTheme) -> Unit = {},
+    onFontStyleChanged: (AppFontStyle) -> Unit = {}
 ) {
 
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val navController = rememberNavController()
+    val tokens = LocalDesignTokens.current
 
     // ViewModel for app-wide events (Birthday Easter Egg)
     val mainViewModel: com.baverika.r_journal.ui.viewmodel.MainViewModel = viewModel(
@@ -346,14 +299,12 @@ fun MainApp(
     )
     val isDrawerGestureEnabled = currentRoute in topLevelRoutes
 
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
-
     ModalNavigationDrawer(
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = if (isSpace) Color(0xF208090C) else DrawerDefaults.modalContainerColor
+                drawerContainerColor = tokens.sheetContainer
             ) {
-                DrawerContent(
+                PremiumDrawerContent(
                     currentRoute = currentRoute,
                     onScreenSelected = { route ->
                         navController.navigate(route) {
@@ -371,7 +322,6 @@ fun MainApp(
         drawerState = drawerState,
         gesturesEnabled = isDrawerGestureEnabled
     ) {
-        @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
         var isSearchActive by remember { mutableStateOf(false) }
         var topBarSearchQuery by remember { mutableStateOf("") }
 
@@ -397,7 +347,114 @@ fun MainApp(
             keyboardController?.hide()
         }
 
+        var isBiometricEnabled by remember(currentRoute) { mutableStateOf(settingsRepo.isBiometricEnabled) }
+        var showSpeedDialSheet by remember { mutableStateOf(false) }
+
+        val quickNoteViewModelForTopBar: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel? =
+            if (currentRoute == "quick_notes") {
+                viewModel(factory = QuickNoteViewModelFactory(quickNoteRepo, context))
+            } else null
+        val quickNotesLayoutType = quickNoteViewModelForTopBar?.layoutType?.collectAsState()?.value
+
+        val screenTitle = when {
+            currentRoute == "archive" -> "R-Journal"
+            currentRoute == "quick_notes" -> "Quick Notes"
+            currentRoute == "tasks" -> "Tasks"
+            currentRoute == "habits" -> "Habit Tracker"
+            currentRoute == "password_generator" -> "Password Vault"
+            currentRoute == "quotes" -> "Quotes"
+            currentRoute == "calendar" -> "Calendar"
+            currentRoute == "events" -> "Special Dates"
+            currentRoute == "life_trackers" -> "Life Milestones"
+            currentRoute == "trackers" -> "Trackers"
+            currentRoute == "craving_quest" -> "Craving Quest"
+            currentRoute == "challenges" -> "Challenges"
+            currentRoute == "challenge_history" -> "Challenge History"
+            currentRoute?.startsWith("challenge_detail") == true -> "Challenge Details"
+            currentRoute == "year_in_pixels" -> "Mood Heatmap"
+            currentRoute == "search" -> "Search"
+            currentRoute == "dashboard" -> "Dashboard"
+            currentRoute == "settings" -> "Settings"
+            currentRoute?.startsWith("chat_input") == true -> {
+                val backStackEntry = navController.currentBackStackEntry
+                if (backStackEntry != null) {
+                    val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
+                        viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
+                    val entry = journalViewModel.currentEntry
+                    if (entry.id == "mine") {
+                        "Mine"
+                    } else {
+                        val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
+                        if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
+                    }
+                } else "Journal Entry"
+            }
+            else -> "R-Journal"
+        }
+
+        val bottomNavItems = listOf(
+            MainActivity.BottomNavItem.Journal,
+            MainActivity.BottomNavItem.QuickNotes,
+            MainActivity.BottomNavItem.Tasks
+        )
+        val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+
+        val fabAction: (() -> Unit)?
+        val fabIcon: ImageVector?
+        val fabDesc: String?
+
+        when (currentRoute) {
+            "archive" -> {
+                fabAction = { navController.navigate("chat_input") }
+                fabIcon = Icons.AutoMirrored.Filled.Chat
+                fabDesc = "New Journal Entry"
+            }
+            "quick_notes" -> {
+                fabAction = { navController.navigate("new_quick_note") }
+                fabIcon = Icons.Filled.Add
+                fabDesc = "New Quick Note"
+            }
+            "tasks" -> {
+                fabAction = { navController.navigate("add_task") }
+                fabIcon = Icons.Filled.Add
+                fabDesc = "New Task"
+            }
+            "trackers" -> {
+                fabAction = { navController.navigate("add_tracker") }
+                fabIcon = Icons.Filled.Add
+                fabDesc = "New Tracker"
+            }
+            "craving_quest" -> {
+                fabAction = { navController.navigate("add_craving") }
+                fabIcon = Icons.Filled.Add
+                fabDesc = "Log Craving"
+            }
+            "challenges" -> {
+                fabAction = { navController.navigate("create_challenge") }
+                fabIcon = Icons.Filled.Add
+                fabDesc = "New Challenge"
+            }
+            "habits" -> {
+                fabAction = { navController.navigate("add_habit") }
+                fabIcon = Icons.Filled.Add
+                fabDesc = "New Habit"
+            }
+            else -> {
+                fabAction = null
+                fabIcon = null
+                fabDesc = null
+            }
+        }
+
+        if (showSpeedDialSheet) {
+            PremiumSpeedDialSheet(
+                onDismiss = { showSpeedDialSheet = false },
+                onNavigate = { route -> navController.navigate(route) }
+            )
+        }
+
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 val screensWithCustomHeader = setOf(
                     "new_quick_note",
@@ -409,530 +466,127 @@ fun MainApp(
                     "search"
                 )
                 val hideGlobalTopBar = screensWithCustomHeader.contains(currentRoute) ||
-                        currentRoute?.startsWith("search") == true ||
-                        currentRoute?.startsWith("edit_quick_note") == true ||
-                        currentRoute?.startsWith("edit_task") == true ||
-                        currentRoute?.startsWith("add_habit") == true ||
-                        currentRoute?.startsWith("edit_tracker") == true ||
-                        currentRoute?.startsWith("habit_detail") == true ||
-                        currentRoute?.startsWith("habit_year_overview") == true ||
-                        currentRoute?.startsWith("tracker_detail") == true ||
-                        currentRoute?.startsWith("craving_detail") == true
+                    currentRoute?.startsWith("search") == true ||
+                    currentRoute?.startsWith("edit_quick_note") == true ||
+                    currentRoute?.startsWith("edit_task") == true ||
+                    currentRoute?.startsWith("add_habit") == true ||
+                    currentRoute?.startsWith("edit_tracker") == true ||
+                    currentRoute?.startsWith("habit_detail") == true ||
+                    currentRoute?.startsWith("habit_year_overview") == true ||
+                    currentRoute?.startsWith("tracker_detail") == true ||
+                    currentRoute?.startsWith("craving_detail") == true
 
                 if (!hideGlobalTopBar) {
-                    if (isSearchActive) {
-                        TopAppBar(
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = if (isSpace) Color(0xE6000000) else MaterialTheme.colorScheme.surface
-                            ),
-                            title = {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .then(
-                                            if (isSpace) Modifier
-                                                .background(Color(0x8014161B), RoundedCornerShape(20.dp))
-                                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
-                                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                            else Modifier
-                                        ),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    if (topBarSearchQuery.isEmpty()) {
-                                        val placeholderText = when (currentRoute) {
-                                            "archive" -> "Search journals..."
-                                            "quick_notes" -> "Search notes..."
-                                            "tasks" -> "Search tasks..."
-                                            "trackers" -> "Search trackers..."
-                                            else -> "Search..."
-                                        }
-                                        Text(
-                                            text = placeholderText,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                    BasicTextField(
-                                        value = topBarSearchQuery,
-                                        onValueChange = { topBarSearchQuery = it },
-                                        textStyle = MaterialTheme.typography.titleMedium.copy(
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        ),
-                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                        singleLine = true,
-                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                            imeAction = androidx.compose.ui.text.input.ImeAction.Search
-                                        ),
-                                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                                            onSearch = {
-                                                keyboardController?.hide()
-                                            }
-                                        ),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .focusRequester(searchFocusRequester)
-                                    )
-                                }
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = {
-                                    isSearchActive = false
-                                    topBarSearchQuery = ""
-                                    keyboardController?.hide()
-                                }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close search")
-                                }
-                            },
-                            actions = {
-                                IconButton(
-                                    onClick = {
-                                        val q = topBarSearchQuery.trim()
-                                        isSearchActive = false
-                                        topBarSearchQuery = ""
-                                        keyboardController?.hide()
-                                        if (q.isNotEmpty()) {
-                                            navController.navigate("search?query=${android.net.Uri.encode(q)}")
-                                        } else {
-                                            navController.navigate("search")
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.TravelExplore,
-                                        contentDescription = "Search Everywhere (Global Search)",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                if (topBarSearchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { topBarSearchQuery = "" }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear search")
-                                    }
-                                }
-                                if (currentRoute == "quick_notes") {
-                                    val quickNoteViewModel: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel = viewModel(
-                                        factory = QuickNoteViewModelFactory(quickNoteRepo, context)
-                                    )
-                                    val layoutType by quickNoteViewModel.layoutType.collectAsState()
-                                    IconButton(
-                                        onClick = {
-                                            val newLayout = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
-                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_LIST
-                                            } else {
-                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY
-                                            }
-                                            quickNoteViewModel.setLayoutType(newLayout)
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
-                                                Icons.Default.ViewAgenda
-                                            } else {
-                                                Icons.Default.GridView
-                                            },
-                                            contentDescription = "Toggle Layout"
-                                        )
-                                    }
-                                }
+                    PremiumTopBar(
+                        currentRoute = currentRoute,
+                        screenTitle = screenTitle,
+                        isSearchActive = isSearchActive,
+                        topBarSearchQuery = topBarSearchQuery,
+                        searchFocusRequester = searchFocusRequester,
+                        isBiometricEnabled = isBiometricEnabled,
+                        quickNotesLayoutType = quickNotesLayoutType,
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                        onBack = { navController.popBackStack() },
+                        onActivateSearch = { isSearchActive = true },
+                        onCloseSearch = {
+                            isSearchActive = false
+                            topBarSearchQuery = ""
+                            keyboardController?.hide()
+                        },
+                        onSearchQueryChange = { topBarSearchQuery = it },
+                        onSubmitGlobalSearch = {
+                            val q = topBarSearchQuery.trim()
+                            isSearchActive = false
+                            topBarSearchQuery = ""
+                            keyboardController?.hide()
+                            if (q.isNotEmpty()) {
+                                navController.navigate("search?query=${android.net.Uri.encode(q)}")
+                            } else {
+                                navController.navigate("search")
                             }
-                        )
-                    } else {
-                        val screenTitle = when {
-                            currentRoute == "archive" -> "R-Journal"
-                            currentRoute == "quick_notes" -> "Quick Notes"
-                            currentRoute == "tasks" -> "Tasks"
-                            currentRoute == "habits" -> "Habit Tracker"
-                            currentRoute == "password_generator" -> "Password Generator"
-                            currentRoute == "quotes" -> "Motivational Quotes"
-                            currentRoute == "calendar" -> "Calendar"
-                            currentRoute == "events" -> "Special Dates"
-                            currentRoute == "life_trackers" -> "Life Milestones"
-                            currentRoute == "trackers" -> "Trackers"
-                            currentRoute == "craving_quest" -> "Craving Quest"
-                            currentRoute == "challenges" -> "Challenge Tracker"
-                            currentRoute == "challenge_history" -> "Challenge History"
-                            currentRoute?.startsWith("challenge_detail") == true -> "Challenge Details"
-                            currentRoute == "year_in_pixels" -> "Mood Heatmap"
-                            currentRoute == "search" -> "Search"
-                            currentRoute == "dashboard" -> "Dashboard"
-                            currentRoute == "settings" -> "Settings"
-                            currentRoute?.startsWith("chat_input") == true -> {
-                                val backStackEntry = navController.currentBackStackEntry
-                                if (backStackEntry != null) {
-                                    val journalViewModel: com.baverika.r_journal.ui.viewmodel.JournalViewModel =
-                                        viewModel(viewModelStoreOwner = backStackEntry, factory = JournalViewModelFactory(journalRepo, eventRepo, context))
-                                    val entry = journalViewModel.currentEntry
-                                    if (entry.id == "mine") {
-                                        "Mine"
-                                    } else {
-                                        val dateText = entry.localDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
-                                        if (journalViewModel.isCurrentEntryToday) "Today • $dateText" else dateText
-                                    }
-                                } else "Journal Entry"
-                            }
-                            else -> "R-Journal"
-                        }
-
-                        val showBackButton = currentRoute != "archive"
-
-                        TopAppBar(
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = if (isSpace) Color(0xE6000000) else MaterialTheme.colorScheme.surface
-                            ),
-                            title = { 
-                                Text(
-                                    text = screenTitle,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                ) 
-                            },
-                            navigationIcon = {
-                                if (showBackButton) {
-                                    IconButton(onClick = { navController.popBackStack() }) {
-                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                                    }
+                        },
+                        onOpenGlobalSearch = { navController.navigate("search") },
+                        onHideKeyboard = { keyboardController?.hide() },
+                        onToggleBiometric = { enabled ->
+                            val activity = context as? FragmentActivity
+                            if (enabled) {
+                                if (com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(context)) {
+                                    isBiometricEnabled = true
+                                    settingsRepo.isBiometricEnabled = true
+                                    MainActivity.updateSecureWindowFlag(activity, true)
                                 } else {
-                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                        Icon(Icons.Filled.Menu, contentDescription = "Menu")
-                                    }
+                                    Toast.makeText(context, "Set up a screen lock or biometric in Android Settings first.", Toast.LENGTH_SHORT).show()
                                 }
-                            },
-                            actions = {
-                                if (currentRoute == "archive" || currentRoute == "quick_notes" || currentRoute == "tasks" || currentRoute == "trackers") {
-                                    val haptic = LocalHapticFeedback.current
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .combinedClickable(
-                                                onClick = { isSearchActive = true },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    navController.navigate("search")
-                                                }
-                                            )
-                                            .padding(12.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Search,
-                                            contentDescription = "Search (Hold for Global Search)",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                if (currentRoute == "quotes") {
-                                    IconButton(onClick = { navController.navigate("quote_widget_settings") }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = "Widget Settings",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                if (currentRoute == "archive") {
-                                    // Biometric Toggle
-                                    var isBiometricEnabled by remember(currentRoute) { mutableStateOf(settingsRepo.isBiometricEnabled) }
-                                    val activity = context as? FragmentActivity
-
-                                    IconToggleButton(
-                                        checked = isBiometricEnabled,
-                                        onCheckedChange = { enabled ->
-                                            if (enabled) {
-                                                if (com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(context)) {
-                                                    isBiometricEnabled = true
-                                                    settingsRepo.isBiometricEnabled = true
-                                                    MainActivity.updateSecureWindowFlag(activity, true)
-                                                } else {
-                                                    Toast.makeText(context, "Set up a screen lock or biometric in Android Settings first.", Toast.LENGTH_SHORT).show()
-                                                }
-                                            } else if (activity != null && com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(context)) {
-                                                com.baverika.r_journal.utils.BiometricHelper.authenticate(
-                                                    activity = activity,
-                                                    title = "Disable Biometric Lock",
-                                                    subtitle = "Confirm your identity to turn off app lock",
-                                                    onSuccess = {
-                                                        isBiometricEnabled = false
-                                                        settingsRepo.isBiometricEnabled = false
-                                                        MainActivity.updateSecureWindowFlag(activity, false)
-                                                    },
-                                                    onError = {}
-                                                )
-                                            } else {
-                                                isBiometricEnabled = false
-                                                settingsRepo.isBiometricEnabled = false
-                                                MainActivity.updateSecureWindowFlag(activity, false)
-                                            }
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isBiometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
-                                            contentDescription = if (isBiometricEnabled) "Biometric Lock On" else "Biometric Lock Off",
-                                            tint = if (isBiometricEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                if (currentRoute == "quick_notes") {
-                                    val quickNoteViewModel: com.baverika.r_journal.ui.viewmodel.QuickNoteViewModel = viewModel(
-                                        factory = QuickNoteViewModelFactory(quickNoteRepo, context)
-                                    )
-                                    val layoutType by quickNoteViewModel.layoutType.collectAsState()
-                                    IconButton(
-                                        onClick = {
-                                            val newLayout = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
-                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_LIST
-                                            } else {
-                                                com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY
-                                            }
-                                            quickNoteViewModel.setLayoutType(newLayout)
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (layoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
-                                                Icons.Default.ViewAgenda
-                                            } else {
-                                                Icons.Default.GridView
-                                            },
-                                            contentDescription = "Toggle Layout"
-                                        )
-                                    }
-                                }
-                                if (currentRoute == "challenges") {
-                                    IconButton(onClick = { navController.navigate("challenge_history") }) {
-                                        Icon(
-                                            imageVector = Icons.Default.History,
-                                            contentDescription = "Challenge History",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                            } else if (activity != null && com.baverika.r_journal.utils.BiometricHelper.isBiometricAvailable(context)) {
+                                com.baverika.r_journal.utils.BiometricHelper.authenticate(
+                                    activity = activity,
+                                    title = "Disable Biometric Lock",
+                                    subtitle = "Confirm your identity to turn off app lock",
+                                    onSuccess = {
+                                        isBiometricEnabled = false
+                                        settingsRepo.isBiometricEnabled = false
+                                        MainActivity.updateSecureWindowFlag(activity, false)
+                                    },
+                                    onError = {}
+                                )
+                            } else {
+                                isBiometricEnabled = false
+                                settingsRepo.isBiometricEnabled = false
+                                MainActivity.updateSecureWindowFlag(activity, false)
                             }
-                        )
-                    }
+                        },
+                        onToggleQuickNotesLayout = {
+                            quickNoteViewModelForTopBar?.let { vm ->
+                                val newLayout = if (quickNotesLayoutType == com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY) {
+                                    com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_LIST
+                                } else {
+                                    com.baverika.r_journal.data.local.QuickNotesPreferences.LAYOUT_MASONRY
+                                }
+                                vm.setLayoutType(newLayout)
+                            }
+                        },
+                        onOpenQuoteSettings = { navController.navigate("quote_widget_settings") },
+                        onOpenChallengeHistory = { navController.navigate("challenge_history") }
+                    )
                 }
             },
-        bottomBar = {
-            val bottomNavItems = listOf(
-                MainActivity.BottomNavItem.Journal,
-                MainActivity.BottomNavItem.QuickNotes,
-                MainActivity.BottomNavItem.Tasks
-            )
-            val showBottomBar = currentRoute in bottomNavItems.map { it.route }
-            
-            if (showBottomBar) {
-                NavigationBar(
-                    containerColor = if (isSpace) Color(0xE6050505) else NavigationBarDefaults.containerColor,
-                    modifier = if (isSpace) Modifier.border(width = 0.5.dp, color = Color(0x26FFFFFF), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) else Modifier
-                ) {
-                    val haptic = LocalHapticFeedback.current
-                    bottomNavItems.forEach { item ->
-                        val isSelected = currentRoute == item.route
-                        NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) },
-                            selected = isSelected,
-                            alwaysShowLabel = false,
-                            colors = if (isSpace) NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFFF3F4F6),
-                                selectedTextColor = Color(0xFFF3F4F6),
-                                indicatorColor = Color(0x26FFFFFF),
-                                unselectedIconColor = Color(0xFF9CA3AF),
-                                unselectedTextColor = Color(0xFF9CA3AF)
-                            ) else NavigationBarItemDefaults.colors(),
-                            onClick = {
-                                if (currentRoute != item.route) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    navController.navigate(item.route) {
-                                        popUpTo("archive") {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
+            bottomBar = {
+                FloatingBottomDock(
+                    visible = showBottomBar,
+                    items = bottomNavItems,
+                    currentRoute = currentRoute,
+                    onSelect = { item ->
+                        navController.navigate(item.route) {
+                            popUpTo("archive") {
+                                saveState = true
                             }
-                        )
-                    }
-                }
-            }
-        },
-        floatingActionButton = {
-            val fabAction: (() -> Unit)?
-            val fabIcon: ImageVector?
-            val fabDesc: String?
-            
-            when (currentRoute) {
-                "archive" -> {
-                    fabAction = { navController.navigate("chat_input") }
-                    fabIcon = Icons.AutoMirrored.Filled.Chat
-                    fabDesc = "New Journal Entry"
-                }
-                "quick_notes" -> {
-                    fabAction = { navController.navigate("new_quick_note") }
-                    fabIcon = Icons.Filled.Add
-                    fabDesc = "New Quick Note"
-                }
-                "tasks" -> {
-                    fabAction = { navController.navigate("add_task") }
-                    fabIcon = Icons.Filled.Add
-                    fabDesc = "New Task"
-                }
-                "craving_quest" -> {
-                    fabAction = { navController.navigate("add_craving") }
-                    fabIcon = Icons.Filled.Add
-                    fabDesc = "Log Craving"
-                }
-                "challenges" -> {
-                    fabAction = { navController.navigate("create_challenge") }
-                    fabIcon = Icons.Filled.Add
-                    fabDesc = "New Challenge"
-                }
-                "habits" -> {
-                    fabAction = { navController.navigate("add_habit") }
-                    fabIcon = Icons.Filled.Add
-                    fabDesc = "New Habit"
-                }
-                // Explicitly hide FAB for note creation/editing
-                "new_quick_note", "edit_quick_note/{noteId}" -> {
-                    fabAction = null
-                    fabIcon = null
-                    fabDesc = null
-                }
-                else -> {
-                    fabAction = null
-                    fabIcon = null
-                    fabDesc = null
-                }
-            }
-
-            var showSpeedDialSheet by remember { mutableStateOf(false) }
-
-            if (showSpeedDialSheet) {
-                ModalBottomSheet(
-                    onDismissRequest = { showSpeedDialSheet = false },
-                    containerColor = if (isSpace) Color(0xF208090C) else BottomSheetDefaults.ContainerColor
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = "Quick Action Speed Dial",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Long-press shortcut to create content from anywhere",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                        val speedDialItems = listOf(
-                            Triple("New Journal Entry", Icons.AutoMirrored.Filled.Chat) { navController.navigate("chat_input") },
-                            Triple("New Quick Note", Icons.AutoMirrored.Filled.NoteAdd) { navController.navigate("new_quick_note") },
-                            Triple("New Task", Icons.Default.CheckCircle) { navController.navigate("add_task") },
-                            Triple("New Tracker", Icons.Default.BarChart) { navController.navigate("add_tracker") },
-                            Triple("Log Craving", Icons.Default.Add) { navController.navigate("add_craving") },
-                            Triple("New Habit", Icons.Default.Add) { navController.navigate("add_habit") }
-                        )
-
-                        speedDialItems.forEach { (label, icon, action) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        showSpeedDialSheet = false
-                                        action()
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                }
-            }
-
-            val haptic = LocalHapticFeedback.current
-
-            if (fabAction != null && fabIcon != null) {
-                // Liquid Glass Translucent FAB adapted to active theme
-                val glassBorder = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = if (isSpace) 0.5f else 0.65f),
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                        Color.White.copy(alpha = if (isSpace) 0.15f else 0.2f)
-                    )
                 )
-                val glassFill = MaterialTheme.colorScheme.primary.copy(alpha = if (isSpace) 0.25f else 0.30f)
-
-                Surface(
-                    modifier = Modifier
-                        .padding(bottom = 6.dp, end = 2.dp)
-                        .size(76.dp)
-                        .clip(RoundedCornerShape(26.dp))
-                        .border(1.5.dp, glassBorder, RoundedCornerShape(26.dp))
-                        .combinedClickable(
-                            onClick = fabAction,
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                showSpeedDialSheet = true
-                            }
-                        ),
-                    shape = RoundedCornerShape(26.dp),
-                    color = glassFill,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    shadowElevation = 6.dp
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = if (isSpace) 0.22f else 0.32f),
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                                    )
-                                )
-                            )
-                    ) {
-                        Icon(
-                            imageVector = fabIcon,
-                            contentDescription = fabDesc,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-                }
+            },
+            floatingActionButton = {
+                PremiumFab(
+                    fabAction = fabAction,
+                    fabIcon = fabIcon,
+                    fabDesc = fabDesc,
+                    onLongPressSpeedDial = { showSpeedDialSheet = true }
+                )
             }
-        }
-    ) { padding ->
-            Box(
+        ) { padding ->
+            AmbientBackdrop(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
             ) {
-                // Navigation content
                 NavHost(
                     navController = navController,
-                    startDestination = initialRoute
+                    startDestination = initialRoute,
+                    enterTransition = { RouteTransitions.enterTransition(this) },
+                    exitTransition = { RouteTransitions.exitTransition(this) },
+                    popEnterTransition = { RouteTransitions.popEnterTransition(this) },
+                    popExitTransition = { RouteTransitions.popExitTransition(this) }
                 ) {
                     // Archive screen (default/home)
                     composable("archive") {
@@ -1234,7 +888,8 @@ fun MainApp(
                             journalRepo = journalRepo,
                             taskRepo = taskRepo,
                             navController = navController,
-                            onThemeChanged = onThemeChanged
+                            onThemeChanged = onThemeChanged,
+                            onFontStyleChanged = onFontStyleChanged
                         )
                     }
 
@@ -1451,205 +1106,6 @@ fun MainApp(
             }
         }
     }
-}
-
-@Composable
-fun DrawerContent(
-    currentRoute: String?,
-    onScreenSelected: (String) -> Unit
-) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 12.dp)
-    ) {
-        // App Branding Header Card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            shape = RoundedCornerShape(18.dp),
-            color = if (isSpace) Color(0x33FFFFFF) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "R-Journal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Personal Life OS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Group 1: Overview
-        DrawerSectionTitle(title = "Overview")
-        DrawerItem(
-            icon = Icons.Filled.BarChart,
-            label = "Dashboard",
-            isSelected = currentRoute == "dashboard",
-            onClick = { onScreenSelected("dashboard") }
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-        // Group 2: Habits & Goals
-        DrawerSectionTitle(title = "Habits & Goals")
-        DrawerItem(
-            icon = Icons.Filled.CheckCircle,
-            label = "Habit Tracker",
-            isSelected = currentRoute == "habits",
-            onClick = { onScreenSelected("habits") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Star,
-            label = "Challenge Tracker",
-            isSelected = currentRoute == "challenges",
-            onClick = { onScreenSelected("challenges") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.FitnessCenter,
-            label = "Craving Quest",
-            isSelected = currentRoute == "craving_quest",
-            onClick = { onScreenSelected("craving_quest") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.AddCircle,
-            label = "Trackers",
-            isSelected = currentRoute == "trackers",
-            onClick = { onScreenSelected("trackers") }
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-        // Group 3: Memory & Time
-        DrawerSectionTitle(title = "Memory & Time")
-        DrawerItem(
-            icon = Icons.Filled.CalendarMonth,
-            label = "Calendar",
-            isSelected = currentRoute == "calendar",
-            onClick = { onScreenSelected("calendar") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Event,
-            label = "Special Dates",
-            isSelected = currentRoute == "events",
-            onClick = { onScreenSelected("events") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.DateRange,
-            label = "Life Milestones",
-            isSelected = currentRoute == "life_trackers",
-            onClick = { onScreenSelected("life_trackers") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.FormatQuote,
-            label = "Quotes",
-            isSelected = currentRoute == "quotes",
-            onClick = { onScreenSelected("quotes") }
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-        // Group 4: Vault & System
-        DrawerSectionTitle(title = "Vault & System")
-        DrawerItem(
-            icon = Icons.Filled.VpnKey,
-            label = "Password Vault",
-            isSelected = currentRoute == "password_generator",
-            onClick = { onScreenSelected("password_generator") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.FolderSpecial,
-            label = "Mine",
-            isSelected = currentRoute == "chat_input/mine",
-            onClick = { onScreenSelected("chat_input/mine") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.Settings,
-            label = "Settings",
-            isSelected = currentRoute == "settings",
-            onClick = { onScreenSelected("settings") }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "v${BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(bottom = 16.dp)
-        )
-    }
-}
-
-@Composable
-fun DrawerSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 28.dp, top = 10.dp, bottom = 4.dp)
-    )
-}
-
-@Composable
-fun DrawerItem(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
-    NavigationDrawerItem(
-        icon = { Icon(icon, contentDescription = null) },
-        label = { Text(label) },
-        selected = isSelected,
-        onClick = onClick,
-        colors = if (isSpace) NavigationDrawerItemDefaults.colors(
-            selectedContainerColor = Color(0x26FFFFFF),
-            selectedIconColor = Color(0xFFF3F4F6),
-            selectedTextColor = Color(0xFFF3F4F6),
-            unselectedContainerColor = Color.Transparent,
-            unselectedIconColor = Color(0xFF9CA3AF),
-            unselectedTextColor = Color(0xFF9CA3AF)
-        ) else NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-    )
 }
 
 

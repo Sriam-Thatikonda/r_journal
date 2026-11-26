@@ -51,8 +51,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.entity.ChatMessage
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.components.VoiceNotePlayer
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
 import com.baverika.r_journal.ui.viewmodel.JournalViewModel
 import com.baverika.r_journal.utils.ExternalLauncherGuard
 import com.baverika.r_journal.utils.VoiceRecorderHelper
@@ -256,30 +256,15 @@ fun JournalChatScaffold(
         }
     }
 
-    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
+    val tokens = LocalDesignTokens.current
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (isBlueSky) {
-            Image(
-                painter = painterResource(id = R.drawable.bg_journal_archive),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(6.dp),
-                contentScale = ContentScale.Crop
-            )
-        }
-
         Column(modifier = Modifier.fillMaxSize()) {
             // Screen-specific top header slot (Mood picker, event banners, etc.)
             if (topHeaderContent != null) {
                 Surface(
-                    color = if (isBlueSky) {
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                    tonalElevation = 1.dp,
+                    color = tokens.barGlass,
+                    tonalElevation = 0.dp,
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateContentSize()

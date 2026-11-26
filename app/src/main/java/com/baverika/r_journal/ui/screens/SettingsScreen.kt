@@ -8,6 +8,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import java.util.Calendar
 import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -36,28 +40,31 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.baverika.r_journal.repository.PasswordRepository
-import com.baverika.r_journal.repository.SettingsRepository
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LightColors
-import com.baverika.r_journal.ui.theme.MidnightColors
-import com.baverika.r_journal.ui.theme.OceanColors
-import com.baverika.r_journal.ui.theme.RosewoodColors
-import com.baverika.r_journal.ui.theme.BlueSkyColors
-import com.baverika.r_journal.ui.theme.CloudDancerColors
-import com.baverika.r_journal.BuildConfig
-import com.baverika.r_journal.widget.WidgetUpdateUtils
-import kotlinx.coroutines.launch
-
 import androidx.fragment.app.FragmentActivity
+import androidx.navigation.NavController
+import com.baverika.r_journal.BuildConfig
 import com.baverika.r_journal.MainActivity
 import com.baverika.r_journal.repository.JournalRepository
+import com.baverika.r_journal.repository.PasswordRepository
+import com.baverika.r_journal.repository.SettingsRepository
 import com.baverika.r_journal.repository.TaskRepository
+import com.baverika.r_journal.ui.components.MilestoneCardDialog
+import com.baverika.r_journal.ui.components.PremiumCard
+import com.baverika.r_journal.ui.components.PremiumSectionHeader
+import com.baverika.r_journal.ui.theme.AppFontStyle
+import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.theme.InstrumentSerifFamily
+import com.baverika.r_journal.ui.theme.InterFamily
+import com.baverika.r_journal.ui.theme.IvoryPalette
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.ObsidianPalette
+import com.baverika.r_journal.ui.theme.OceanPalette
+import com.baverika.r_journal.ui.theme.PlusJakartaSansFamily
+import com.baverika.r_journal.ui.theme.SpaceGlassPalette
+import com.baverika.r_journal.ui.theme.pressScale
 import com.baverika.r_journal.utils.BiometricHelper
 import com.baverika.r_journal.utils.MilestoneCalculator
-import com.baverika.r_journal.ui.components.MilestoneCardDialog
-import androidx.compose.material.icons.filled.EmojiEvents
+import com.baverika.r_journal.widget.WidgetUpdateUtils
 import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +75,8 @@ fun SettingsScreen(
     journalRepo: JournalRepository,
     taskRepo: TaskRepository,
     navController: NavController,
-    onThemeChanged: (AppTheme) -> Unit = {}
+    onThemeChanged: (AppTheme) -> Unit = {},
+    onFontStyleChanged: (AppFontStyle) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -84,6 +92,7 @@ fun SettingsScreen(
 
     var isBiometricEnabled by remember { mutableStateOf(settingsRepo.isBiometricEnabled) }
     var currentTheme by remember { mutableStateOf(settingsRepo.appTheme) }
+    var currentFontStyle by remember { mutableStateOf(settingsRepo.appFontStyle) }
     var birthDay by remember { mutableIntStateOf(settingsRepo.birthDay) }
     var birthMonth by remember { mutableIntStateOf(settingsRepo.birthMonth) }
     var birthYear by remember { mutableIntStateOf(settingsRepo.birthYear) }
@@ -163,113 +172,123 @@ fun SettingsScreen(
 
 
             // --- Appearance Section ---
-            Text(
-                text = "Appearance",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            PremiumSectionHeader(title = "Appearance")
+            Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = "Theme",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            PremiumCard {
+                Text(
+                    text = "Theme Gallery",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Curated surfaces with smooth color transitions",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // Theme Selection - Two rows for 6 themes
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ThemeOption(
-                    name = "Midnight",
-                    backgroundColor = MidnightColors.Background,
-                    primaryColor = MidnightColors.Primary,
-                    isSelected = currentTheme == AppTheme.MIDNIGHT,
-                    isLightBackground = false,
-                    onClick = {
-                        currentTheme = AppTheme.MIDNIGHT
-                        settingsRepo.appTheme = AppTheme.MIDNIGHT
-                        onThemeChanged(AppTheme.MIDNIGHT)
-                    },
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    ThemeOption(
+                        theme = AppTheme.OBSIDIAN,
+                        backgroundColor = ObsidianPalette.Background,
+                        surfaceColor = ObsidianPalette.SurfaceContainerHigh,
+                        primaryColor = ObsidianPalette.Primary,
+                        isSelected = currentTheme == AppTheme.OBSIDIAN,
+                        onClick = {
+                            currentTheme = AppTheme.OBSIDIAN
+                            settingsRepo.appTheme = AppTheme.OBSIDIAN
+                            onThemeChanged(AppTheme.OBSIDIAN)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOption(
+                        theme = AppTheme.IVORY,
+                        backgroundColor = IvoryPalette.Background,
+                        surfaceColor = IvoryPalette.Surface,
+                        primaryColor = IvoryPalette.Primary,
+                        isSelected = currentTheme == AppTheme.IVORY,
+                        onClick = {
+                            currentTheme = AppTheme.IVORY
+                            settingsRepo.appTheme = AppTheme.IVORY
+                            onThemeChanged(AppTheme.IVORY)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    ThemeOption(
+                        theme = AppTheme.OCEAN,
+                        backgroundColor = OceanPalette.Background,
+                        surfaceColor = OceanPalette.SurfaceContainerHigh,
+                        primaryColor = OceanPalette.Primary,
+                        isSelected = currentTheme == AppTheme.OCEAN,
+                        onClick = {
+                            currentTheme = AppTheme.OCEAN
+                            settingsRepo.appTheme = AppTheme.OCEAN
+                            onThemeChanged(AppTheme.OCEAN)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ThemeOption(
+                        theme = AppTheme.SPACE,
+                        backgroundColor = SpaceGlassPalette.Background,
+                        surfaceColor = SpaceGlassPalette.SurfaceContainerHigh,
+                        primaryColor = SpaceGlassPalette.Primary,
+                        isSelected = currentTheme == AppTheme.SPACE,
+                        onClick = {
+                            currentTheme = AppTheme.SPACE
+                            settingsRepo.appTheme = AppTheme.SPACE
+                            onThemeChanged(AppTheme.SPACE)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    color = LocalDesignTokens.current.borderSubtle
                 )
-                ThemeOption(
-                    name = "Light",
-                    backgroundColor = LightColors.Background,
-                    primaryColor = LightColors.Primary,
-                    isSelected = currentTheme == AppTheme.LIGHT,
-                    isLightBackground = true,
-                    onClick = {
-                        currentTheme = AppTheme.LIGHT
-                        settingsRepo.appTheme = AppTheme.LIGHT
-                        onThemeChanged(AppTheme.LIGHT)
-                    },
-                    modifier = Modifier.weight(1f)
+
+                Text(
+                    text = "Typography Style",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                ThemeOption(
-                    name = "Ocean",
-                    backgroundColor = OceanColors.Background,
-                    primaryColor = OceanColors.Primary,
-                    isSelected = currentTheme == AppTheme.OCEAN,
-                    isLightBackground = false,
-                    onClick = {
-                        currentTheme = AppTheme.OCEAN
-                        settingsRepo.appTheme = AppTheme.OCEAN
-                        onThemeChanged(AppTheme.OCEAN)
-                    },
-                    modifier = Modifier.weight(1f)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Choose how headers and journal prose feel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppFontStyle.entries.forEach { fontStyle ->
+                        FontStyleOption(
+                            fontStyle = fontStyle,
+                            isSelected = currentFontStyle == fontStyle,
+                            onClick = {
+                                currentFontStyle = fontStyle
+                                settingsRepo.appFontStyle = fontStyle
+                                onFontStyleChanged(fontStyle)
+                            }
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ThemeOption(
-                    name = "Space",
-                    backgroundColor = RosewoodColors.Background,
-                    primaryColor = RosewoodColors.Primary,
-                    isSelected = currentTheme == AppTheme.ROSEWOOD,
-                    isLightBackground = false,
-                    onClick = {
-                        currentTheme = AppTheme.ROSEWOOD
-                        settingsRepo.appTheme = AppTheme.ROSEWOOD
-                        onThemeChanged(AppTheme.ROSEWOOD)
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                ThemeOption(
-                    name = "Blue Sky",
-                    backgroundColor = BlueSkyColors.Background,
-                    primaryColor = BlueSkyColors.Primary,
-                    isSelected = currentTheme == AppTheme.BLUE_SKY,
-                    isLightBackground = false,
-                    onClick = {
-                        currentTheme = AppTheme.BLUE_SKY
-                        settingsRepo.appTheme = AppTheme.BLUE_SKY
-                        onThemeChanged(AppTheme.BLUE_SKY)
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                ThemeOption(
-                    name = "Cloud '26",
-                    backgroundColor = CloudDancerColors.Background,
-                    primaryColor = CloudDancerColors.Primary,
-                    isSelected = currentTheme == AppTheme.CLOUD_DANCER,
-                    isLightBackground = true,
-                    onClick = {
-                        currentTheme = AppTheme.CLOUD_DANCER
-                        settingsRepo.appTheme = AppTheme.CLOUD_DANCER
-                        onThemeChanged(AppTheme.CLOUD_DANCER)
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // --- Security Section ---
             Text(
@@ -662,51 +681,49 @@ fun SettingsScreen(
 
 @Composable
 private fun ThemeOption(
-    name: String,
+    theme: AppTheme,
     backgroundColor: Color,
+    surfaceColor: Color,
     primaryColor: Color,
     isSelected: Boolean,
-    isLightBackground: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isLightBackground = !theme.isDark
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> MaterialTheme.colorScheme.primary
+            isLightBackground -> Color(0x261E1B18)
+            else -> Color(0x2EFFFFFF)
+        },
+        animationSpec = tween(220),
+        label = "themeBorder"
+    )
+
     Surface(
         modifier = modifier
-            .height(76.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(92.dp)
+            .pressScale(pressedScale = 0.96f)
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .then(
-                if (isSelected) Modifier.border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(14.dp)
-                ) else if (name == "Space") Modifier.border(
-                    width = 1.dp,
-                    color = Color(0x33FFFFFF),
-                    shape = RoundedCornerShape(14.dp)
-                ) else Modifier.border(
-                    width = 1.dp,
-                    color = if (isLightBackground) Color(0x22000000) else Color(0x22FFFFFF),
-                    shape = RoundedCornerShape(14.dp)
-                )
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(16.dp)
             ),
         color = backgroundColor,
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = if (isSelected) 4.dp else 1.dp
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = if (isSelected) 4.dp else 0.dp
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp)
+                .padding(10.dp)
         ) {
-            // Mock screen preview elements
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                // Mini mock header bar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -714,63 +731,130 @@ private fun ThemeOption(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(width = 24.dp, height = 4.dp)
+                            .size(width = 28.dp, height = 5.dp)
                             .clip(CircleShape)
                             .background(primaryColor)
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(primaryColor)
-                    )
+                    if (isSelected) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(primaryColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = if (isLightBackground) Color.White else Color.Black,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(primaryColor.copy(alpha = 0.45f))
+                        )
+                    }
                 }
 
-                // Mini mock card
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(14.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(
-                            if (isLightBackground) Color(0x18000000) else Color(0x22FFFFFF)
-                        )
+                        .fillMaxWidth()
+                        .height(22.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(surfaceColor)
                 )
             }
 
-            // Theme name & Selection badge at bottom
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.align(Alignment.BottomStart)) {
                 Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isLightBackground)
-                        Color(0xFF2C2520)
-                    else
-                        Color.White.copy(alpha = 0.95f)
+                    text = theme.displayName,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (isLightBackground) Color(0xFF1E1B18) else Color(0xFFF3F4F6)
                 )
+                Text(
+                    text = theme.tagline,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isLightBackground) Color(0xFF5A544C) else Color(0xFF9CA3AF)
+                )
+            }
+        }
+    }
+}
 
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(primaryColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Selected",
-                            tint = if (isLightBackground) Color.White else Color.Black,
-                            modifier = Modifier.size(11.dp)
-                        )
-                    }
+@Composable
+private fun FontStyleOption(
+    fontStyle: AppFontStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val tokens = LocalDesignTokens.current
+    val previewFamily = when (fontStyle) {
+        AppFontStyle.MODERN -> PlusJakartaSansFamily
+        AppFontStyle.EDITORIAL -> InstrumentSerifFamily
+        AppFontStyle.CRISP -> InterFamily
+    }
+    val containerColor by animateColorAsState(
+        targetValue = if (isSelected) tokens.highlightFill else tokens.cardElevated,
+        animationSpec = tween(220),
+        label = "fontBg"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else tokens.borderSubtle,
+        animationSpec = tween(220),
+        label = "fontBorder"
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressScale(pressedScale = 0.98f)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor,
+        border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = fontStyle.sampleHeadline,
+                    fontFamily = previewFamily,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${fontStyle.displayName} • ${fontStyle.subtitle}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (isSelected) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(13.dp)
+                    )
                 }
             }
         }

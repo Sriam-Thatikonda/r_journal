@@ -12,8 +12,10 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.baverika.r_journal.ui.theme.AppTheme
+import com.baverika.r_journal.ui.components.EmptyState
 import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.PushPin
@@ -76,58 +78,19 @@ fun QuickNotesScreen(
 
             if (notes.isEmpty()) {
                 if (searchQuery.isNotEmpty()) {
-                    // Empty search results
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No notes found",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    EmptyState(
+                        icon = Icons.Default.SearchOff,
+                        title = "No Notes Found",
+                        message = "Nothing matched \"$searchQuery\""
+                    )
                 } else {
-                    // Empty state (no notes at all)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.NoteAdd,
-                            contentDescription = null,
-                            modifier = Modifier.size(120.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Text(
-                            text = "No Notes Yet",
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Capture quick thoughts and ideas",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(
-                            onClick = { navController.navigate("new_quick_note") }
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Create Note")
-                        }
-                    }
+                    EmptyState(
+                        icon = Icons.Default.NoteAdd,
+                        title = "No Notes Yet",
+                        message = "Capture quick thoughts, checklists, and ideas",
+                        actionLabel = "Create Note",
+                        onActionClick = { navController.navigate("new_quick_note") }
+                    )
                 }
             } else {
                 // Display notes based on layout type
@@ -294,12 +257,20 @@ fun QuickNoteCard(
     onToggleChecklist: ((QuickNote, String) -> Unit)? = null
 ) {
     val currentTheme = LocalAppTheme.current
+    val tokens = LocalDesignTokens.current
     val isDark = currentTheme.isDark
-    val isSpace = currentTheme == AppTheme.ROSEWOOD
     val noteColor = NoteColor.fromLong(note.color)
-    val cardColor = if (isSpace && noteColor == NoteColor.DEFAULT) Color(0xB3101216) else noteColor.containerColor(isDark).copy(alpha = backgroundAlpha)
-    val borderColor = if (isSpace && noteColor == NoteColor.DEFAULT) Color(0x2EFFFFFF) else noteColor.borderColor(isDark)
-    val shape = RoundedCornerShape(if (isSpace) 16.dp else 12.dp)
+    val cardColor = if (noteColor == NoteColor.DEFAULT) {
+        tokens.cardContainer.copy(alpha = backgroundAlpha)
+    } else {
+        noteColor.containerColor(isDark).copy(alpha = backgroundAlpha)
+    }
+    val borderColor = if (noteColor == NoteColor.DEFAULT) {
+        tokens.borderDefault
+    } else {
+        noteColor.borderColor(isDark)
+    }
+    val shape = RoundedCornerShape(tokens.cardRadius)
     val textColor = ColorUtils.getContrastingTextColor(cardColor)
     val secondaryTextColor = ColorUtils.getSecondaryTextColor(cardColor)
     
@@ -307,6 +278,7 @@ fun QuickNoteCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(4.dp)
+            .pressScale()
             .border(
                 width = 1.dp,
                 color = borderColor,

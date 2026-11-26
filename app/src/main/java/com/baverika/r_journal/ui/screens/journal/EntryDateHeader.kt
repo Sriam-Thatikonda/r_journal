@@ -18,8 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -29,8 +28,7 @@ fun EntryDateHeader(
     isToday: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
     val dateText = remember(localDate) {
         localDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy"))
     }
@@ -39,19 +37,11 @@ fun EntryDateHeader(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
-        shape = RoundedCornerShape(if (isSpace) 16.dp else 12.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isSpace -> Color(0xB3101216)
-                isBlueSky -> Color.Black.copy(alpha = 0.7f)
-                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            }
+            containerColor = tokens.cardContainer
         ),
-        border = when {
-            isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
-            isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-            else -> null
-        }
+        border = tokens.strokeSubtle
     ) {
         Row(
             modifier = Modifier
@@ -67,14 +57,14 @@ fun EntryDateHeader(
                 Icon(
                     imageVector = Icons.Default.DateRange,
                     contentDescription = "Entry Date",
-                    tint = if (isBlueSky) Color.White else MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = dateText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isBlueSky) Color.White else MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 

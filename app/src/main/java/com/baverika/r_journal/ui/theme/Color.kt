@@ -3,225 +3,183 @@ package com.baverika.r_journal.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ============================================
-// THEME: MIDNIGHT (Dark - Pitch Black OLED)
-// True pitch black theme with subtle dark charcoal supporting layers
+// THEME 1: OBSIDIAN OLED
+// True pitch-black OLED canvas with crisp alabaster ink and elevated graphite tiers
 // ============================================
-object MidnightColors {
-    val Primary = Color(0xFFD6D6D6)          // Near white / soft light grey
-    val OnPrimary = Color(0xFF0A0A0A)        // Pitch black-adjacent dark grey
-    val PrimaryContainer = Color(0xFF222222) // Dark charcoal
-    val OnPrimaryContainer = Color(0xFFD6D6D6) // Near white / soft light grey
+object ObsidianPalette {
+    val Primary = Color(0xFFECEFF4)
+    val OnPrimary = Color(0xFF0A0B0E)
+    val PrimaryContainer = Color(0xFF1F222A)
+    val OnPrimaryContainer = Color(0xFFECEFF4)
 
-    val Secondary = Color(0xFFB0B0B0)        // Muted medium-light grey
-    val OnSecondary = Color(0xFF0A0A0A)
-    val SecondaryContainer = Color(0xFF181818)
-    val OnSecondaryContainer = Color(0xFFCCCCCC)
+    val Secondary = Color(0xFFB4BAC6)
+    val OnSecondary = Color(0xFF0A0B0E)
+    val SecondaryContainer = Color(0xFF16181E)
+    val OnSecondaryContainer = Color(0xFFD5DAE3)
 
-    val Tertiary = Color(0xFF888888)         // Medium grey
-    val OnTertiary = Color(0xFF0A0A0A)
-    val TertiaryContainer = Color(0xFF1C1C1C)
-    val OnTertiaryContainer = Color(0xFFB0B0B0)
+    val Tertiary = Color(0xFF8C94A6)
+    val OnTertiary = Color(0xFF0A0B0E)
+    val TertiaryContainer = Color(0xFF1B1E26)
+    val OnTertiaryContainer = Color(0xFFC2C8D4)
 
-    val Background = Color(0xFF000000)       // Pitch black OLED
-    val OnBackground = Color(0xFFD6D6D6)     // Near white / soft light grey
-    val Surface = Color(0xFF0C0C0C)          // Slightly lighter dark grey for contrast
-    val OnSurface = Color(0xFFD6D6D6)        // Near white / soft light grey
-    val SurfaceVariant = Color(0xFF161616)   // Medium-dark grey for cards/containers
-    val OnSurfaceVariant = Color(0xFF9E9E9E) // Muted text / placeholders
+    val Background = Color(0xFF000000)
+    val OnBackground = Color(0xFFECEFF4)
+    val Surface = Color(0xFF090A0D)
+    val OnSurface = Color(0xFFECEFF4)
+    val SurfaceVariant = Color(0xFF14161C)
+    val OnSurfaceVariant = Color(0xFF969CA8)
 
-    val Error = Color(0xFFE5A3A3)            // Muted, desaturated red for errors to fit monochrome aesthetic
-    val OnError = Color(0xFF4E0010)
-    val Outline = Color(0xFF2C2C2C)          // Divider and border line grey
+    val SurfaceContainerLowest = Color(0xFF000000)
+    val SurfaceContainerLow = Color(0xFF0B0C10)
+    val SurfaceContainer = Color(0xFF111318)
+    val SurfaceContainerHigh = Color(0xFF181B22)
+    val SurfaceContainerHighest = Color(0xFF20242D)
+
+    val Error = Color(0xFFE5989B)
+    val OnError = Color(0xFF420A10)
+    val Outline = Color(0xFF2A2E39)
+    val OutlineVariant = Color(0xFF1C1F27)
 }
 
 // ============================================
-// THEME: LIGHT
-// Clean, bright theme
+// THEME 2: WARM IVORY
+// Editorial linen paper canvas with deep forest-sage & terracotta accents
 // ============================================
-object LightColors {
-    val Primary = Color(0xFF0F766E)
+object IvoryPalette {
+    val Primary = Color(0xFF2B5B4A)
     val OnPrimary = Color(0xFFFFFFFF)
-    val PrimaryContainer = Color(0xFFA8F2D6)
-    val OnPrimaryContainer = Color(0xFF002117)
+    val PrimaryContainer = Color(0xFFD4E8DF)
+    val OnPrimaryContainer = Color(0xFF0E291F)
 
-    val Secondary = Color(0xFF4F6352)
+    val Secondary = Color(0xFF9A6859)
     val OnSecondary = Color(0xFFFFFFFF)
-    val SecondaryContainer = Color(0xFFD2E8D2)
-    val OnSecondaryContainer = Color(0xFF0D1F12)
+    val SecondaryContainer = Color(0xFFF3DFD9)
+    val OnSecondaryContainer = Color(0xFF391C15)
 
-    val Tertiary = Color(0xFF3D6373)
+    val Tertiary = Color(0xFF6B7B8C)
     val OnTertiary = Color(0xFFFFFFFF)
-    val TertiaryContainer = Color(0xFFC1E8FB)
-    val OnTertiaryContainer = Color(0xFF001F2A)
+    val TertiaryContainer = Color(0xFFDCE4EC)
+    val OnTertiaryContainer = Color(0xFF1A2530)
 
-    val Background = Color(0xFFFCFDF7)
-    val OnBackground = Color(0xFF191C19)
-    val Surface = Color(0xFFFFFFFF)
-    val OnSurface = Color(0xFF191C19)
-    val SurfaceVariant = Color(0xFFDDE5DB)
-    val OnSurfaceVariant = Color(0xFF414941)
+    val Background = Color(0xFFF5F2EB)
+    val OnBackground = Color(0xFF1E1B18)
+    val Surface = Color(0xFFFCFBF7)
+    val OnSurface = Color(0xFF1E1B18)
+    val SurfaceVariant = Color(0xFFE9E4DA)
+    val OnSurfaceVariant = Color(0xFF5A544C)
 
-    val Error = Color(0xFFBA1A1A)
-    val OnError = Color(0xFFFFFFFF)
-    val Outline = Color(0xFF717971)
-}
-
-// ============================================
-// THEME: OCEAN (Subtle Dark Blue)
-// Calm, deep blue tones - easy on the eyes
-// ============================================
-object OceanColors {
-    val Primary = Color(0xFF7DD3FC) // Sky blue
-    val OnPrimary = Color(0xFF003548)
-    val PrimaryContainer = Color(0xFF004D67)
-    val OnPrimaryContainer = Color(0xFFBFE9FF)
-
-    val Secondary = Color(0xFFB4CAD6)
-    val OnSecondary = Color(0xFF1F333C)
-    val SecondaryContainer = Color(0xFF354A53)
-    val OnSecondaryContainer = Color(0xFFD0E6F2)
-
-    val Tertiary = Color(0xFFC5C3EA)
-    val OnTertiary = Color(0xFF2E2D4D)
-    val TertiaryContainer = Color(0xFF454364)
-    val OnTertiaryContainer = Color(0xFFE3DFFF)
-
-    val Background = Color(0xFF0C1821) // Deep navy
-    val OnBackground = Color(0xFFDEE3E7)
-    val Surface = Color(0xFF111D28)
-    val OnSurface = Color(0xFFDEE3E7)
-    val SurfaceVariant = Color(0xFF1A2C3A)
-    val OnSurfaceVariant = Color(0xFFC0C8CD)
-
-    val Error = Color(0xFFFFB4AB)
-    val OnError = Color(0xFF690005)
-    val Outline = Color(0xFF4A5C67)
-}
-
-// ============================================
-// THEME: SPACE (Pure Black OLED Glassmorphism)
-// Redesigned from Rosewood: Pure black OLED (#000000), near-black (#050505),
-// translucent charcoal glass surfaces, 1px subtle white borders,
-// neutral silver/soft white accents, and clean monochrome contrast.
-// ============================================
-object RosewoodColors {
-    // Primary: Neutral silver / soft white accent
-    val Primary = Color(0xFFEDEDED)          // Crisp neutral silver
-    val OnPrimary = Color(0xFF000000)        // Pure black
-    val PrimaryContainer = Color(0xFF1E2026) // Translucent dark silver-charcoal container
-    val OnPrimaryContainer = Color(0xFFF3F4F6) // Pure soft white
-
-    // Secondary: Muted silver / cool grey
-    val Secondary = Color(0xFFC5C8D0)        // Silver grey
-    val OnSecondary = Color(0xFF0A0A0A)
-    val SecondaryContainer = Color(0xFF16181D) // Charcoal glass container
-    val OnSecondaryContainer = Color(0xFFE5E7EB)
-
-    // Tertiary: Platinum slate accent
-    val Tertiary = Color(0xFFA1A7B4)         // Platinum slate
-    val OnTertiary = Color(0xFF0A0A0A)
-    val TertiaryContainer = Color(0xFF1A1C21)
-    val OnTertiaryContainer = Color(0xFFD1D5DB)
-
-    // Backgrounds: Pure Black OLED & Near-Black
-    val Background = Color(0xFF000000)       // Pure black (#000000)
-    val OnBackground = Color(0xFFF3F4F6)     // White primary text
-    val SecondaryBackground = Color(0xFF050505) // Near-black (#050505)
-
-    // Glass Surfaces: Translucent charcoal
-    val Surface = Color(0xFF090A0D)          // Deep charcoal glass surface
-    val OnSurface = Color(0xFFF3F4F6)        // White primary text
-    val SurfaceVariant = Color(0xFF13151A)   // Elevated glass card surface
-    val OnSurfaceVariant = Color(0xFF9CA3AF) // Muted grey secondary text
-
-    // Glass Borders: Subtle translucent white (low opacity)
-    val Outline = Color(0x33FFFFFF)          // 20% white 1px border
-    val OutlineVariant = Color(0x1AFFFFFF)   // 10% white very subtle border
-
-    // Error: Refined muted crimson
-    val Error = Color(0xFFF87171)
-    val OnError = Color(0xFF450A0A)
-}
-
-// ============================================
-// THEME: BLUE SKY (Celestial)
-// Deep space blue with gold accents
-// ============================================
-object BlueSkyColors {
-    val Primary = Color(0xFFFFD700) // Gold
-    val OnPrimary = Color(0xFF3E1C00)
-    val PrimaryContainer = Color(0xFF5C4000)
-    val OnPrimaryContainer = Color(0xFFFFE0A0)
-
-    val Secondary = Color(0xFFB0C6FF)
-    val OnSecondary = Color(0xFF002D6C)
-    val SecondaryContainer = Color(0xFF19438F)
-    val OnSecondaryContainer = Color(0xFFD9E2FF)
-
-    val Tertiary = Color(0xFFC4C0FF)
-    val OnTertiary = Color(0xFF2B285E)
-    val TertiaryContainer = Color(0xFF434077)
-    val OnTertiaryContainer = Color(0xFFE2DFFF)
-
-    val Background = Color(0xFF051025) // Deep Space Blue
-    val OnBackground = Color(0xFFE2E2E6)
-    val Surface = Color(0xFF0B1A35) // Slightly lighter blue
-    val OnSurface = Color(0xFFE2E2E6)
-    val SurfaceVariant = Color(0xFF152545)
-    val OnSurfaceVariant = Color(0xFFC4C6D0)
-
-    val Error = Color(0xFFFFB4AB)
-    val OnError = Color(0xFF690005)
-    val Outline = Color(0xFF8E9099)
-}
-
-// ============================================
-// THEME: CLOUD DANCER (Pantone Color of the Year 2026)
-// Warm, creamy off-white inspired by PANTONE 11-4201
-// Elegant light theme — not pure white, but a living canvas
-// ============================================
-object CloudDancerColors {
-    // Primary accent: warm sage green — earthy and grounding
-    val Primary = Color(0xFF6B8C6F)         // Sage Green
-    val OnPrimary = Color(0xFFFFFFFF)
-    val PrimaryContainer = Color(0xFFCDE8C8) // Pale sage
-    val OnPrimaryContainer = Color(0xFF1A3320)
-
-    // Secondary: warm dusty rose — feminine and soft
-    val Secondary = Color(0xFFA07870)        // Dusty rose
-    val OnSecondary = Color(0xFFFFFFFF)
-    val SecondaryContainer = Color(0xFFEED9D5) // Blush
-    val OnSecondaryContainer = Color(0xFF3B1917)
-
-    // Tertiary: warm terracotta sand
-    val Tertiary = Color(0xFFAA8865)         // Warm sand / terracotta
-    val OnTertiary = Color(0xFFFFFFFF)
-    val TertiaryContainer = Color(0xFFEFDCC8) // Pale sand
-    val OnTertiaryContainer = Color(0xFF3C2410)
-
-    // Background: Pantone Cloud Dancer (#F2F0E9) — warm off-white, NOT pure white
-    val Background = Color(0xFFF2F0E9)
-    val OnBackground = Color(0xFF2C2520)     // Warm dark brown
-    val Surface = Color(0xFFFAF8F3)          // Slightly lighter warm white
-    val OnSurface = Color(0xFF2C2520)
-    val SurfaceVariant = Color(0xFFE8E4DA)   // Warm light grey-tan
-    val OnSurfaceVariant = Color(0xFF5C5249)
+    val SurfaceContainerLowest = Color(0xFFFFFFFF)
+    val SurfaceContainerLow = Color(0xFFF8F5EF)
+    val SurfaceContainer = Color(0xFFF0ECE3)
+    val SurfaceContainerHigh = Color(0xFFE7E2D7)
+    val SurfaceContainerHighest = Color(0xFFDDD7CA)
 
     val Error = Color(0xFFB3261E)
     val OnError = Color(0xFFFFFFFF)
-    val Outline = Color(0xFFB0A89E)          // Warm greige
+    val Outline = Color(0xFFB6AFA3)
+    val OutlineVariant = Color(0xFFDCD6CA)
 }
 
-// Theme enum for easy reference
-enum class AppTheme(val displayName: String) {
-    MIDNIGHT("Midnight"),
-    LIGHT("Light"),
-    OCEAN("Ocean"),
-    ROSEWOOD("Space"),
-    BLUE_SKY("Blue Sky"),
-    CLOUD_DANCER("Cloud '26");
+// ============================================
+// THEME 3: DEEP OCEAN
+// Abyssal midnight navy with bioluminescent cyan-sky & periwinkle accents
+// ============================================
+object OceanPalette {
+    val Primary = Color(0xFF67D4F5)
+    val OnPrimary = Color(0xFF003242)
+    val PrimaryContainer = Color(0xFF0B465E)
+    val OnPrimaryContainer = Color(0xFFCBEFFF)
 
+    val Secondary = Color(0xFF9BBAC9)
+    val OnSecondary = Color(0xFF142B36)
+    val SecondaryContainer = Color(0xFF203846)
+    val OnSecondaryContainer = Color(0xFFD0E6F2)
+
+    val Tertiary = Color(0xFFA5B4FC)
+    val OnTertiary = Color(0xFF1E224C)
+    val TertiaryContainer = Color(0xFF303668)
+    val OnTertiaryContainer = Color(0xFFE0E5FF)
+
+    val Background = Color(0xFF07131E)
+    val OnBackground = Color(0xFFE2EBF2)
+    val Surface = Color(0xFF0C1B29)
+    val OnSurface = Color(0xFFE2EBF2)
+    val SurfaceVariant = Color(0xFF142738)
+    val OnSurfaceVariant = Color(0xFF9DB4C4)
+
+    val SurfaceContainerLowest = Color(0xFF050F18)
+    val SurfaceContainerLow = Color(0xFF0B1926)
+    val SurfaceContainer = Color(0xFF102233)
+    val SurfaceContainerHigh = Color(0xFF172D42)
+    val SurfaceContainerHighest = Color(0xFF1F3850)
+
+    val Error = Color(0xFFFFB4AB)
+    val OnError = Color(0xFF690005)
+    val Outline = Color(0xFF364F63)
+    val OutlineVariant = Color(0xFF213647)
+}
+
+// ============================================
+// THEME 4: SPACE GLASS
+// Pure black OLED glassmorphism with translucent charcoal & luminous platinum
+// ============================================
+object SpaceGlassPalette {
+    val Primary = Color(0xFFF3F4F6)
+    val OnPrimary = Color(0xFF000000)
+    val PrimaryContainer = Color(0xFF1D2028)
+    val OnPrimaryContainer = Color(0xFFF9FAFB)
+
+    val Secondary = Color(0xFFC5CAD4)
+    val OnSecondary = Color(0xFF08090C)
+    val SecondaryContainer = Color(0xFF15171E)
+    val OnSecondaryContainer = Color(0xFFE5E7EB)
+
+    val Tertiary = Color(0xFF9CA3AF)
+    val OnTertiary = Color(0xFF08090C)
+    val TertiaryContainer = Color(0xFF1A1D24)
+    val OnTertiaryContainer = Color(0xFFD1D5DB)
+
+    val Background = Color(0xFF000000)
+    val OnBackground = Color(0xFFF3F4F6)
+    val Surface = Color(0xFF08090D)
+    val OnSurface = Color(0xFFF3F4F6)
+    val SurfaceVariant = Color(0xFF12141B)
+    val OnSurfaceVariant = Color(0xFF9CA3AF)
+
+    val SurfaceContainerLowest = Color(0xFF000000)
+    val SurfaceContainerLow = Color(0xFF090A0E)
+    val SurfaceContainer = Color(0xFF101218)
+    val SurfaceContainerHigh = Color(0xFF171A22)
+    val SurfaceContainerHighest = Color(0xFF1F232E)
+
+    val Error = Color(0xFFF87171)
+    val OnError = Color(0xFF450A0A)
+    val Outline = Color(0x38FFFFFF)
+    val OutlineVariant = Color(0x1EFFFFFF)
+}
+
+/**
+ * Curated 4-theme luxury palette system with legacy enum name migration.
+ */
+enum class AppTheme(
+    val displayName: String,
+    val tagline: String,
     val isDark: Boolean
-        get() = this != LIGHT && this != CLOUD_DANCER
-}
+) {
+    OBSIDIAN("Obsidian OLED", "Pitch-black minimalism", true),
+    IVORY("Warm Ivory", "Editorial linen paper", false),
+    OCEAN("Deep Ocean", "Abyssal navy & sky", true),
+    SPACE("Space Glass", "Translucent OLED glass", true);
 
+    companion object {
+        fun fromPersistedName(name: String?): AppTheme {
+            return when (name?.uppercase()) {
+                "OBSIDIAN", "MIDNIGHT" -> OBSIDIAN
+                "IVORY", "LIGHT", "CLOUD_DANCER" -> IVORY
+                "OCEAN", "BLUE_SKY" -> OCEAN
+                "SPACE", "ROSEWOOD" -> SPACE
+                else -> OBSIDIAN
+            }
+        }
+    }
+}

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +26,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.baverika.r_journal.quotes.data.QuoteEntity
+import com.baverika.r_journal.ui.theme.InstrumentSerifFamily
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,18 +48,22 @@ fun QuotesScreen(
     // Confirmation dialog state for delete
     var quoteToDelete by remember { mutableStateOf<QuoteEntity?>(null) }
 
+    val tokens = LocalDesignTokens.current
+
     Scaffold(
+        containerColor = Color.Transparent,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.showAddDialog() },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = CircleShape
+                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.pressScale()
             ) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Add Quote",
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
@@ -199,17 +207,19 @@ private fun QuoteCard(
     onToggleActive: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val tokens = LocalDesignTokens.current
     val cardAlpha = if (quote.isActive) 1f else 0.6f
-    
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .alpha(cardAlpha),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            containerColor = tokens.cardContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = tokens.strokeSubtle,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -236,7 +246,8 @@ private fun QuoteCard(
             // Quote text
             Text(
                 text = quote.text,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.headlineSmall,
+                fontFamily = InstrumentSerifFamily,
                 fontStyle = FontStyle.Italic,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,

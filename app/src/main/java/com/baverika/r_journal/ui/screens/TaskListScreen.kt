@@ -6,9 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
 import com.baverika.r_journal.ui.components.HighlightedText
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -111,6 +112,7 @@ fun TaskListScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
@@ -118,7 +120,7 @@ fun TaskListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+            val tokens = LocalDesignTokens.current
             val haptic = LocalHapticFeedback.current
 
             // Consolidated Smart Header & Quick Controls
@@ -126,9 +128,9 @@ fun TaskListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                shape = RoundedCornerShape(tokens.cardRadius),
+                color = tokens.cardContainer,
+                border = tokens.strokeSubtle
             ) {
                 Row(
                     modifier = Modifier
@@ -139,8 +141,13 @@ fun TaskListScreen(
                 ) {
                     val total = taskStats.totalTasks
                     val completed = taskStats.completedTasks
-                    val progress = if (total > 0) completed.toFloat() / total.toFloat() else 0f
-                    val percentage = (progress * 100).toInt()
+                    val targetProgress = if (total > 0) completed.toFloat() / total.toFloat() else 0f
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = targetProgress,
+                        animationSpec = tween(400),
+                        label = "taskProgress"
+                    )
+                    val percentage = (animatedProgress * 100).toInt()
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -148,8 +155,8 @@ fun TaskListScreen(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.size(34.dp),
+                                progress = { animatedProgress },
+                                modifier = Modifier.size(36.dp),
                                 color = MaterialTheme.colorScheme.primary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                                 strokeWidth = 3.5.dp
@@ -157,6 +164,7 @@ fun TaskListScreen(
                             Text(
                                 text = "$percentage%",
                                 style = MaterialTheme.typography.labelSmall,
+                                fontFamily = JetBrainsMonoFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 9.sp,
                                 color = MaterialTheme.colorScheme.primary
@@ -500,16 +508,16 @@ private fun getSortDisplayName(option: TaskSortOption): String {
  */
 @Composable
 private fun TaskStatsSummary(stats: TaskStats) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            containerColor = tokens.cardContainer
         ),
-        border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else null,
-        shape = RoundedCornerShape(18.dp)
+        border = tokens.strokeSubtle,
+        shape = RoundedCornerShape(tokens.cardRadius)
     ) {
         Row(
             modifier = Modifier
@@ -709,11 +717,12 @@ fun SwipeableTaskItem(
         }
 
         // Task card
-        val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+        val tokens = LocalDesignTokens.current
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(animatedOffset.roundToInt(), 0) }
+                .pressScale()
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
@@ -737,19 +746,16 @@ fun SwipeableTaskItem(
                     }
                 }
                 .clickable(onClick = onClick),
-            shape = RoundedCornerShape(if (isSpace) 18.dp else 16.dp),
+            shape = RoundedCornerShape(tokens.cardRadius),
             colors = CardDefaults.cardColors(
-                containerColor = when {
-                    isSpace && task.isCompleted -> Color(0x6614161C)
-                    isSpace -> Color(0xB3101216)
-                    task.isCompleted -> MaterialTheme.colorScheme.surfaceVariant
-                    else -> MaterialTheme.colorScheme.surface
+                containerColor = if (task.isCompleted) {
+                    tokens.cardContainer.copy(alpha = 0.65f)
+                } else {
+                    tokens.cardContainer
                 }
             ),
-            border = if (isSpace) BorderStroke(1.dp, Color(0x2EFFFFFF)) else null,
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (task.isCompleted || isSpace) 0.dp else 2.dp
-            )
+            border = tokens.strokeSubtle,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
                 modifier = Modifier

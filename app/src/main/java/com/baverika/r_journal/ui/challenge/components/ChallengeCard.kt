@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.ui.challenge.model.Challenge
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 
 enum class ChallengeCardVariant {
     FULL, COMPACT
@@ -38,26 +41,31 @@ fun ChallengeCard(
     onMarkCompleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val tokens = LocalDesignTokens.current
     val isCompletedToday = challenge.isCompletedToday
     val isFinished = challenge.status.name == "COMPLETED" || challenge.status.name == "ARCHIVED" || challenge.status.name == "ABANDONED" || (challenge.completedDays >= challenge.totalDays)
 
+    val cardShape = RoundedCornerShape(tokens.cardRadius)
     val cardColors = if (isCompletedToday || isFinished) {
-        CardDefaults.elevatedCardColors(
+        CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
         )
     } else {
-        CardDefaults.elevatedCardColors()
+        CardDefaults.cardColors(
+            containerColor = tokens.cardContainer
+        )
     }
 
-    ElevatedCard(
+    Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CardDefaults.elevatedShape)
+            .pressScale()
+            .clip(cardShape)
             .clickable { onClick() },
+        shape = cardShape,
         colors = cardColors,
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = if (isCompletedToday || isFinished) 1.dp else 4.dp
-        )
+        border = tokens.strokeSubtle,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

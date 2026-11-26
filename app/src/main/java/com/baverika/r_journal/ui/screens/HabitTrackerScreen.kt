@@ -1,5 +1,8 @@
 package com.baverika.r_journal.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -18,11 +21,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -30,12 +35,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.baverika.r_journal.ui.components.EmptyState
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
+import com.baverika.r_journal.ui.theme.MotionSpec
 import com.baverika.r_journal.ui.viewmodel.HabitUiState
 import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import java.time.format.DateTimeFormatter
-
-import com.baverika.r_journal.ui.components.EmptyState
-import androidx.compose.material.icons.filled.TrackChanges
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -252,25 +257,37 @@ fun HeatmapBlock(
     onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val isDone = state.status == HabitViewModel.HabitStatus.DONE
 
-    val backgroundColor = when (state.status) {
-        HabitViewModel.HabitStatus.DONE -> color
-        HabitViewModel.HabitStatus.DISABLED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        HabitViewModel.HabitStatus.PENDING -> Color.Transparent
-    }
-    
+    val backgroundColor by animateColorAsState(
+        targetValue = when (state.status) {
+            HabitViewModel.HabitStatus.DONE -> color
+            HabitViewModel.HabitStatus.DISABLED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+            HabitViewModel.HabitStatus.PENDING -> Color.Transparent
+        },
+        animationSpec = tween(220),
+        label = "habitCellBg"
+    )
+
     val borderColor = when (state.status) {
         HabitViewModel.HabitStatus.DONE -> color
         HabitViewModel.HabitStatus.DISABLED -> Color.Transparent
-        HabitViewModel.HabitStatus.PENDING -> color.copy(alpha = 0.3f)
+        HabitViewModel.HabitStatus.PENDING -> color.copy(alpha = 0.35f)
     }
 
+    val cellScale by animateFloatAsState(
+        targetValue = if (isDone) 1.0f else 0.94f,
+        animationSpec = MotionSpec.tactileSpring(),
+        label = "habitCellScale"
+    )
+
     val size = if (isLarge) 32.dp else 18.dp
-    val radius = if (isLarge) 8.dp else 2.dp
+    val radius = if (isLarge) 10.dp else 3.dp
 
     Box(
         modifier = Modifier
             .size(size)
+            .scale(cellScale)
             .clip(RoundedCornerShape(radius))
             .background(backgroundColor)
             .border(1.dp, borderColor, RoundedCornerShape(radius))
@@ -280,13 +297,13 @@ fun HeatmapBlock(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (state.status == HabitViewModel.HabitStatus.DONE && isLarge) {
-             Icon(
-                 Icons.Default.Check, 
-                 contentDescription = null, 
-                 tint = MaterialTheme.colorScheme.surface,
-                 modifier = Modifier.size(20.dp)
-             )
+        if (isDone && isLarge) {
+            Icon(
+                Icons.Default.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

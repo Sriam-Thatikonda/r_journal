@@ -38,7 +38,7 @@ fun ChatInputScreen(
     viewModel: JournalViewModel,
     navController: NavController
 ) {
-    val selectedMoods = viewModel.getSelectedMoods()
+    val moodSelection = viewModel.getMoodSelection()
     val canEditMood = viewModel.canEditMood
     val isCurrentEntryToday = viewModel.isCurrentEntryToday
     val eventBanners by viewModel.eventBanners.collectAsState()
@@ -56,8 +56,10 @@ fun ChatInputScreen(
                 }
 
                 CompactMoodPicker(
-                    selectedMoods = selectedMoods,
-                    onMoodToggle = { mood -> viewModel.toggleMood(mood) },
+                    moodSelection = moodSelection,
+                    onPrimaryMoodTap = { mood -> viewModel.setPrimaryMood(mood) },
+                    onSecondaryMoodToggle = { mood -> viewModel.toggleSecondaryMood(mood) },
+                    onClearMoods = { viewModel.clearMoods() },
                     canEdit = canEditMood
                 )
 

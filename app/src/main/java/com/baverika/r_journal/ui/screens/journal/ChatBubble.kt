@@ -31,8 +31,8 @@ import coil.compose.AsyncImage
 import com.baverika.r_journal.R
 import com.baverika.r_journal.data.local.entity.ChatMessage
 import com.baverika.r_journal.ui.components.VoiceNotePlayer
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -54,10 +54,7 @@ fun ChatBubble(
     isHighlighted: Boolean = false
 ) {
     val isUser = message.role == "user"
-    val currentTheme = LocalAppTheme.current
-    val isBlueSky = currentTheme == AppTheme.BLUE_SKY
-    val isMidnight = currentTheme == AppTheme.MIDNIGHT
-    val isSpace = currentTheme == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     val timestamp = remember(message.timestamp) {
         LocalDateTime
@@ -76,31 +73,28 @@ fun ChatBubble(
     )
 
     val bubbleContainerColor = when {
-        isSpace -> if (isUser) Color(0xCC1A1C22) else Color(0xB3101216)
-        isBlueSky -> Color.Black.copy(alpha = 0.62f)
         isUser -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        else -> tokens.cardElevated
     }
 
     val textColor = when {
-        isSpace -> Color(0xFFF3F4F6)
-        isBlueSky -> Color(0xFFECECEC)
         isUser -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
 
     val timeColor = when {
-        isSpace -> Color(0xFF9CA3AF)
-        isBlueSky -> Color(0xFFD6D6D6).copy(alpha = 0.7f)
         isUser -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
-        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     }
 
-    val bubbleBorder = when {
-        isSpace -> BorderStroke(1.dp, if (isUser) Color(0x38FFFFFF) else Color(0x26FFFFFF))
-        isMidnight -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
-        else -> null
-    }
+    val bubbleBorder = BorderStroke(
+        width = 0.85.dp,
+        color = if (isUser) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+        } else {
+            tokens.borderSubtle
+        }
+    )
 
     val bubbleShape = RoundedCornerShape(
         topStart = 20.dp,
@@ -166,7 +160,7 @@ fun ChatBubble(
 
                         Surface(
                             shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = if (isSpace || isBlueSky) 0.2f else 0.55f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = if (tokens.isGlassTheme) 0.35f else 0.55f),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 4.dp)

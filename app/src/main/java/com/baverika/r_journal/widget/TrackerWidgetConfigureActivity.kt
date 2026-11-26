@@ -84,7 +84,10 @@ class TrackerWidgetConfigureActivity : FragmentActivity() {
         }
 
         setContent {
-            RJournalTheme(theme = settingsRepo.appTheme) {
+            RJournalTheme(
+                theme = settingsRepo.appTheme,
+                fontStyle = settingsRepo.appFontStyle
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

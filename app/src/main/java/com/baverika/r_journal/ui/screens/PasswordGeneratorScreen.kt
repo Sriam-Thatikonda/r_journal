@@ -34,7 +34,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -664,7 +664,7 @@ fun UnifiedGeneratorCard(
                             text = displayText,
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontSize = dynamicFontSize,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = JetBrainsMonoFamily,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = if (isVisible) 0.5.sp else 4.sp,
                                 lineHeight = (dynamicFontSize.value + 6).sp
@@ -1045,7 +1045,7 @@ private fun PasswordListItem(
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = JetBrainsMonoFamily)
                 )
 
                 AnimatedVisibility(visible = isPasswordChanged) {
@@ -1119,7 +1119,7 @@ private fun PasswordListItem(
                                         )
                                         Text(
                                             text = if (isPastPwVisible) decryptedPastPw else "••••••••••••",
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = JetBrainsMonoFamily),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
@@ -1417,7 +1417,7 @@ private fun PasswordListItem(
                         Text(
                             text = decryptedPassword,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = JetBrainsMonoFamily,
                                 fontWeight = FontWeight.SemiBold,
                                 letterSpacing = 0.8.sp
                             ),

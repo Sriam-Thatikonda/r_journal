@@ -24,6 +24,10 @@ import androidx.compose.ui.unit.dp
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.repository.TaskRepository
 import com.baverika.r_journal.ui.components.MilestoneCardDialog
+import com.baverika.r_journal.ui.components.PremiumSectionHeader
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import com.baverika.r_journal.ui.viewmodel.HabitViewModel
 import com.baverika.r_journal.utils.MilestoneCalculator
 import java.time.Instant
@@ -74,10 +78,11 @@ fun DashboardScreen(
         label = "habitCompletion"
     )
 
+    val tokens = LocalDesignTokens.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -87,9 +92,12 @@ fun DashboardScreen(
         // Year Milestone Trigger Bar
         Surface(
             onClick = { showMilestoneDialog = true },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(tokens.cardRadius),
+            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.72f),
+            border = tokens.strokeSubtle,
+            modifier = Modifier
+                .fillMaxWidth()
+                .pressScale()
         ) {
             Row(
                 modifier = Modifier
@@ -138,15 +146,16 @@ fun DashboardScreen(
         // Streak Hero Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(tokens.heroRadius),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
+            ),
+            border = tokens.strokeDefault
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 22.dp, horizontal = 20.dp),
+                    .padding(vertical = 24.dp, horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -169,6 +178,7 @@ fun DashboardScreen(
                 Text(
                     text = "${entrySummary.currentStreak}",
                     style = MaterialTheme.typography.displayMedium,
+                    fontFamily = JetBrainsMonoFamily,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -222,14 +232,15 @@ fun DashboardScreen(
 
         // --- ZONE 2: DAILY FOCUS & HABITS PROGRESS ---
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SectionTitle("Today's Habits")
+            PremiumSectionHeader("Today's Habits")
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(tokens.cardRadius),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                )
+                    containerColor = tokens.cardContainer
+                ),
+                border = tokens.strokeSubtle
             ) {
                 Row(
                     modifier = Modifier
@@ -270,11 +281,11 @@ fun DashboardScreen(
             if (habits.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(tokens.cardRadius),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = tokens.cardContainer
                     ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    border = tokens.strokeSubtle
                 ) {
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         habits.take(5).forEachIndexed { index, habit ->
@@ -334,13 +345,13 @@ fun DashboardScreen(
 
         // Mood Insights
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SectionTitle("Mood Insights")
+            PremiumSectionHeader("Mood Insights")
             StatsSummaryCard(stats = moodStats)
         }
 
         // --- ZONE 3: DEEP DIVES & EXPLORATION ---
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionTitle("Deep Dives & Insights")
+            PremiumSectionHeader("Deep Dives & Insights")
 
             // Year in Pixels Action Card
             DeepDiveActionCard(
@@ -393,16 +404,18 @@ private fun DeepDiveActionCard(
     badge: String,
     onClick: () -> Unit
 ) {
+    val tokens = LocalDesignTokens.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .pressScale()
+            .clip(RoundedCornerShape(tokens.cardRadius))
             .clickable { onClick() },
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = tokens.cardContainer
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = tokens.strokeSubtle
     ) {
         Row(
             modifier = Modifier
@@ -492,13 +505,14 @@ fun StatCard(
     value: String,
     subtitle: String
 ) {
+    val tokens = LocalDesignTokens.current
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = tokens.cardContainer
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = tokens.strokeSubtle
     ) {
         Column(
             modifier = Modifier
@@ -518,6 +532,7 @@ fun StatCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineSmall,
+                fontFamily = JetBrainsMonoFamily,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -539,13 +554,14 @@ fun StatCard(
 
 @Composable
 fun StatsSummaryCard(stats: JournalRepository.MoodStats) {
+    val tokens = LocalDesignTokens.current
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = tokens.cardContainer
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = tokens.strokeSubtle
     ) {
         Row(
             modifier = Modifier
@@ -640,15 +656,16 @@ fun calculateLongestStreak(dates: List<LocalDate>): Int {
 fun HabitHistoryChart(stats: List<Pair<LocalDate, Int>>) {
     if (stats.isEmpty()) return
 
+    val tokens = LocalDesignTokens.current
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEE") }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = tokens.cardContainer
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = tokens.strokeSubtle
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(

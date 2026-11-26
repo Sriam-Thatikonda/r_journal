@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.baverika.r_journal.data.local.entity.ChatMessage
 import com.baverika.r_journal.ui.components.RecordingIndicator
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 
 /**
  * The bottom input area for the journal chat screen.
@@ -61,12 +61,12 @@ fun InputBar(
     onRemoveImage: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     Surface(
-        color = if (isSpace) Color(0xE608090C) else MaterialTheme.colorScheme.surface,
-        border = if (isSpace) BorderStroke(0.5.dp, Color(0x26FFFFFF)) else null,
-        tonalElevation = if (isSpace) 0.dp else 3.dp,
+        color = tokens.barGlass,
+        border = tokens.strokeSubtle,
+        tonalElevation = 0.dp,
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
@@ -93,7 +93,8 @@ fun InputBar(
 
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        color = if (isSpace) Color(0xFF14171F) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        color = tokens.cardElevated,
+                        border = tokens.strokeSubtle,
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Row(
@@ -131,7 +132,7 @@ fun InputBar(
                                 Text(
                                     text = replyPreview,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (isSpace) Color(0xFFD1D5DB) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -245,8 +246,6 @@ fun InputBar(
                                         contentDescription = "Attach Image",
                                         tint = if (selectedImageUris.isNotEmpty()) {
                                             MaterialTheme.colorScheme.primary
-                                        } else if (isSpace) {
-                                            Color(0xFF9CA3AF)
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant
                                         }
@@ -255,26 +254,17 @@ fun InputBar(
                             },
                             maxLines = 5,
                             shape = RoundedCornerShape(26.dp),
-                            colors = if (isSpace) {
-                                OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color(0xFF14161B),
-                                    unfocusedContainerColor = Color(0xFF101216),
-                                    focusedBorderColor = Color(0x55FFFFFF),
-                                    unfocusedBorderColor = Color(0x22FFFFFF),
-                                    focusedTextColor = Color(0xFFF3F4F6),
-                                    unfocusedTextColor = Color(0xFFF3F4F6),
-                                    focusedPlaceholderColor = Color(0xFF9CA3AF),
-                                    unfocusedPlaceholderColor = Color(0xFF6B7280),
-                                    cursorColor = Color(0xFFEEEEEE)
-                                )
-                            } else {
-                                OutlinedTextFieldDefaults.colors(
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                    unfocusedBorderColor = Color.Transparent,
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                                )
-                            }
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = tokens.inputContainer,
+                                focusedContainerColor = tokens.cardElevated,
+                                unfocusedBorderColor = tokens.borderSubtle,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            )
                         )
 
                         // Primary Action Button: Smoothly morphs between Mic and Send
@@ -294,18 +284,17 @@ fun InputBar(
                                     onClick = onSend,
                                     modifier = Modifier
                                         .size(50.dp)
-                                        .then(
-                                            if (isSpace) Modifier.border(1.dp, Color(0x66FFFFFF), CircleShape) else Modifier
-                                        )
+                                        .pressScale()
+                                        .border(1.dp, tokens.borderDefault, CircleShape)
                                         .background(
-                                            color = if (isSpace) Color(0xFFEDEDED) else MaterialTheme.colorScheme.primary,
+                                            color = MaterialTheme.colorScheme.primary,
                                             shape = CircleShape
                                         )
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Send,
                                         contentDescription = "Send",
-                                        tint = if (isSpace) Color.Black else MaterialTheme.colorScheme.onPrimary,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -314,18 +303,17 @@ fun InputBar(
                                     onClick = onStartRecording,
                                     modifier = Modifier
                                         .size(50.dp)
-                                        .then(
-                                            if (isSpace) Modifier.border(1.dp, Color(0x33FFFFFF), CircleShape) else Modifier
-                                        )
+                                        .pressScale()
+                                        .border(1.dp, tokens.borderSubtle, CircleShape)
                                         .background(
-                                            color = if (isSpace) Color(0x26FFFFFF) else MaterialTheme.colorScheme.secondaryContainer,
+                                            color = tokens.cardElevated,
                                             shape = CircleShape
                                         )
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Mic,
                                         contentDescription = "Record Voice Note",
-                                        tint = if (isSpace) Color(0xFFF3F4F6) else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }

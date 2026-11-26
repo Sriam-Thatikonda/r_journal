@@ -7,8 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import com.baverika.r_journal.ui.theme.AppTheme
 import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -101,10 +101,16 @@ fun QuickNoteEditorScreen(
     }
 
     val currentTheme = LocalAppTheme.current
+    val tokens = LocalDesignTokens.current
     val isDark = currentTheme.isDark
+    val targetBg = if (state.color == NoteColor.DEFAULT) {
+        MaterialTheme.colorScheme.background
+    } else {
+        state.color.containerColor(isDark)
+    }
     val backgroundColor by animateColorAsState(
-        targetValue = state.color.containerColor(isDark),
-        animationSpec = tween(200),
+        targetValue = targetBg,
+        animationSpec = tween(220),
         label = "bgColor"
     )
     val textColor = ColorUtils.getContrastingTextColor(backgroundColor)

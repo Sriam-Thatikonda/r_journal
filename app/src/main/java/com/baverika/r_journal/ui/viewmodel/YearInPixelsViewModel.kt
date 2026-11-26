@@ -34,15 +34,14 @@ class YearInPixelsViewModel(
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
                     
-                    // Prefer explicitly set mood, fallback to tag
+                    // Prefer explicitly set mood (first = primary mood), fallback to tag
                     var mood = entry.mood
                     if (!mood.isNullOrEmpty()) {
-                        // Handle comma-separated moods (take LAST one to show most recent selection)
-                        mood = mood.split(",").lastOrNull()?.trim()
+                        mood = mood.split(",").firstOrNull()?.trim()
                     }
                     
                     if (mood.isNullOrEmpty()) {
-                        mood = entry.tags.lastOrNull { it.startsWith("#mood-") }
+                        mood = entry.tags.firstOrNull { it.startsWith("#mood-") }
                             ?.removePrefix("#mood-")
                     }
                     

@@ -24,6 +24,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.baverika.r_journal.data.local.entity.Tracker
+import com.baverika.r_journal.ui.components.EmptyState
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
+import com.baverika.r_journal.ui.theme.pressScale
 import com.baverika.r_journal.ui.viewmodel.TrackerViewModel
 import com.baverika.r_journal.utils.ColorUtils
 
@@ -43,45 +46,26 @@ fun TrackersScreen(
         }
     }
 
-    Scaffold(
-        floatingActionButton = {
-            LargeFloatingActionButton(
-                onClick = { navController.navigate("add_tracker") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Tracker", modifier = Modifier.size(36.dp))
-            }
-        }
-    ) { padding ->
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-
             if (trackers.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.AddReaction,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "No trackers yet. Add one to start tracking!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                EmptyState(
+                    icon = Icons.Default.AddReaction,
+                    title = "No Trackers Yet",
+                    message = "Create custom counters and daily goals to stay on track.",
+                    actionLabel = "Add Tracker",
+                    onActionClick = { navController.navigate("add_tracker") }
+                )
             } else if (filteredTrackers.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No matching trackers found.", style = MaterialTheme.typography.bodyLarge)
-                }
+                EmptyState(
+                    icon = Icons.Default.SearchOff,
+                    title = "No Matching Trackers",
+                    message = "Nothing matched \"$searchQuery\""
+                )
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 160.dp),
@@ -98,13 +82,14 @@ fun TrackersScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .pressScale()
                                 .combinedClickable(
                                     onClick = { navController.navigate("tracker_details/${tracker.id}") },
                                     onLongClick = { showDropdown = true }
                                 ),
                             colors = CardDefaults.cardColors(containerColor = cardBg),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 Column(

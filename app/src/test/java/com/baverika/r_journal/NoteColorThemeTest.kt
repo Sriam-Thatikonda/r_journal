@@ -11,13 +11,11 @@ class NoteColorThemeTest {
 
     @Test
     fun appTheme_isDark_returnsCorrectMode() {
-        assertTrue("MIDNIGHT must be dark", AppTheme.MIDNIGHT.isDark)
+        assertTrue("OBSIDIAN must be dark", AppTheme.OBSIDIAN.isDark)
         assertTrue("OCEAN must be dark", AppTheme.OCEAN.isDark)
-        assertTrue("ROSEWOOD must be dark", AppTheme.ROSEWOOD.isDark)
-        assertTrue("BLUE_SKY must be dark", AppTheme.BLUE_SKY.isDark)
+        assertTrue("SPACE must be dark", AppTheme.SPACE.isDark)
 
-        assertFalse("LIGHT must be light", AppTheme.LIGHT.isDark)
-        assertFalse("CLOUD_DANCER must be light", AppTheme.CLOUD_DANCER.isDark)
+        assertFalse("IVORY must be light", AppTheme.IVORY.isDark)
     }
 
     @Test

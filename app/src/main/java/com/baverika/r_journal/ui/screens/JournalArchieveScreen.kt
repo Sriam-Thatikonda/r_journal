@@ -47,8 +47,9 @@ import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
 import com.baverika.r_journal.ui.components.EmptyState
 import com.baverika.r_journal.ui.components.HighlightedText
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.JetBrainsMonoFamily
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -69,9 +70,7 @@ fun JournalArchiveScreen(
     val allEntries by journalRepo.allEntrySummaries.collectAsState(initial = emptyList())
     val allEvents by eventRepo.allEvents.collectAsState(initial = emptyList())
     val haptic = LocalHapticFeedback.current
-
-    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     var viewMode by rememberSaveable { mutableStateOf(ArchiveViewMode.GRID) }
 
@@ -122,23 +121,12 @@ fun JournalArchiveScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (isBlueSky) {
-            Image(
-                painter = painterResource(id = R.drawable.bg_journal_archive),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(6.dp),
-                contentScale = ContentScale.Crop
-            )
-        }
-
         Column(modifier = Modifier.fillMaxSize()) {
             if (allEntries.isEmpty()) {
                 EmptyState(
                     icon = Icons.AutoMirrored.Filled.MenuBook,
                     title = "Your Journal Awaits",
-                    message = "Start writing your first entry by tapping the + button"
+                    message = "Start writing your first entry by tapping the button below"
                 )
             } else if (filteredEntries.isEmpty()) {
                 EmptyState(
@@ -161,23 +149,24 @@ fun JournalArchiveScreen(
                     ) {
                         Text(
                             text = if (searchQuery.isNotBlank()) {
-                                "Found ${filteredEntries.size} of ${allEntries.size} entries"
+                                "${filteredEntries.size} of ${allEntries.size} entries"
                             } else {
                                 "${filteredEntries.size} entries recorded"
                             },
                             style = MaterialTheme.typography.labelMedium,
+                            fontFamily = JetBrainsMonoFamily,
                             fontWeight = FontWeight.Medium,
-                            color = if (isBlueSky) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         // View mode switcher segmented pill
                         Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = if (isSpace) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            shape = CircleShape,
+                            color = tokens.cardContainer,
+                            border = tokens.strokeSubtle
                         ) {
                             Row(
-                                modifier = Modifier.padding(2.dp),
+                                modifier = Modifier.padding(3.dp),
                                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -231,8 +220,7 @@ fun JournalArchiveScreen(
                                     item(span = { GridItemSpan(maxLineSpan) }) {
                                         ArchiveSectionHeader(
                                             title = monthYear,
-                                            count = entries.size,
-                                            isBlueSky = isBlueSky
+                                            count = entries.size
                                         )
                                     }
                                     items(entries, key = { it.id }) { entry ->
@@ -262,8 +250,7 @@ fun JournalArchiveScreen(
                                     item(key = "hdr_$monthYear") {
                                         ArchiveSectionHeader(
                                             title = monthYear,
-                                            count = entries.size,
-                                            isBlueSky = isBlueSky
+                                            count = entries.size
                                         )
                                     }
                                     items(entries, key = { it.id }) { entry ->
@@ -293,8 +280,7 @@ fun JournalArchiveScreen(
                                     item(key = "hdr_tl_$monthYear") {
                                         ArchiveSectionHeader(
                                             title = monthYear,
-                                            count = entries.size,
-                                            isBlueSky = isBlueSky
+                                            count = entries.size
                                         )
                                     }
                                     itemsIndexed(entries, key = { _, it -> it.id }) { idx, entry ->
@@ -349,13 +335,13 @@ private fun ViewModeIconButton(
 @Composable
 private fun ArchiveSectionHeader(
     title: String,
-    count: Int,
-    isBlueSky: Boolean
+    count: Int
 ) {
+    val tokens = LocalDesignTokens.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 14.dp, bottom = 6.dp),
+            .padding(top = 16.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -363,18 +349,20 @@ private fun ArchiveSectionHeader(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = if (isBlueSky) Color.White else MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            shape = CircleShape,
+            color = tokens.highlightFill,
+            border = tokens.strokeSubtle
         ) {
             Text(
                 text = "$count ${if (count == 1) "entry" else "entries"}",
                 style = MaterialTheme.typography.labelSmall,
+                fontFamily = JetBrainsMonoFamily,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
             )
         }
     }
@@ -435,32 +423,23 @@ fun EnhancedJournalCard(
     val imageCount = entry.imageCount
     val moodEmojis = entry.moodEmojis
     val haptic = LocalHapticFeedback.current
-
-    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale()
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             },
-        shape = RoundedCornerShape(if (isSpace) 20.dp else 14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 0.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isSpace -> Color(0xB3101216)
-                isBlueSky -> Color.Black.copy(alpha = 0.7f)
-                else -> MaterialTheme.colorScheme.surface
-            },
-            contentColor = if (isSpace || isBlueSky) Color(0xFFF3F4F6) else MaterialTheme.colorScheme.onSurface
+            containerColor = tokens.cardContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        border = when {
-            isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
-            isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-        }
+        border = tokens.strokeSubtle
     ) {
         Column(
             modifier = Modifier
@@ -595,29 +574,21 @@ private fun JournalListItemCard(
     onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale()
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isSpace -> Color(0xB3101216)
-                isBlueSky -> Color.Black.copy(alpha = 0.7f)
-                else -> MaterialTheme.colorScheme.surface
-            }
+            containerColor = tokens.cardContainer
         ),
-        border = when {
-            isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
-            isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-        }
+        border = tokens.strokeSubtle
     ) {
         Row(
             modifier = Modifier
@@ -769,12 +740,12 @@ private fun JournalTimelineItemCard(
     onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val isBlueSky = LocalAppTheme.current == AppTheme.BLUE_SKY
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     IntrinsicHeightRow(
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale()
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
@@ -811,19 +782,11 @@ private fun JournalTimelineItemCard(
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = 8.dp),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(tokens.cardRadius),
             colors = CardDefaults.cardColors(
-                containerColor = when {
-                    isSpace -> Color(0xB3101216)
-                    isBlueSky -> Color.Black.copy(alpha = 0.7f)
-                    else -> MaterialTheme.colorScheme.surface
-                }
+                containerColor = tokens.cardContainer
             ),
-            border = when {
-                isSpace -> BorderStroke(1.dp, Color(0x2EFFFFFF))
-                isBlueSky -> BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
-                else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-            }
+            border = tokens.strokeSubtle
         ) {
             Column(
                 modifier = Modifier

@@ -3,7 +3,10 @@ package com.baverika.r_journal.ui.screens
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,8 +46,8 @@ import com.baverika.r_journal.data.local.entity.EventType
 import com.baverika.r_journal.data.local.entity.JournalEntrySummary
 import com.baverika.r_journal.repository.EventRepository
 import com.baverika.r_journal.repository.JournalRepository
-import com.baverika.r_journal.ui.theme.AppTheme
-import com.baverika.r_journal.ui.theme.LocalAppTheme
+import com.baverika.r_journal.ui.theme.LocalDesignTokens
+import com.baverika.r_journal.ui.theme.pressScale
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -60,7 +63,6 @@ fun CalendarScreen(
     navController: NavController,
     eventRepo: EventRepository? = null
 ) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     val scope = rememberCoroutineScope()
@@ -157,45 +159,56 @@ fun CalendarScreen(
             }
         }
 
-        // Calendar Grid Calculations
-        val daysInMonth = currentMonth.lengthOfMonth()
-        val firstDayOfWeek = currentMonth.atDay(1).dayOfWeek.value // 1=Mon .. 7=Sun
-        val startOffset = if (firstDayOfWeek == 7) 0 else firstDayOfWeek
-        val totalSlots = daysInMonth + startOffset
-        val daysList = (1..totalSlots).map {
-            if (it <= startOffset) null else it - startOffset
-        }
+        // Calendar Grid with smooth directional month slide
+        AnimatedContent(
+            targetState = currentMonth,
+            transitionSpec = {
+                val forward = targetState.isAfter(initialState)
+                val sign = if (forward) 1 else -1
+                (slideInHorizontally(tween(260)) { (it * 0.25f * sign).toInt() } + fadeIn(tween(220))) togetherWith
+                    (slideOutHorizontally(tween(220)) { -(it * 0.2f * sign).toInt() } + fadeOut(tween(180)))
+            },
+            label = "calendarMonthSlide"
+        ) { displayedMonth ->
+            val daysInMonth = displayedMonth.lengthOfMonth()
+            val firstDayOfWeek = displayedMonth.atDay(1).dayOfWeek.value // 1=Mon .. 7=Sun
+            val startOffset = if (firstDayOfWeek == 7) 0 else firstDayOfWeek
+            val totalSlots = daysInMonth + startOffset
+            val daysList = (1..totalSlots).map {
+                if (it <= startOffset) null else it - startOffset
+            }
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            userScrollEnabled = false
-        ) {
-            items(daysList) { day ->
-                if (day != null) {
-                    val date = currentMonth.atDay(day)
-                    val entry = entryMap[date]
-                    val dayEvents = eventMap["${date.monthValue}-${date.dayOfMonth}"] ?: emptyList()
-                    val isToday = date == LocalDate.now()
-                    val isSelected = date == selectedDate
-                    val isFuture = date.isAfter(LocalDate.now())
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(7),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                userScrollEnabled = false
+            ) {
+                items(daysList) { day ->
+                    if (day != null) {
+                        val date = displayedMonth.atDay(day)
+                        val entry = entryMap[date]
+                        val dayEvents = eventMap["${date.monthValue}-${date.dayOfMonth}"] ?: emptyList()
+                        val isToday = date == LocalDate.now()
+                        val isSelected = date == selectedDate
+                        val isFuture = date.isAfter(LocalDate.now())
 
-                    CalendarDay(
-                        day = day,
-                        isToday = isToday,
-                        isSelected = isSelected,
-                        hasEntry = entry != null,
-                        moodEmojis = entry?.moodEmojis ?: emptyList(),
-                        events = dayEvents,
-                        isFuture = isFuture,
-                        onClick = {
-                            selectedDate = date
-                        }
-                    )
-                } else {
-                    Spacer(modifier = Modifier.aspectRatio(1f))
+                        CalendarDay(
+                            day = day,
+                            isToday = isToday,
+                            isSelected = isSelected,
+                            hasEntry = entry != null,
+                            moodEmojis = entry?.moodEmojis ?: emptyList(),
+                            events = dayEvents,
+                            isFuture = isFuture,
+                            onClick = {
+                                selectedDate = date
+                            }
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.aspectRatio(1f))
+                    }
                 }
             }
         }
@@ -241,12 +254,12 @@ private fun CalendarDay(
     isFuture: Boolean,
     onClick: () -> Unit
 ) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
 
     val containerColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
         isToday -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-        hasEntry -> if (isSpace) Color(0x3314161C) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        hasEntry -> tokens.cardContainer
         else -> Color.Transparent
     }
 
@@ -258,9 +271,9 @@ private fun CalendarDay(
     }
 
     val borderStroke = when {
-        isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        isSelected -> BorderStroke(1.8.dp, MaterialTheme.colorScheme.primary)
         isToday -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-        isSpace && hasEntry -> BorderStroke(0.5.dp, Color(0x33FFFFFF))
+        hasEntry -> tokens.strokeSubtle
         else -> null
     }
 
@@ -325,22 +338,19 @@ private fun DayAgendaCard(
     onCreateEntry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isSpace = LocalAppTheme.current == AppTheme.ROSEWOOD
+    val tokens = LocalDesignTokens.current
     val isToday = date == LocalDate.now()
     val isFuture = date.isAfter(LocalDate.now())
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.getDefault()) }
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(tokens.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSpace) Color(0xB3101216) else MaterialTheme.colorScheme.surface
+            containerColor = tokens.cardContainer
         ),
-        border = BorderStroke(
-            1.dp,
-            if (isSpace) Color(0x2EFFFFFF) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSpace) 1.dp else 2.dp)
+        border = tokens.strokeSubtle,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier

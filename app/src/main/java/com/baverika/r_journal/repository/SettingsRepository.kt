@@ -2,6 +2,7 @@ package com.baverika.r_journal.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.baverika.r_journal.ui.theme.AppFontStyle
 import com.baverika.r_journal.ui.theme.AppTheme
 
 class SettingsRepository(context: Context) {
@@ -10,6 +11,7 @@ class SettingsRepository(context: Context) {
     companion object {
         private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
         private const val KEY_APP_THEME = "app_theme"
+        private const val KEY_APP_FONT_STYLE = "app_font_style"
         private const val KEY_BIRTH_DAY = "birth_day"
         private const val KEY_BIRTH_MONTH = "birth_month"
         private const val KEY_BIRTH_YEAR = "birth_year"
@@ -119,14 +121,19 @@ class SettingsRepository(context: Context) {
 
     var appTheme: AppTheme
         get() {
-            val themeName = prefs.getString(KEY_APP_THEME, AppTheme.MIDNIGHT.name) ?: AppTheme.MIDNIGHT.name
-            return try {
-                AppTheme.valueOf(themeName)
-            } catch (e: IllegalArgumentException) {
-                AppTheme.MIDNIGHT
-            }
+            val themeName = prefs.getString(KEY_APP_THEME, AppTheme.OBSIDIAN.name)
+            return AppTheme.fromPersistedName(themeName)
         }
         set(value) {
             prefs.edit().putString(KEY_APP_THEME, value.name).apply()
+        }
+
+    var appFontStyle: AppFontStyle
+        get() {
+            val styleName = prefs.getString(KEY_APP_FONT_STYLE, AppFontStyle.MODERN.name)
+            return AppFontStyle.fromPersistedName(styleName)
+        }
+        set(value) {
+            prefs.edit().putString(KEY_APP_FONT_STYLE, value.name).apply()
         }
 }
