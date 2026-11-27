@@ -1,14 +1,13 @@
 package com.baverika.r_journal.ui.screens.journal
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -28,7 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,9 +70,11 @@ import com.baverika.r_journal.ui.theme.MotionSpec
 import com.baverika.r_journal.ui.theme.pressScale
 
 /**
- * Zero-scroll hybrid mood selector:
- * - Inline full-width 6-slot orb bar (5 core moods + More/Excited orb) with 1-tap Primary toggle.
- * - Expandable Mood Palette bottom sheet for choosing Primary Mood + up to 2 Secondary Feelings.
+ * Strict single-row hybrid mood selector:
+ * - 5 core moods for instant 1-tap Primary Mood selection.
+ * - Dynamic end slot showing "More" by default, morphing into selected Secondary Mood(s)
+ *   (or Excited primary) at the end of the same row.
+ * - Tapping the end slot (or long-pressing any orb) opens MoodPaletteSheet.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -87,7 +87,6 @@ fun CompactMoodPicker(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
-    val tokens = LocalDesignTokens.current
     val isDark = LocalAppTheme.current.isDark
     var showMoodSheet by remember { mutableStateOf(false) }
 
@@ -101,171 +100,46 @@ fun CompactMoodPicker(
         label = "moodHeaderTint"
     )
 
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .background(ambientTint)
             .then(if (!canEdit && !moodSelection.hasSelection) Modifier.alpha(0.55f) else Modifier)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Zero-scroll 6-column equal-weight dock: 5 core moods + More/Excited
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            MoodCatalog.coreInline.forEach { mood ->
-                val isPrimary = moodSelection.primaryMood == mood.id
-                val isSecondary = mood.id in moodSelection.secondaryMoods
-                MoodOrbButton(
-                    emoji = mood.emoji,
-                    label = mood.label,
-                    accentColor = mood.accentColor(isDark),
-                    isPrimary = isPrimary,
-                    isSecondary = isSecondary,
-                    enabled = canEdit,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onPrimaryMoodTap(mood.id)
-                    },
-                    onLongClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showMoodSheet = true
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // 6th slot: Excited when active, otherwise More/Palette trigger
-            val excitedDef = remember { MoodCatalog.findById("excited")!! }
-            val isExcitedPrimary = moodSelection.primaryMood == excitedDef.id
-            val isExcitedSecondary = excitedDef.id in moodSelection.secondaryMoods
-            val showExcitedInline = isExcitedPrimary || isExcitedSecondary
-
-            if (showExcitedInline) {
-                MoodOrbButton(
-                    emoji = excitedDef.emoji,
-                    label = excitedDef.label,
-                    accentColor = excitedDef.accentColor(isDark),
-                    isPrimary = isExcitedPrimary,
-                    isSecondary = isExcitedSecondary,
-                    enabled = canEdit,
-                    onClick = { showMoodSheet = true },
-                    onLongClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showMoodSheet = true
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                MoreMoodOrb(
-                    secondaryCount = moodSelection.secondaryMoods.size,
-                    enabled = canEdit,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        showMoodSheet = true
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+        MoodCatalog.coreInline.forEach { mood ->
+            val isPrimary = moodSelection.primaryMood == mood.id
+            MoodOrbButton(
+                emoji = mood.emoji,
+                label = mood.label,
+                accentColor = mood.accentColor(isDark),
+                isPrimary = isPrimary,
+                enabled = canEdit,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onPrimaryMoodTap(mood.id)
+                },
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showMoodSheet = true
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
 
-        // Subtle secondary feelings & refine bar when moods are active
-        AnimatedVisibility(
-            visible = moodSelection.hasSelection,
-            enter = fadeIn(tween(200)) + expandVertically(),
-            exit = fadeOut(tween(150)) + shrinkVertically()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, start = 4.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    primaryDef?.let { primary ->
-                        val pColor = primary.accentColor(isDark)
-                        Surface(
-                            shape = CircleShape,
-                            color = pColor.copy(alpha = 0.16f),
-                            border = BorderStroke(1.dp, pColor.copy(alpha = 0.5f)),
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable(enabled = canEdit) { showMoodSheet = true }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(text = primary.emoji, fontSize = 11.sp)
-                                Text(
-                                    text = primary.label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = pColor
-                                )
-                            }
-                        }
-                    }
-
-                    moodSelection.secondaryMoods.forEach { secId ->
-                        MoodCatalog.findById(secId)?.let { sec ->
-                            Surface(
-                                shape = CircleShape,
-                                color = tokens.cardElevated,
-                                border = tokens.strokeSubtle,
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .clickable(enabled = canEdit) { showMoodSheet = true }
-                            ) {
-                                Text(
-                                    text = "+ ${sec.emoji} ${sec.label}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (canEdit) {
-                    Surface(
-                        shape = CircleShape,
-                        color = tokens.highlightFill,
-                        border = tokens.strokeSubtle,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { showMoodSheet = true }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Add,
-                                contentDescription = "Layer feelings",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "Layer",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        DynamicEndMoodSlot(
+            primaryMoodId = moodSelection.primaryMood,
+            secondaryMoodIds = moodSelection.secondaryMoods,
+            isDark = isDark,
+            enabled = canEdit,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                showMoodSheet = true
+            },
+            modifier = Modifier.weight(1.18f)
+        )
     }
 
     if (showMoodSheet) {
@@ -295,7 +169,6 @@ private fun MoodOrbButton(
     label: String,
     accentColor: Color,
     isPrimary: Boolean,
-    isSecondary: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -305,31 +178,19 @@ private fun MoodOrbButton(
     val interactionSource = remember { MutableInteractionSource() }
 
     val scale by animateFloatAsState(
-        targetValue = when {
-            isPrimary -> 1.07f
-            isSecondary -> 1.02f
-            else -> 1.0f
-        },
+        targetValue = if (isPrimary) 1.07f else 1.0f,
         animationSpec = MotionSpec.tactileSpring(),
         label = "orbScale_$label"
     )
 
     val fill by animateColorAsState(
-        targetValue = when {
-            isPrimary -> accentColor.copy(alpha = 0.22f)
-            isSecondary -> accentColor.copy(alpha = 0.11f)
-            else -> tokens.cardElevated
-        },
+        targetValue = if (isPrimary) accentColor.copy(alpha = 0.22f) else tokens.cardElevated,
         animationSpec = tween(220),
         label = "orbFill_$label"
     )
 
     val borderColor by animateColorAsState(
-        targetValue = when {
-            isPrimary -> accentColor
-            isSecondary -> accentColor.copy(alpha = 0.55f)
-            else -> tokens.borderSubtle
-        },
+        targetValue = if (isPrimary) accentColor else tokens.borderSubtle,
         animationSpec = tween(220),
         label = "orbBorder_$label"
     )
@@ -345,14 +206,17 @@ private fun MoodOrbButton(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(vertical = 3.dp),
+            .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.height(42.dp),
+            contentAlignment = Alignment.Center
+        ) {
             if (isPrimary) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.radialGradient(
@@ -367,7 +231,7 @@ private fun MoodOrbButton(
 
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(38.dp)
                     .scale(scale)
                     .clip(CircleShape)
                     .background(fill)
@@ -380,45 +244,19 @@ private fun MoodOrbButton(
             ) {
                 Text(
                     text = emoji,
-                    fontSize = if (isPrimary) 19.sp else 17.sp
+                    fontSize = if (isPrimary) 18.sp else 16.sp
                 )
-            }
-
-            if (isSecondary && !isPrimary) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(accentColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(10.dp)
-                    )
-                }
             }
         }
 
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontSize = 10.5.sp,
-            fontWeight = when {
-                isPrimary -> FontWeight.Bold
-                isSecondary -> FontWeight.SemiBold
-                else -> FontWeight.Medium
-            },
-            color = when {
-                isPrimary -> accentColor
-                isSecondary -> MaterialTheme.colorScheme.onSurface
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            fontWeight = if (isPrimary) FontWeight.Bold else FontWeight.Medium,
+            color = if (isPrimary) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -426,63 +264,170 @@ private fun MoodOrbButton(
 }
 
 @Composable
-private fun MoreMoodOrb(
-    secondaryCount: Int,
+private fun DynamicEndMoodSlot(
+    primaryMoodId: String?,
+    secondaryMoodIds: List<String>,
+    isDark: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tokens = LocalDesignTokens.current
     val interactionSource = remember { MutableInteractionSource() }
+    val isExcitedPrimary = primaryMoodId == "excited"
+    val secondaryDefs = remember(secondaryMoodIds) {
+        secondaryMoodIds.mapNotNull { MoodCatalog.findById(it) }
+    }
+    val showMoreDefault = !isExcitedPrimary && secondaryDefs.isEmpty()
 
-    Column(
+    AnimatedContent(
+        targetState = Triple(showMoreDefault, isExcitedPrimary, secondaryDefs.map { it.id }),
+        transitionSpec = {
+            (fadeIn(tween(180)) + scaleIn(initialScale = 0.9f, animationSpec = tween(200))) togetherWith
+                (fadeOut(tween(140)) + scaleOut(targetScale = 0.9f, animationSpec = tween(140)))
+        },
+        label = "dynamicEndMoodSlot",
         modifier = modifier
-            .pressScale(interactionSource = interactionSource, pressedScale = 0.92f, enabled = enabled)
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                onClick = onClick
-            )
-            .padding(vertical = 3.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
+    ) { (isDefaultMore, excitedPrimary, _) ->
+        Column(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(tokens.cardContainer)
-                .border(1.dp, tokens.borderDefault, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Tune,
-                contentDescription = "More moods",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            if (secondaryCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                .fillMaxWidth()
+                .pressScale(interactionSource = interactionSource, pressedScale = 0.92f, enabled = enabled)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    onClick = onClick
                 )
+                .padding(vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.height(42.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isDefaultMore) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(tokens.cardContainer)
+                            .border(1.dp, tokens.borderDefault, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Tune,
+                            contentDescription = "More moods",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                } else {
+                    val excitedDef = remember { MoodCatalog.findById("excited")!! }
+                    if (excitedPrimary && secondaryDefs.isEmpty()) {
+                        val accent = excitedDef.accentColor(isDark)
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            accent.copy(alpha = 0.34f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(accent.copy(alpha = 0.22f))
+                                .border(1.6.dp, accent, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = excitedDef.emoji, fontSize = 18.sp)
+                        }
+                    } else {
+                        val displayDefs = buildList {
+                            if (excitedPrimary) add(excitedDef to true)
+                            secondaryDefs.forEach { add(it to false) }
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = tokens.cardContainer,
+                            border = tokens.strokeDefault
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(
+                                    horizontal = if (displayDefs.size >= 3) 3.dp else 5.dp,
+                                    vertical = 4.dp
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(if (displayDefs.size >= 3) 2.dp else 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val circleSize = when {
+                                    displayDefs.size == 1 -> 28.dp
+                                    displayDefs.size == 2 -> 23.dp
+                                    else -> 18.dp
+                                }
+                                val emojiSize = when {
+                                    displayDefs.size == 1 -> 14.sp
+                                    displayDefs.size == 2 -> 12.sp
+                                    else -> 10.sp
+                                }
+                                displayDefs.forEach { (def, isPrim) ->
+                                    val accent = def.accentColor(isDark)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(circleSize)
+                                            .clip(CircleShape)
+                                            .background(accent.copy(alpha = if (isPrim) 0.24f else 0.16f))
+                                            .border(
+                                                width = if (isPrim) 1.4.dp else 1.dp,
+                                                color = accent.copy(alpha = if (isPrim) 1f else 0.7f),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = def.emoji,
+                                            fontSize = emojiSize
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            val endLabel = when {
+                isDefaultMore -> "More"
+                excitedPrimary && secondaryDefs.isEmpty() -> "Excited"
+                secondaryDefs.size == 1 -> secondaryDefs.first().label
+                else -> "+${secondaryDefs.size} Moods"
+            }
+            val endLabelColor = when {
+                excitedPrimary && secondaryDefs.isEmpty() -> MoodCatalog.findById("excited")!!.accentColor(isDark)
+                !isDefaultMore -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            Text(
+                text = endLabel,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 10.5.sp,
+                fontWeight = if (isDefaultMore) FontWeight.Medium else FontWeight.SemiBold,
+                color = endLabelColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-
-        Spacer(modifier = Modifier.height(3.dp))
-
-        Text(
-            text = "More",
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 10.5.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
-        )
     }
 }
 

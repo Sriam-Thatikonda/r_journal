@@ -5,6 +5,11 @@
         name="camera_temp"
         path="camera_temp/" />
 
+    <!-- Temporary PNG exports for shareable milestone cards -->
+    <cache-path
+        name="shared_cards"
+        path="shared_cards/" />
+
     <!-- Internal app-private pictures directory -->
     <files-path
         name="internal_pictures"
